@@ -13,8 +13,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- (変更) PapaParseは不要になります (fetchで直接テキストとして処理するため) -->
-    
     <style>
         /* Interフォントをデフォルトに */
         body {
@@ -22,15 +20,20 @@
             overscroll-behavior-y: none; /* iOSでのバウンススクロールを無効化 */
             min-height: 100vh; /* 最小の高さを確保 */
         }
-        /* ... (他のスタイルは変更なし) ... */
         .tab-active { @apply border-emerald-500 text-emerald-600; }
         .tab-inactive { @apply border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300; }
         main#app { padding-bottom: 12rem; }
-        main#app.pt-list-controls { padding-top: 8.75rem; }
+        /* ヘッダーとリストコントロールの高さを確保 */
+        main#app.pt-list-controls { padding-top: 8.75rem; } /* 3.5rem (header) + 4.75rem (list-controls) */
+        
         .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
         .arrow-down { transform: rotate(0deg); transition: transform 0.3s ease-in-out; }
         .arrow-up { transform: rotate(180deg); transition: transform 0.3s ease-in-out; }
+        
+        /* 編集不可フィールドのスタイル */
         .readonly-field { @apply mt-1 block w-full border border-gray-200 rounded-md shadow-sm px-3 py-2 bg-gray-100 text-gray-600; }
+        
+        /* ページネーションボタンの無効化スタイル */
         .pagination-button:disabled { @apply opacity-50 cursor-not-allowed; }
     </style>
 </head>
@@ -38,12 +41,13 @@
 
     <!-- Header -->
     <header id="header" class="bg-white shadow-md fixed top-0 z-20 w-full max-w-lg mx-auto">
-        <!-- ... (ヘッダーのHTMLは変更なし) ... -->
         <div class="container mx-auto px-4 py-3 flex items-center justify-between h-16">
             <button id="backButton" class="text-emerald-600 hidden w-16 text-left">&lt; 戻る</button>
             <h1 id="headerTitle" class="text-xl font-bold text-gray-800 text-center flex-grow">鳥類図鑑</h1>
             <div id="headerRightSpace" class="w-16"></div>
         </div>
+        
+        <!-- List Controls (Search / Sort Button) -->
         <div id="list-controls" class="bg-white border-t border-gray-200 p-4 hidden">
             <div>
                 <button id="sort-toggle-button" class="w-full bg-white px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-gray-700 flex justify-between items-center">
@@ -54,7 +58,10 @@
                 </button>
             </div>
         </div>
+        
+        <!-- Sort Accordion Area -->
         <div id="sort-accordion" class="bg-gray-50 border-t border-b border-gray-200 hidden overflow-y-auto" style="max-height: calc(100vh - 13rem);">
+            <!-- アコーディオンの中身がJSによってここに挿入されます -->
         </div>
     </header>
 
@@ -65,7 +72,6 @@
 
     <!-- Footer Navigation -->
     <nav class="bg-white border-t border-gray-200 fixed bottom-0 left-0 right-0 max-w-lg mx-auto h-16 flex justify-around items-center z-30">
-        <!-- ... (フッターのHTMLは変更なし) ... -->
         <button id="tab-pokedex" class="tab-button flex-1 flex flex-col items-center justify-center h-full text-sm font-medium tab-active">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
             図鑑
@@ -82,15 +88,12 @@
 
     <script>
         // --- (変更) GitHub Pages URL設定 ---
-        // (重要!) GitHub Pages設定後、ここのURLをご自身のものに書き換えてください
-        const GITHUB_CSV_URL = 'https://[YOUR_USERNAME].github.io/[YOUR_REPO_NAME]/bird-list.csv';
-        // (重要!) バージョン管理ファイル (CSVの更新を検知するため)
-        const GITHUB_VERSION_URL = 'https://[YOUR_USERNAME].github.io/[YOUR_REPO_NAME]/version.txt';
+        const GITHUB_CSV_URL = 'https://mjy-mo.github.io/bird-pokedex/bird-list.csv';
+        const GITHUB_VERSION_URL = 'https://mjy-mo.github.io/bird-pokedex/version.txt';
 
 
         // --- グローバル変数 ---
         const app = document.getElementById('app');
-        // ... (他のグローバル変数は変更なし) ...
         const header = document.getElementById('header');
         const headerTitle = document.getElementById('headerTitle');
         const backButton = document.getElementById('backButton');
@@ -104,27 +107,33 @@
         let processedBirdList = []; // フィルタリング・ソート済みのリスト（ページネーション用）
         let currentBird = null; // 詳細表示中の鳥データ
         
-        // アプリケーションの状態管理 (変更なし)
+        // アプリケーションの状態管理
         const appState = {
-            currentPage: 'list', 
-            currentBirdId: null,
-            isEditing: false, 
+            currentPage: 'list', // 'list', 'detail', 'edit', 'events', 'settings'
+            currentBirdId: null, // 詳細表示中の鳥のID
+            isEditing: false, // 編集モードか
             listControls: {
                 filterText: '',
-                sort: 'name_asc', 
+                sort: 'name_asc', // 'name_asc', 'name_desc', 'size_asc', 'size_desc', 'classification', 'rarity'
                 filters: {
-                    season: [], type: [], habitat: [], size: [],
-                    classification: { order: null, family: null }, 
-                    photo: 'all', 
+                    season: [], // ['留鳥', '夏鳥', ...]
+                    type: [], // ['ガンカモ', '猛禽', ...]
+                    habitat: [], // ['habitat_hokkaido', ...]
+                    size: [], // ['s1', 's2', ...]
+                    classification: { // 分類絞り込み
+                        order: null, // 'スズメ目'
+                        family: null // (現在は未使用)
+                    }, 
+                    photo: 'all', // 'all' or 'yes'
                 },
-                accordionOpen: false,
-                openAccordionSection: null, 
-                currentPage: 1,
-                itemsPerPage: 30, 
+                accordionOpen: false, // アコーディオンが開いているか
+                openAccordionSection: null, // 'sort', 'season', 'type', ...
+                currentPage: 1, // ページネーションの現在ページ
+                itemsPerPage: 30, // 1ページあたりの表示件数
             }
         };
 
-        // --- (変更) CSVパーサー (PapaParseの代わりに自前で簡易解析) ---
+        // --- CSVパーサー (自前で簡易解析) ---
         // fetchで取得したCSVテキスト(text)を受け取る
         function parseCSV(text) {
             const lines = text.split(/[\r\n]+/).filter(Boolean); // 行に分割
@@ -157,6 +166,7 @@
             const result = [];
             for (let i = 1; i < lines.length; i++) {
                 // (注意) カンマを含むデータを簡易的に扱うため、正規表現は使わずsplitで処理
+                // TODO: カンマを含むフィールド(例: "hoge,fuga")には対応できない
                 const values = lines[i].split(',');
                 if (values.length < headers.length) continue; // 列が足りない行はスキップ
 
@@ -189,19 +199,19 @@
             return result;
         }
         
-        // --- (変更) データベースのマスター/ローカルカラム定義 ---
+        // --- データベースのマスター/ローカルカラム定義 ---
         const MASTER_COLUMNS = [ // GitHubのCSVで上書きするカラム
             'name', 'classification', 'size', 'special_notes', 
             'habitat_hokkaido', 'habitat_honshu', 'habitat_shikoku', 'habitat_kyushu', 'habitat_islands', 
             'type' 
-            // 'season', 'rarity' もマスターデータだが、ユーザー編集を優先
+            // 'season', 'rarity' もマスターデータだが、ユーザー編集を優先するためここには含めない
         ];
         const LOCAL_COLUMNS = [ // ユーザーの編集内容を保持するカラム
             'season', 'rarity', 'description', 'photo_url', 'observed_date', 'observed_location'
         ];
 
 
-        // --- (変更) データベース初期化 (自動ダウンロード版) ---
+        // --- データベース初期化 (自動ダウンロード版) ---
         async function initializeDatabase() {
             const storedData = localStorage.getItem('birdDatabase');
             if (storedData) {
@@ -219,7 +229,7 @@
             processedBirdList = [...birdDatabase];
         }
         
-        // --- (変更) ローディングメッセージ表示 ---
+        // --- ローディングメッセージ表示 ---
         function showLoadingMessage(message) {
             app.innerHTML = `
                 <div class="bg-white rounded-lg shadow p-6 text-center">
@@ -230,7 +240,7 @@
             updateHeader('loading');
         }
 
-        // --- (変更) CSVをダウンロードして保存（初回起動時） ---
+        // --- CSVをダウンロードして保存（初回起動時） ---
         async function fetchCSVAndSave() {
             if (GITHUB_CSV_URL.includes('[YOUR_USERNAME]')) {
                 showSettingsPage(); // URL未設定の場合は設定画面を表示
@@ -271,7 +281,7 @@
             }
         }
 
-        // --- (変更) データの更新（マージ）処理 ---
+        // --- データの更新（マージ）処理 ---
         async function checkAndUpdateData() {
             if (GITHUB_VERSION_URL.includes('[YOUR_USERNAME]')) {
                 console.warn('GitHub URL not set. Skipping update check.');
@@ -280,6 +290,7 @@
             
             let remoteVersion = '';
             try {
+                // バージョンファイルの取得
                 const response = await fetch(`${GITHUB_VERSION_URL}?cachebust=${new Date().getTime()}`);
                 if (!response.ok) throw new Error('バージョンファイルの取得に失敗');
                 remoteVersion = await response.text();
@@ -334,7 +345,7 @@
                     }
                 });
 
-                // 4. (任意) マスターから削除された鳥をどうするか
+                // 4. マスターから削除されたが、ローカルには残っている鳥をどうするか
                 //    現在は、マスターCSVに存在しないローカルデータ（localDataMapに残ったもの）は
                 //    そのまま保持する（newDatabaseに追加する）
                 localDataMap.forEach(remainingLocalBird => {
@@ -361,27 +372,38 @@
         
         // --- データベース保存 ---
         function saveDatabase() {
-            localStorage.setItem('birdDatabase', JSON.stringify(JSON.parse(JSON.stringify(birdDatabase))));
-            console.log('Database saved to localStorage');
+            try {
+                localStorage.setItem('birdDatabase', JSON.stringify(birdDatabase));
+                console.log('Database saved to localStorage');
+            } catch (e) {
+                console.error('Failed to save database to localStorage:', e);
+                // ここで容量オーバーなどのエラーをユーザーに通知することもできる
+            }
         }
 
-        // --- 状態保存 (ソート/絞り込み) --- (変更なし)
+        // --- 状態保存 (ソート/絞り込み) ---
         function saveListControlsState() {
+            // currentPageは常に1に戻す
             const stateToSave = { ...appState.listControls, currentPage: 1 };
             localStorage.setItem('birdListControls', JSON.stringify(stateToSave));
         }
 
-        // --- 状態読み込み (ソート/絞り込み) --- (変更なし)
+        // --- 状態読み込み (ソート/絞り込み) ---
         function loadListControlsState() {
             const storedState = localStorage.getItem('birdListControls');
             if (storedState) {
                 const loadedState = JSON.parse(storedState);
+                
+                // 起動時はアコーディオンを閉じ、ページを1にリセット
                 loadedState.accordionOpen = false;
                 loadedState.openAccordionSection = null;
                 loadedState.currentPage = 1; 
+                
+                // フィルターの構造が変更されても壊れないようにマージする
                 const defaultFilters = appState.listControls.filters;
-                const loadedFilters = loadedState.filters;
+                const loadedFilters = loadedState.filters || {};
                 loadedState.filters = { ...defaultFilters, ...loadedFilters };
+                
                 appState.listControls = { ...appState.listControls, ...loadedState };
             }
         }
@@ -389,7 +411,6 @@
 
         // --- ヘッダーの更新 ---
         function updateHeader(mode, title = "鳥類図鑑") {
-            // ... (ロジックは変更なし、'loading'モードの分岐が追加される)
             headerTitle.textContent = title;
             backButton.classList.add('hidden');
             headerRightSpace.classList.remove('hidden'); 
@@ -399,14 +420,16 @@
 
             if (mode === 'list') {
                 headerRightSpace.classList.remove('hidden');
+                // データがロードされていればリストコントロールを表示
                 if (birdDatabase.length > 0) {
                     listControls.classList.remove('hidden'); 
                     app.classList.add('pt-list-controls'); 
                 }
+                // アコーディオンが開く設定なら開く
                 if (appState.listControls.accordionOpen) {
                     sortAccordion.classList.remove('hidden');
                     sortArrow.classList.replace('arrow-down', 'arrow-up');
-                    renderSortAccordion(); 
+                    renderSortAccordion(); // 中身も再描画
                 } else {
                     sortAccordion.classList.add('hidden');
                     sortArrow.classList.replace('arrow-up', 'arrow-down');
@@ -422,13 +445,12 @@
                     backButton.onclick = () => showDetailPage(appState.currentBirdId);
                 }
             } else {
-                // 'events', 'settings', 'loading'
+                // 'events', 'settings', 'loading' など
             }
         }
 
         // --- 画面描画: 図鑑リスト ---
         function showListPage() {
-            // ... (ロジックは変更なし、ローディングメッセージがGitHub URL未設定時にも対応) ...
             appState.currentPage = 'list';
             appState.isEditing = false;
             
@@ -465,8 +487,9 @@
                 <div id="pagination-controls" class="mt-6 flex justify-between items-center"></div>
             `;
             updateHeader('list');
-            applyFiltersAndRenderList();
+            applyFiltersAndRenderList(); // フィルター/ソートを適用してリストを描画
             
+            // ソートボタンのイベントリスナー
             if(sortToggleButton) {
                 sortToggleButton.onclick = () => {
                     toggleSortAccordion();
@@ -474,22 +497,21 @@
             }
         }
         
-        // --- ソートアコーディオンの開閉 --- (変更なし)
+        // --- ソートアコーディオンの開閉 ---
         function toggleSortAccordion() {
             appState.listControls.accordionOpen = !appState.listControls.accordionOpen;
             if (appState.listControls.accordionOpen) {
                 sortAccordion.classList.remove('hidden');
                 sortArrow.classList.replace('arrow-down', 'arrow-up');
-                renderSortAccordion(); 
+                renderSortAccordion(); // 開くときに中身を描画
             } else {
                 sortAccordion.classList.add('hidden');
                 sortArrow.classList.replace('arrow-up', 'arrow-down');
-                appState.listControls.openAccordionSection = null; 
+                appState.listControls.openAccordionSection = null; // 開くセクションもリセット
             }
         }
 
-        // --- ヘルパー関数: サイズ区分を取得 --- (変更なし)
-        // ... (getSizeRange 関数) ...
+        // --- ヘルパー関数: サイズ区分を取得 ---
         const sizeRanges = {
             s1: { label: '~ 20cm', min: 0, max: 20 },
             s2: { label: '20 ~ 40cm', min: 20, max: 40 },
@@ -498,7 +520,7 @@
             s5: { label: '100cm ~', min: 100, max: Infinity },
         };
         function getSizeRange(sizeCm) {
-            const size = parseFloat(sizeCm);
+            const size = parseFloat(sizeCm); // "25-30cm" -> 25
             if (isNaN(size)) return null;
             for (const [key, range] of Object.entries(sizeRanges)) {
                 if (range.min === 0 && size <= range.max) return key;
@@ -508,11 +530,10 @@
             return null;
         }
 
-        // --- ヘルパー関数: 区分(season)タグのHTMLを取得 --- (変更なし)
-        // ... (getSeasonTag 関数) ...
+        // --- ヘルパー関数: 区分(season)タグのHTMLを取得 ---
         function getSeasonTag(season) {
             if (!season) return '';
-            let tagClass = 'bg-purple-200 text-purple-700'; 
+            let tagClass = 'bg-purple-200 text-purple-700'; // デフォルト (その他)
             switch (season) {
                 case '留鳥': tagClass = 'bg-gray-200 text-gray-700'; break;
                 case '冬鳥': tagClass = 'bg-blue-200 text-blue-700'; break;
@@ -523,15 +544,17 @@
         }
 
 
-        // --- ソートアコーディオンの中身を描画 --- (変更なし)
+        // --- ソートアコーディオンの中身を描画 ---
         function renderSortAccordion() {
-            // ... (renderSortAccordion 関数の全ロジック - 変更なし) ...
             const { sort, filters, openAccordionSection, filterText } = appState.listControls;
+            
+            // 絞り込みオプションのリスト
             const filterableSeasons = ['留鳥', '夏鳥', '冬鳥', '旅鳥', '迷鳥', 'その他'];
             const filterableTypes = [
                 'ガンカモ', 'カモメ', 'カラ類', 'キツツキ', 'サギ', 'シギ', 'セキレイ', 
                 'ツル', 'ツバメ類', 'トケン', 'ハト', 'ヒタキ', 'ムシクイ', '猛禽', '海鳥', 'その他'
             ];
+            // DBから「目」のリストを動的に生成
             const allOrders = [...new Set(birdDatabase.map(b => b.classification.split(' ')[0]).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'ja'));
             const habitatKeys = [
                 { key: 'habitat_hokkaido', label: '北海道' },
@@ -541,6 +564,7 @@
                 { key: 'habitat_islands', label: '島嶼' },
             ];
 
+            // アコーディオンのセクション定義
             const sections = [
                 { id: 'sort', title: '並び替え' },
                 { id: 'classification', title: '分類 (目)' }, 
@@ -551,6 +575,7 @@
                 { id: 'photo', title: '写真' }
             ];
             
+            // 検索バー
             sortAccordion.innerHTML = `
                 <div class="p-4 border-b border-gray-200 bg-white">
                     <input type="search" id="searchBox" placeholder="鳥を検索..." 
@@ -560,8 +585,9 @@
             ` + sections.map(section => {
                 const isOpen = openAccordionSection === section.id;
                 let contentHtml = '';
+                
+                // 各セクションの中身を生成
                 switch (section.id) {
-                    // ... (case 'sort':)
                     case 'sort':
                         contentHtml = `
                             <div class="p-4 space-y-2">
@@ -574,7 +600,6 @@
                             </div>
                         `;
                         break;
-                    // ... (case 'classification':)
                     case 'classification': 
                         const orderOptions = allOrders.map(order => 
                             `<option value="${order}" ${filters.classification.order === order ? 'selected' : ''}>${order}</option>`
@@ -589,31 +614,26 @@
                             </div>
                         `;
                         break;
-                    // ... (case 'season':)
                     case 'season': 
                         contentHtml = `<div class="p-4 grid grid-cols-2 gap-2">` + filterableSeasons.map(season => `
                             <label class="flex items-center space-x-2"><input type="checkbox" name="season" value="${season}" ${filters.season.includes(season) ? 'checked' : ''} class="form-checkbox text-emerald-600 rounded"><span>${season}</span></label>
                         `).join('') + `</div>`;
                         break;
-                    // ... (case 'type':)
                     case 'type':
                          contentHtml = `<div class="p-4 grid grid-cols-2 gap-2">` + filterableTypes.map(type => `
                             <label class="flex items-center space-x-2"><input type="checkbox" name="type" value="${type}" ${filters.type.includes(type) ? 'checked' : ''} class="form-checkbox text-emerald-600 rounded"><span>${type}</span></label>
                         `).join('') + `</div>`;
                         break;
-                    // ... (case 'habitat':)
                     case 'habitat': 
                         contentHtml = `<div class="p-4 grid grid-cols-2 gap-2">` + habitatKeys.map(h => `
                             <label class="flex items-center space-x-2"><input type="checkbox" name="habitat" value="${h.key}" ${filters.habitat.includes(h.key) ? 'checked' : ''} class="form-checkbox text-emerald-600 rounded"><span>${h.label}</span></label>
                         `).join('') + `</div>`;
                         break;
-                    // ... (case 'size':)
                     case 'size': 
                         contentHtml = `<div class="p-4 grid grid-cols-2 gap-2">` + Object.entries(sizeRanges).map(([key, range]) => `
                             <label class="flex items-center space-x-2"><input type="checkbox" name="size" value="${key}" ${filters.size.includes(key) ? 'checked' : ''} class="form-checkbox text-emerald-600 rounded"><span>${range.label}</span></label>
                         `).join('') + `</div>`;
                         break;
-                    // ... (case 'photo':)
                     case 'photo':
                         contentHtml = `
                             <div class="p-4 space-y-2">
@@ -624,6 +644,7 @@
                         break;
                 }
 
+                // セクションのHTMLを組み立て
                 return `
                     <div class="border-b border-gray-200">
                         <button class="accordion-header w-full flex justify-between items-center p-4 text-left font-semibold text-gray-700" data-section="${section.id}">
@@ -639,30 +660,33 @@
                 `;
             }).join('');
 
-            // --- アコーディオンのイベントリスナー設定 (変更なし) ---
-            // ... (searchBox.addEventListener)
+            // --- アコーディオンのイベントリスナー設定 ---
+            
+            // 検索バー
             const searchBox = sortAccordion.querySelector('#searchBox');
             searchBox.addEventListener('input', (e) => {
                 appState.listControls.filterText = e.target.value;
                 appState.listControls.currentPage = 1; 
                 applyFiltersAndRenderList();
-                saveListControlsState(); 
+                saveListControlsState(); // 検索語も保存
             });
-            // ... (accordion-header.addEventListener)
+            
+            // アコーディオンのヘッダー（開閉）
             sortAccordion.querySelectorAll('.accordion-header').forEach(header => {
                 header.addEventListener('click', () => {
                     const sectionId = header.dataset.section;
                     if (appState.listControls.openAccordionSection === sectionId) {
-                        appState.listControls.openAccordionSection = null;
+                        appState.listControls.openAccordionSection = null; // 同じものをクリックしたら閉じる
                     } else {
-                        appState.listControls.openAccordionSection = sectionId;
+                        appState.listControls.openAccordionSection = sectionId; // 違うものをクリックしたら開く
                     }
-                    renderSortAccordion();
+                    renderSortAccordion(); // 開閉状態を反映して再描画
                 });
             });
 
-            // --- フォーム入力のイベントリスナー設定 (変更なし) ---
-            // ... (input[name="sort"].addEventListener)
+            // --- フォーム入力のイベントリスナー設定 ---
+            
+            // 並び替え (ラジオボタン)
             sortAccordion.querySelectorAll('input[name="sort"]').forEach(radio => {
                 radio.addEventListener('change', (e) => {
                     appState.listControls.sort = e.target.value;
@@ -671,7 +695,8 @@
                     saveListControlsState(); 
                 });
             });
-            // ... (input[name="photo"].addEventListener)
+            
+            // 写真 (ラジオボタン)
              sortAccordion.querySelectorAll('input[name="photo"]').forEach(radio => {
                 radio.addEventListener('change', (e) => {
                     appState.listControls.filters.photo = e.target.value;
@@ -680,7 +705,8 @@
                     saveListControlsState();
                 });
             });
-            // ... (#filter_order.addEventListener)
+            
+            // 分類 (セレクトボックス)
             const orderSelect = sortAccordion.querySelector('#filter_order');
             if (orderSelect) {
                 orderSelect.addEventListener('change', (e) => {
@@ -692,7 +718,8 @@
                     renderSortAccordion(); 
                 });
             }
-            // ... (input[name="season"].addEventListener)
+
+            // 区分 (チェックボックス)
             sortAccordion.querySelectorAll('input[name="season"]').forEach(checkbox => {
                 checkbox.addEventListener('change', (e) => {
                     if (e.target.checked) {
@@ -705,7 +732,8 @@
                     saveListControlsState(); 
                 });
             });
-            // ... (input[name="type"].addEventListener)
+            
+            // 種類 (チェックボックス)
             sortAccordion.querySelectorAll('input[name="type"]').forEach(checkbox => {
                 checkbox.addEventListener('change', (e) => {
                     if (e.target.checked) {
@@ -718,7 +746,8 @@
                     saveListControlsState(); 
                 });
             });
-            // ... (input[name="habitat"].addEventListener)
+            
+            // 生息地 (チェックボックス)
             sortAccordion.querySelectorAll('input[name="habitat"]').forEach(checkbox => {
                 checkbox.addEventListener('change', (e) => {
                     if (e.target.checked) {
@@ -731,7 +760,8 @@
                     saveListControlsState(); 
                 });
             });
-            // ... (input[name="size"].addEventListener)
+            
+            // 体サイズ (チェックボックス)
             sortAccordion.querySelectorAll('input[name="size"]').forEach(checkbox => {
                 checkbox.addEventListener('change', (e) => {
                     if (e.target.checked) {
@@ -749,7 +779,6 @@
 
         // --- 図鑑リストのレンダリング (フィルタリングとソート) ---
         function applyFiltersAndRenderList() {
-            // ... (フィルタリングロジックは変更なし) ...
             const listElement = document.getElementById('pokedex-list');
             if (!listElement) {
                 return;
@@ -758,25 +787,34 @@
             const { filterText, filters, sort, currentPage, itemsPerPage } = appState.listControls;
             const lowerFilter = filterText.toLowerCase();
 
+            // 1. フィルタリング
             processedBirdList = birdDatabase.filter(bird => {
-                // (フィルタリングロジック - 変更なし)
                 const matchesSearch = bird.name.toLowerCase().includes(lowerFilter) ||
                                       bird.classification.toLowerCase().includes(lowerFilter);
+                
                 const matchesSeason = filters.season.length === 0 || filters.season.includes(bird.season);
+                
                 const matchesType = filters.type.length === 0 || filters.type.includes(bird.type);
+
                 const { order, family } = filters.classification;
                 const matchesOrder = !order || bird.classification.startsWith(order);
-                const matchesFamily = true; 
+                const matchesFamily = true; // (現在は未使用)
                 const matchesClassification = matchesOrder && matchesFamily;
-                const matchesHabitat = filters.habitat.length === 0 || filters.habitat.every(h_key => bird[h_key] === '1');
+
+                const matchesHabitat = filters.habitat.length === 0 || 
+                                       filters.habitat.every(h_key => bird[h_key] === '1');
+
                 const birdSizeRange = getSizeRange(bird.size);
-                const matchesSize = filters.size.length === 0 || filters.size.includes(birdSizeRange);
-                const matchesPhoto = filters.photo === 'all' || (filters.photo === 'yes' && bird.photo_url);
+                const matchesSize = filters.size.length === 0 || 
+                                    filters.size.includes(birdSizeRange);
+                
+                const matchesPhoto = filters.photo === 'all' || 
+                                     (filters.photo === 'yes' && bird.photo_url);
 
                 return matchesSearch && matchesSeason && matchesType && matchesClassification && matchesHabitat && matchesSize && matchesPhoto;
             });
             
-            // --- (変更) ソートロジック (NaNでも安全な比較) ---
+            // 2. ソート (NaNでも安全な比較)
             processedBirdList.sort((a, b) => {
                 switch (sort) {
                     case 'name_asc':
@@ -816,9 +854,8 @@
                         return a.name.localeCompare(b.name, 'ja');
                 }
             });
-            // --- ソートロジックここまで ---
 
-            // ... (ページネーションとリスト描画 - 変更なし) ...
+            // 3. ページネーション
             const totalItems = processedBirdList.length;
             const totalPages = Math.ceil(totalItems / itemsPerPage);
             
@@ -833,6 +870,7 @@
             const endIndex = startIndex + itemsPerPage;
             const birdsToRender = processedBirdList.slice(startIndex, endIndex);
 
+            // 4. リストの描画
             if (birdsToRender.length === 0) {
                 listElement.innerHTML = `<p class="col-span-full text-center text-gray-500">該当する鳥が見つかりません。</p>`;
             } else {
@@ -863,12 +901,12 @@
                 }).join('');
             }
             
+            // 5. ページネーションコントロールの描画
             renderPaginationControls(totalItems, totalPages, validCurrentPage);
         }
         
-        // --- ページネーション (Pagination) コントロールの描画 --- (変更なし)
+        // --- ページネーション (Pagination) コントロールの描画 ---
         function renderPaginationControls(totalItems, totalPages, currentPage) {
-            // ... (renderPaginationControls 関数の全ロジック - 変更なし) ...
             const controlsElement = document.getElementById('pagination-controls');
             if (!controlsElement) return;
 
@@ -918,9 +956,8 @@
         }
 
 
-        // --- 画面描画: 詳細 (閲覧モード) --- (変更なし)
+        // --- 画面描画: 詳細 (閲覧モード) ---
         function showDetailPage(birdId) {
-            // ... (showDetailPage 関数の全ロジック - 変更なし) ...
             const bird = birdDatabase.find(b => b.id === birdId);
             if (!bird) {
                 console.error('Bird not found:', birdId);
@@ -933,6 +970,7 @@
             appState.isEditing = false;
             updateHeader('detail', bird.name);
 
+            // 生息地
             const habitats = [
                 bird.habitat_hokkaido === '1' ? '北海道' : null,
                 bird.habitat_honshu === '1' ? '本州' : null,
@@ -941,10 +979,12 @@
                 bird.habitat_islands === '1' ? '島嶼' : null,
             ].filter(Boolean).join(' / ') || '情報なし';
 
+            // 写真
             const photoBg = bird.photo_url 
                 ? `style="background-image: url(${bird.photo_url})"` 
                 : `style="background-image: url(https://placehold.co/600x400/e2e8f0/9ca3af?text=写真を追加)"`;
 
+            // 観察記録
             const observationRecord = bird.observed_date || bird.observed_location
                 ? `
                 <div class="bg-white rounded-lg shadow p-3 mb-4">
@@ -954,8 +994,10 @@
                 </div>
                 ` : '';
 
+            // 区分タグ (色分け)
             const seasonTag = getSeasonTag(bird.season);
             
+            // レア度タグ (★)
             let rarityTag = '';
             const rarityVal = parseInt(bird.rarity);
             if (rarityVal > 0) {
@@ -966,17 +1008,25 @@
                              </span>`;
             }
             
+            // 特記タグ (あれば)
             const specialNotesTags = (bird.special_notes && bird.special_notes !== '""')
                 ? bird.special_notes.split(';').map(note => 
                     `<span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-200 text-red-700">${note.trim()}</span>`
                   ).join(' ')
                 : '';
 
+            // 説明文 (なければプレースホルダー)
+            const descriptionHtml = (bird.description && bird.description !== '""') 
+                ? `<p class="text-sm text-gray-600 whitespace-pre-wrap">${bird.description}</p>` 
+                : '<p class="text-sm text-gray-500 italic">(説明未記入)</p>';
+            
+            // 閲覧モードHTML
             app.innerHTML = `
                 <div class="mb-4 rounded-lg shadow-md overflow-hidden bg-gray-200">
                     <div class="h-56 w-full bg-cover bg-center" ${photoBg}>
                     </div>
                 </div>
+                <!-- 基本情報カード -->
                 <div class="bg-white rounded-lg shadow p-3 mb-4">
                     <div class="flex justify-between items-baseline mb-2">
                         <h2 class="text-2xl font-bold text-gray-800">${bird.name}</h2>
@@ -984,21 +1034,26 @@
                     </div>
                     <p class="text-sm text-gray-600 mb-3">${bird.classification}</p>
                     
+                    <!-- タグエリア -->
                     <div class="flex flex-wrap gap-2">
                         ${seasonTag}
                         ${rarityTag}
                         ${specialNotesTags}
                     </div>
                 </div>
+                <!-- 生息地カード -->
                 <div class="bg-white rounded-lg shadow p-3 mb-4">
                     <h4 class="font-semibold text-sm text-gray-700 mb-2">生息地</h4>
                     <p class="text-sm text-gray-600">${habitats}</p>
                 </div>
+                <!-- 観察記録カード (あれば) -->
                 ${observationRecord}
+                <!-- 説明文カード -->
                 <div class="bg-white rounded-lg shadow p-3 mb-4">
                     <h4 class="font-semibold text-sm text-gray-700 mb-2">説明文</h4>
-                    ${(bird.description && bird.description !== '""') ? `<p class="text-sm text-gray-600 whitespace-pre-wrap">${bird.description}</p>` : '<p class="text-sm text-gray-500 italic">(説明未記入)</p>'}
+                    ${descriptionHtml}
                 </div>
+                <!-- 編集ボタン -->
                 <div class="mt-6">
                     <button onclick="renderDetailEditPage('${bird.id}')"
                             class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow-lg hover:bg-emerald-700 transition-colors">
@@ -1008,9 +1063,8 @@
             `;
         }
         
-        // --- 画面描画: 詳細 (編集モード) --- (変更なし)
+        // --- 画面描画: 詳細 (編集モード) ---
         function renderDetailEditPage(birdId) {
-            // ... (renderDetailEditPage 関数の全ロジック - 変更なし) ...
             const bird = birdDatabase.find(b => b.id === birdId);
             if (!bird) return;
 
@@ -1018,6 +1072,7 @@
             appState.isEditing = true;
             updateHeader('edit', `編集: ${bird.name}`);
 
+            // 生息地チェックボックス (編集可能)
             const habitatCheckboxes = [
                 { key: 'habitat_hokkaido', label: '北海道' },
                 { key: 'habitat_honshu', label: '本州' },
@@ -1032,10 +1087,12 @@
                 </label>
             `).join('');
             
+            // 区分セレクトボックス (編集可能)
             const seasonOptions = ['留鳥', '夏鳥', '冬鳥', '旅鳥', '迷鳥', 'その他'].map(s =>
                 `<option value="${s}" ${bird.season === s ? 'selected' : ''}>${s}</option>`
             ).join('');
 
+            // レア度セレクトボックス (編集可能)
             const rarityOptions = [
                 { v: '0', l: '未設定' },
                 { v: '1', l: '★☆☆☆☆' },
@@ -1047,8 +1104,10 @@
                 `<option value="${r.v}" ${bird.rarity == r.v ? 'selected' : ''}>${r.l}</option>`
             ).join('');
 
+            // 編集モードHTML
             app.innerHTML = `
                 <form id="editForm" class="space-y-4">
+                    <!-- 写真 -->
                     <div class="mb-4 rounded-lg shadow-md overflow-hidden bg-gray-200">
                          <div class="h-56 w-full bg-cover bg-center flex items-center justify-center" 
                               style="background-image: url(${bird.photo_url || 'https://placehold.co/600x400/e2e8f0/9ca3af?text=写真を追加'})">
@@ -1057,6 +1116,7 @@
                              </button>
                          </div>
                     </div>
+                    <!-- 基本情報 (編集不可) -->
                     <div class="bg-white p-4 rounded-lg shadow">
                         <h4 class="font-semibold text-gray-700 mb-3">基本情報 (編集不可)</h4>
                         <div class="space-y-3">
@@ -1074,16 +1134,18 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-600">特記</label>
-                                <p class="readonly-field">${bird.special_notes || '(なし)'}</p>
+                                <p class="readonly-field">${(bird.special_notes && bird.special_notes !== '""') ? bird.special_notes : '(なし)'}</p>
                             </div>
                         </div>
                     </div>
+                    <!-- 生息地 (編集可能) -->
                     <div class="bg-white p-4 rounded-lg shadow">
                         <h4 class="font-semibold text-gray-700 mb-3">生息地</h4>
                         <div class="grid grid-cols-2 gap-2">
                             ${habitatCheckboxes}
                         </div>
                     </div>
+                    <!-- 観察記録 (編集可能) -->
                     <div class="bg-white p-4 rounded-lg shadow">
                         <h4 class="font-semibold text-gray-700 mb-3">観察記録</h4>
                         <div class="space-y-3">
@@ -1097,6 +1159,7 @@
                             </div>
                         </div>
                     </div>
+                    <!-- カスタム情報 (編集可能) -->
                     <div class="bg-white p-4 rounded-lg shadow">
                         <h4 class="font-semibold text-gray-700 mb-3">カスタム情報</h4>
                         <div class="space-y-3">
@@ -1119,6 +1182,7 @@
                             </div>
                         </div>
                     </div>
+                    <!-- 保存ボタン -->
                     <div class="mt-6">
                         <button type="submit"
                                 class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg shadow-lg hover:bg-green-700 transition-colors">
@@ -1128,6 +1192,7 @@
                 </form>
             `;
 
+            // 保存ボタンのイベントリスナー
             document.getElementById('editForm').addEventListener('submit', (e) => {
                 e.preventDefault();
                 handleSave(birdId);
@@ -1136,19 +1201,21 @@
         
         // --- データ保存処理 ---
         function handleSave(birdId) {
-            // ... (handleSave 関数の全ロジック - 変更なし) ...
             const birdIndex = birdDatabase.findIndex(b => b.id === birdId);
             if (birdIndex === -1) return;
             
             const bird = birdDatabase[birdIndex];
             
             // フォームから値を取得 (編集可能な項目のみ)
+            
+            // 生息地
             bird.habitat_hokkaido = document.getElementById('edit_habitat_hokkaido').checked ? '1' : '0';
             bird.habitat_honshu = document.getElementById('edit_habitat_honshu').checked ? '1' : '0';
             bird.habitat_shikoku = document.getElementById('edit_habitat_shikoku').checked ? '1' : '0';
             bird.habitat_kyushu = document.getElementById('edit_habitat_kyushu').checked ? '1' : '0';
             bird.habitat_islands = document.getElementById('edit_habitat_islands').checked ? '1' : '0';
 
+            // 観察記録
             bird.observed_date = document.getElementById('edit_observed_date').value;
             bird.observed_location = document.getElementById('edit_observed_location').value;
             
@@ -1157,14 +1224,17 @@
             bird.rarity = document.getElementById('edit_rarity').value;
             bird.description = document.getElementById('edit_description').value;
 
+            // DBとlocalStorageを更新
             birdDatabase[birdIndex] = bird;
             saveDatabase();
+            
+            // 閲覧モードに戻る
             showDetailPage(birdId);
         }
 
 
 
-        // --- 画面描画: イベント (仮) --- (変更なし)
+        // --- 画面描画: イベント (仮) ---
         function showEventsPage() {
             appState.currentPage = 'events';
             appState.isEditing = false;
@@ -1177,7 +1247,7 @@
             `;
         }
 
-        // --- (変更) 画面描画: 設定 (自動ダウンロード版) ---
+        // --- 画面描画: 設定 (自動ダウンロード版) ---
         function showSettingsPage() {
             appState.currentPage = 'settings';
             appState.isEditing = false;
@@ -1186,6 +1256,7 @@
             const lastSync = localStorage.getItem('lastSyncStatus');
             const lastSyncText = lastSync ? new Date(lastSync).toLocaleString('ja-JP') : '未同期';
             
+            // URLがプレースホルダーのままかチェック
             const urlNotSet = GITHUB_CSV_URL.includes('[YOUR_USERNAME]');
             const urlWarning = urlNotSet ? `
                 <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4" role="alert">
@@ -1244,7 +1315,7 @@
             document.getElementById('clearDataButton').addEventListener('click', handleClearData);
         }
         
-        // --- (変更) データ消去処理 (自動ダウンロード版) ---
+        // --- データ消去処理 (自動ダウンロード版) ---
         function handleClearData() {
             localStorage.removeItem('birdDatabase');
             localStorage.removeItem('birdListControls');
@@ -1263,7 +1334,7 @@
             }, 1000);
         }
         
-        // --- タブ切り替え処理 --- (変更なし)
+        // --- タブ切り替え処理 ---
         function setupTabs() {
             const tabs = document.querySelectorAll('.tab-button');
             tabs.forEach(tab => {
@@ -1284,16 +1355,17 @@
 
         // --- アプリケーション初期化 ---
         document.addEventListener('DOMContentLoaded', async () => {
-            // (変更) データベースの初期化を非同期で待つ
+            // データベースの初期化を非同期で待つ
             await initializeDatabase(); 
             
             loadListControlsState(); // ソート/絞り込み状態を読み込む
             setupTabs();
             
-            // (変更) データロード後の初期画面を表示
+            // データロード後の初期画面を表示
             showListPage();
         });
 
     </script>
 </body>
 </html>
+
