@@ -13,6 +13,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
+    <!-- PapaParseライブラリの読み込み -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    
     <style>
         /* Interフォントをデフォルトに */
         body {
@@ -35,6 +38,21 @@
         
         /* ページネーションボタンの無効化スタイル */
         .pagination-button:disabled { @apply opacity-50 cursor-not-allowed; }
+
+        /* 絞り込み中マーク */
+        .filter-active-dot { @apply w-2 h-2 bg-green-500 rounded-full inline-block ml-2; }
+        
+        /* 絞り込み中マーク (CSS版) */
+        .accordion-header.filtered > span::after {
+            content: '';
+            display: inline-block;
+            width: 0.5rem; /* w-2 */
+            height: 0.5rem; /* h-2 */
+            background-color: #22c55e; /* bg-green-500 */
+            border-radius: 9999px; /* rounded-full */
+            margin-left: 0.5rem; /* ml-2 */
+            vertical-align: middle;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -51,7 +69,7 @@
         <div id="list-controls" class="bg-white border-t border-gray-200 p-4 hidden">
             <div>
                 <button id="sort-toggle-button" class="w-full bg-white px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-gray-700 flex justify-between items-center">
-                    <span>並び替え・絞り込み</span>
+                    <span id="sort-toggle-label">並び替え・絞り込み</span>
                     <svg id="sort-arrow" class="h-5 w-5 arrow-down" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
@@ -81,13 +99,13 @@
             イベント
         </button>
         <button id="tab-settings" class="tab-button flex-1 flex flex-col items-center justify-center h-full text-sm font-medium tab-inactive">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826 3.31 2.37-2.37.996.608 2.296.096 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0 3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826 3.31 2.37-2.37.996.608 2.296.096 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
             設定
         </button>
     </nav>
 
     <script>
-        // --- (変更) GitHub Pages URL設定 ---
+        // --- GitHub Pages URL設定 ---
         const GITHUB_CSV_URL = 'https://mjy-mo.github.io/bird-pokedex/bird-list.csv';
         const GITHUB_VERSION_URL = 'https://mjy-mo.github.io/bird-pokedex/version.txt';
 
@@ -101,13 +119,35 @@
         const listControls = document.getElementById('list-controls');
         const sortAccordion = document.getElementById('sort-accordion');
         const sortToggleButton = document.getElementById('sort-toggle-button');
+        const sortToggleLabel = document.getElementById('sort-toggle-label');
         const sortArrow = document.getElementById('sort-arrow');
         
         let birdDatabase = []; // ローカルストレージから読み込んだ鳥の全データ
         let processedBirdList = []; // フィルタリング・ソート済みのリスト（ページネーション用）
         let currentBird = null; // 詳細表示中の鳥データ
         
-        // アプリケーションの状態管理
+        // --- 絞り込み項目の定義 (全選択用) ---
+        const filterableSeasons = ['留鳥', '夏鳥', '冬鳥', '旅鳥', '迷鳥', 'その他'];
+        const filterableTypes = [
+            'ガンカモ', 'カモメ', 'カラ類', 'キツツキ', 'サギ', 'シギ', 'セキレイ', 
+            'ツル', 'ツバメ類', 'トケン', 'ハト', 'ヒタキ', 'ムシクイ', '猛禽', '海鳥', 'その他'
+        ];
+        const habitatKeys = [
+            { key: 'habitat_hokkaido', label: '北海道' },
+            { key: 'habitat_honshu', label: '本州' },
+            { key: 'habitat_shikoku', label: '四国' },
+            { key: 'habitat_kyushu', label: '九州' },
+            { key: 'habitat_islands', label: '島嶼' },
+        ];
+        const sizeRanges = {
+            s1: { label: '~ 20cm', min: 0, max: 20 },
+            s2: { label: '20 ~ 40cm', min: 20, max: 40 },
+            s3: { label: '40 ~ 60cm', min: 40, max: 60 },
+            s4: { label: '60 ~ 100cm', min: 60, max: 100 },
+            s5: { label: '100cm ~', min: 100, max: Infinity },
+        };
+
+        // アプリケーションの状態管理 (デフォルト値を全選択に変更)
         const appState = {
             currentPage: 'list', // 'list', 'detail', 'edit', 'events', 'settings'
             currentBirdId: null, // 詳細表示中の鳥のID
@@ -116,10 +156,10 @@
                 filterText: '',
                 sort: 'name_asc', // 'name_asc', 'name_desc', 'size_asc', 'size_desc', 'classification', 'rarity'
                 filters: {
-                    season: [], // ['留鳥', '夏鳥', ...]
-                    type: [], // ['ガンカモ', '猛禽', ...]
-                    habitat: [], // ['habitat_hokkaido', ...]
-                    size: [], // ['s1', 's2', ...]
+                    season: [...filterableSeasons], // デフォルトで全選択
+                    type: [...filterableTypes], // デフォルトで全選択
+                    habitat: habitatKeys.map(h => h.key), // デフォルトで全選択
+                    size: Object.keys(sizeRanges), // デフォルトで全選択
                     classification: { // 分類絞り込み
                         order: null, // 'スズメ目'
                         family: null // (現在は未使用)
@@ -133,71 +173,40 @@
             }
         };
 
-        // --- CSVパーサー (自前で簡易解析) ---
-        // fetchで取得したCSVテキスト(text)を受け取る
-        function parseCSV(text) {
-            const lines = text.split(/[\r\n]+/).filter(Boolean); // 行に分割
-            if (lines.length < 2) return []; // ヘッダー + データ1行は最低必要
-
-            const headers = lines[0].split(',').map(h => h.trim());
+        // --- PapaParseの出力をbirdDatabase形式に変換するヘルパー ---
+        function convertPapaRowToBirdObject(row) {
+            const obj = {};
+            const requiredKeys = ['id', 'name', 'classification']; // 必須
             
-            // データベースに必要なカラムのインデックスを特定
-            const headerIndices = {
-                id: headers.indexOf('id'),
-                name: headers.indexOf('name'),
-                classification: headers.indexOf('classification'),
-                size: headers.indexOf('size'),
-                special_notes: headers.indexOf('special_notes'),
-                habitat_hokkaido: headers.indexOf('habitat_hokkaido'),
-                habitat_honshu: headers.indexOf('habitat_honshu'),
-                habitat_shikoku: headers.indexOf('habitat_shikoku'),
-                habitat_kyushu: headers.indexOf('habitat_kyushu'),
-                habitat_islands: headers.indexOf('habitat_islands'),
-                type: headers.indexOf('type'),
-                season: headers.indexOf('season'),
-                rarity: headers.indexOf('rarity'),
-                // ユーザー編集可能カラム
-                description: headers.indexOf('description'),
-                photo_url: headers.indexOf('photo_url'),
-                observed_date: headers.indexOf('observed_date'),
-                observed_location: headers.indexOf('observed_location')
-            };
+            // 全カラムをループして "" を処理
+            const allHeaders = [
+                'id', 'name', 'classification', 'size', 'special_notes', 
+                'habitat_hokkaido', 'habitat_honshu', 'habitat_shikoku', 'habitat_kyushu', 'habitat_islands', 
+                'type', 'season', 'rarity',
+                'description', 'photo_url', 'observed_date', 'observed_location'
+            ];
 
-            const result = [];
-            for (let i = 1; i < lines.length; i++) {
-                // (注意) カンマを含むデータを簡易的に扱うため、正規表現は使わずsplitで処理
-                // TODO: カンマを含むフィールド(例: "hoge,fuga")には対応できない
-                const values = lines[i].split(',');
-                if (values.length < headers.length) continue; // 列が足りない行はスキップ
+            let hasRequiredData = true;
 
-                const obj = {};
-                let hasRequiredData = true;
+            allHeaders.forEach(key => {
+                let val = row[key] ? row[key].trim() : "";
+                // PapaParseは " を自動で削除するが、念のため "" も処理
+                obj[key] = (val === '""' || val === '"') ? "" : val;
 
-                for (const [key, index] of Object.entries(headerIndices)) {
-                    if (index === -1) continue; // CSVに該当カラムがなければスキップ
-                    
-                    let val = values[index] ? values[index].trim() : "";
-                    
-                    // 引用符のみの空文字列 "" を完全な空 "" に変換
-                    obj[key] = (val === '""' || val === '"') ? "" : val;
-                    
-                    if ((key === 'id' || key === 'name') && !val) {
-                        hasRequiredData = false;
-                    }
+                if (requiredKeys.includes(key) && !obj[key]) {
+                    hasRequiredData = false;
                 }
-                
-                // ユーザー編集可能カラムがマスターCSVになかった場合、空で初期化
-                if (obj.description === undefined) obj.description = "";
-                if (obj.photo_url === undefined) obj.photo_url = "";
-                if (obj.observed_date === undefined) obj.observed_date = "";
-                if (obj.observed_location === undefined) obj.observed_location = "";
+            });
 
-                if (hasRequiredData) {
-                    result.push(obj);
-                }
-            }
-            return result;
+            // ユーザー編集可能カラムがマスターCSVになかった場合、空で初期化
+            if (obj.description === undefined) obj.description = "";
+            if (obj.photo_url === undefined) obj.photo_url = "";
+            if (obj.observed_date === undefined) obj.observed_date = "";
+            if (obj.observed_location === undefined) obj.observed_location = "";
+
+            return hasRequiredData ? obj : null;
         }
+
         
         // --- データベースのマスター/ローカルカラム定義 ---
         const MASTER_COLUMNS = [ // GitHubのCSVで上書きするカラム
@@ -240,7 +249,7 @@
             updateHeader('loading');
         }
 
-        // --- CSVをダウンロードして保存（初回起動時） ---
+        // --- (変更) CSVをダウンロードして保存（PapaParse版） ---
         async function fetchCSVAndSave() {
             if (GITHUB_CSV_URL.includes('[YOUR_USERNAME]')) {
                 showSettingsPage(); // URL未設定の場合は設定画面を表示
@@ -254,13 +263,32 @@
                     throw new Error(`Network response was not ok (HTTP ${response.status})`);
                 }
                 const csvText = await response.text();
-                const parsedData = parseCSV(csvText);
+                
+                // PapaParseで解析
+                const parsedResult = Papa.parse(csvText, {
+                    header: true, // ヘッダー行をキーとして使用
+                    skipEmptyLines: true,
+                    trimHeaders: true,
+                });
 
-                if (parsedData.length === 0) {
+                if (parsedResult.errors.length > 0) {
+                    console.warn('PapaParse Errors:', parsedResult.errors);
+                    // 多少のエラーでも続行を試みる
+                }
+
+                if (!parsedResult.data || parsedResult.data.length === 0) {
                     throw new Error('CSVの解析に失敗しました。データが0件です。');
                 }
 
-                birdDatabase = parsedData;
+                // PapaParseの出力をbirdDatabase形式に変換
+                birdDatabase = parsedResult.data
+                    .map(convertPapaRowToBirdObject)
+                    .filter(Boolean); // null (必須データ欠損行) を除去
+
+                if (birdDatabase.length === 0) {
+                     throw new Error('必須データ(id, name, classification)を持つ行が0件でした。');
+                }
+
                 saveDatabase();
                 
                 // バージョン情報も保存
@@ -281,7 +309,7 @@
             }
         }
 
-        // --- データの更新（マージ）処理 ---
+        // --- (変更) データの更新（マージ）処理 (PapaParse版) ---
         async function checkAndUpdateData() {
             if (GITHUB_VERSION_URL.includes('[YOUR_USERNAME]')) {
                 console.warn('GitHub URL not set. Skipping update check.');
@@ -316,7 +344,25 @@
                 const response = await fetch(`${GITHUB_CSV_URL}?cachebust=${new Date().getTime()}`);
                 if (!response.ok) throw new Error('マスターCSVの取得に失敗');
                 const csvText = await response.text();
-                const masterDataList = parseCSV(csvText);
+                
+                // PapaParseで解析
+                const parsedResult = Papa.parse(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    trimHeaders: true,
+                });
+                
+                if (parsedResult.errors.length > 0) {
+                    console.warn('PapaParse Errors on merge:', parsedResult.errors);
+                }
+                if (!parsedResult.data || parsedResult.data.length === 0) {
+                    throw new Error('マスターCSVの解析に失敗 (0件)');
+                }
+                
+                // PapaParseの出力をbirdDatabase形式に変換
+                const masterDataList = parsedResult.data
+                    .map(convertPapaRowToBirdObject)
+                    .filter(Boolean); // nullを除去
 
                 // 2. 現在のローカルデータを取得 (Map形式にして高速化)
                 const localDataMap = new Map(birdDatabase.map(bird => [bird.id, bird]));
@@ -391,6 +437,17 @@
         // --- 状態読み込み (ソート/絞り込み) ---
         function loadListControlsState() {
             const storedState = localStorage.getItem('birdListControls');
+            
+            // --- (変更) 初回起動時に全選択状態にする ---
+            const defaultFilters = {
+                season: [...filterableSeasons],
+                type: [...filterableTypes],
+                habitat: habitatKeys.map(h => h.key),
+                size: Object.keys(sizeRanges),
+                classification: { order: null, family: null }, 
+                photo: 'all',
+            };
+            
             if (storedState) {
                 const loadedState = JSON.parse(storedState);
                 
@@ -400,14 +457,42 @@
                 loadedState.currentPage = 1; 
                 
                 // フィルターの構造が変更されても壊れないようにマージする
-                const defaultFilters = appState.listControls.filters;
                 const loadedFilters = loadedState.filters || {};
                 loadedState.filters = { ...defaultFilters, ...loadedFilters };
                 
                 appState.listControls = { ...appState.listControls, ...loadedState };
+            } else {
+                // storedStateが無い (初回起動) 場合は、全選択のデフォルト値を使う
+                appState.listControls.filters = defaultFilters;
             }
         }
 
+
+        // --- ヘルパー関数: 現在の絞り込み状態をチェック ---
+        function getFilterStatus() {
+            const { filterText, filters } = appState.listControls;
+            
+            const isTextFiltered = filterText.length > 0;
+            const isSeasonFiltered = filters.season.length !== filterableSeasons.length;
+            const isTypeFiltered = filters.type.length !== filterableTypes.length;
+            const isHabitatFiltered = filters.habitat.length !== habitatKeys.length;
+            const isSizeFiltered = filters.size.length !== Object.keys(sizeRanges).length;
+            const isClassificationFiltered = filters.classification.order !== null;
+            const isPhotoFiltered = filters.photo !== 'all';
+
+            const isFiltered = isTextFiltered || isSeasonFiltered || isTypeFiltered || isHabitatFiltered || isSizeFiltered || isClassificationFiltered || isPhotoFiltered;
+            
+            return {
+                isFiltered,
+                isTextFiltered,
+                isSeasonFiltered,
+                isTypeFiltered,
+                isHabitatFiltered,
+                isSizeFiltered,
+                isClassificationFiltered,
+                isPhotoFiltered
+            };
+        }
 
         // --- ヘッダーの更新 ---
         function updateHeader(mode, title = "鳥類図鑑") {
@@ -424,7 +509,18 @@
                 if (birdDatabase.length > 0) {
                     listControls.classList.remove('hidden'); 
                     app.classList.add('pt-list-controls'); 
+                    
+                    // --- (変更) 絞り込み中マークの表示 ---
+                    const filterStatus = getFilterStatus();
+                    if (filterStatus.isFiltered) {
+                        sortToggleLabel.textContent = "並び替え・絞り込み (絞り込み中)";
+                        sortToggleLabel.classList.add('font-bold', 'text-emerald-700');
+                    } else {
+                        sortToggleLabel.textContent = "並び替え・絞り込み";
+                        sortToggleLabel.classList.remove('font-bold', 'text-emerald-700');
+                    }
                 }
+                
                 // アコーディオンが開く設定なら開く
                 if (appState.listControls.accordionOpen) {
                     sortAccordion.classList.remove('hidden');
@@ -512,13 +608,6 @@
         }
 
         // --- ヘルパー関数: サイズ区分を取得 ---
-        const sizeRanges = {
-            s1: { label: '~ 20cm', min: 0, max: 20 },
-            s2: { label: '20 ~ 40cm', min: 20, max: 40 },
-            s3: { label: '40 ~ 60cm', min: 40, max: 60 },
-            s4: { label: '60 ~ 100cm', min: 60, max: 100 },
-            s5: { label: '100cm ~', min: 100, max: Infinity },
-        };
         function getSizeRange(sizeCm) {
             const size = parseFloat(sizeCm); // "25-30cm" -> 25
             if (isNaN(size)) return null;
@@ -548,21 +637,17 @@
         function renderSortAccordion() {
             const { sort, filters, openAccordionSection, filterText } = appState.listControls;
             
-            // 絞り込みオプションのリスト
-            const filterableSeasons = ['留鳥', '夏鳥', '冬鳥', '旅鳥', '迷鳥', 'その他'];
-            const filterableTypes = [
-                'ガンカモ', 'カモメ', 'カラ類', 'キツツキ', 'サギ', 'シギ', 'セキレイ', 
-                'ツル', 'ツバメ類', 'トケン', 'ハト', 'ヒタキ', 'ムシクイ', '猛禽', '海鳥', 'その他'
-            ];
-            // DBから「目」のリストを動的に生成
-            const allOrders = [...new Set(birdDatabase.map(b => b.classification.split(' ')[0]).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'ja'));
-            const habitatKeys = [
-                { key: 'habitat_hokkaido', label: '北海道' },
-                { key: 'habitat_honshu', label: '本州' },
-                { key: 'habitat_shikoku', label: '四国' },
-                { key: 'habitat_kyushu', label: '九州' },
-                { key: 'habitat_islands', label: '島嶼' },
-            ];
+            // (★変更) DBから「目」のリストを動的に生成 (正規表現を修正)
+            const allOrders = [...new Set(birdDatabase.map(b => {
+                if (!b.classification) return null;
+                // 「XX目」というパターンを正規表現で抜き出す
+                // (★変更) 「先頭から、最短で『目』という文字まで」にマッチ
+                const match = b.classification.match(/^(.+?目)/); 
+                return match ? match[1] : null; // 例: "ネッタイチョウ目"
+            }).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'ja'));
+            
+            // (★変更) フィルターの最新ステータスを「目」のリスト生成 *後* に取得
+            const filterStatus = getFilterStatus(); 
 
             // アコーディオンのセクション定義
             const sections = [
@@ -575,15 +660,37 @@
                 { id: 'photo', title: '写真' }
             ];
             
+            // 「全選択/全解除」ボタンのHTMLを生成するヘルパー
+            const createSelectButtons = (sectionId) => `
+                <div class="mt-3 pt-3 border-t border-gray-200 flex justify-end space-x-2">
+                    <button class="select-all-btn text-xs font-medium text-emerald-600 hover:text-emerald-800" data-section="${sectionId}">全選択</button>
+                    <button class="select-none-btn text-xs font-medium text-gray-500 hover:text-gray-700" data-section="${sectionId}">全解除</button>
+                </div>
+            `;
+            
             // 検索バー
             sortAccordion.innerHTML = `
                 <div class="p-4 border-b border-gray-200 bg-white">
                     <input type="search" id="searchBox" placeholder="鳥を検索..." 
                            value="${filterText}"
                            class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                    ${filterStatus.isTextFiltered ? '<p class="text-xs text-green-600 mt-1">検索中...</p>' : ''}
                 </div>
             ` + sections.map(section => {
                 const isOpen = openAccordionSection === section.id;
+                
+                // --- (★変更) 絞り込みマーク (●) のロジック (filterStatus を参照) ---
+                let isSectionFiltered = false;
+                switch(section.id) {
+                    case 'classification': isSectionFiltered = filterStatus.isClassificationFiltered; break;
+                    case 'season': isSectionFiltered = filterStatus.isSeasonFiltered; break;
+                    case 'type': isSectionFiltered = filterStatus.isTypeFiltered; break;
+                    case 'habitat': isSectionFiltered = filterStatus.isHabitatFiltered; break;
+                    case 'size': isSectionFiltered = filterStatus.isSizeFiltered; break;
+                    case 'photo': isSectionFiltered = filterStatus.isPhotoFiltered; break;
+                }
+                const filteredClass = isSectionFiltered ? 'filtered' : '';
+                
                 let contentHtml = '';
                 
                 // 各セクションの中身を生成
@@ -615,24 +722,36 @@
                         `;
                         break;
                     case 'season': 
-                        contentHtml = `<div class="p-4 grid grid-cols-2 gap-2">` + filterableSeasons.map(season => `
-                            <label class="flex items-center space-x-2"><input type="checkbox" name="season" value="${season}" ${filters.season.includes(season) ? 'checked' : ''} class="form-checkbox text-emerald-600 rounded"><span>${season}</span></label>
-                        `).join('') + `</div>`;
+                        contentHtml = `<div class="p-4">
+                            <div class="grid grid-cols-2 gap-2">` + filterableSeasons.map(season => `
+                                <label class="flex items-center space-x-2"><input type="checkbox" name="season" value="${season}" ${filters.season.includes(season) ? 'checked' : ''} class="form-checkbox text-emerald-600 rounded"><span>${season}</span></label>
+                            `).join('') + `</div>
+                            ${createSelectButtons(section.id)}
+                        </div>`;
                         break;
                     case 'type':
-                         contentHtml = `<div class="p-4 grid grid-cols-2 gap-2">` + filterableTypes.map(type => `
-                            <label class="flex items-center space-x-2"><input type="checkbox" name="type" value="${type}" ${filters.type.includes(type) ? 'checked' : ''} class="form-checkbox text-emerald-600 rounded"><span>${type}</span></label>
-                        `).join('') + `</div>`;
+                         contentHtml = `<div class="p-4">
+                            <div class="grid grid-cols-2 gap-2">` + filterableTypes.map(type => `
+                                <label class="flex items-center space-x-2"><input type="checkbox" name="type" value="${type}" ${filters.type.includes(type) ? 'checked' : ''} class="form-checkbox text-emerald-600 rounded"><span>${type}</span></label>
+                            `).join('') + `</div>
+                            ${createSelectButtons(section.id)}
+                         </div>`;
                         break;
                     case 'habitat': 
-                        contentHtml = `<div class="p-4 grid grid-cols-2 gap-2">` + habitatKeys.map(h => `
-                            <label class="flex items-center space-x-2"><input type="checkbox" name="habitat" value="${h.key}" ${filters.habitat.includes(h.key) ? 'checked' : ''} class="form-checkbox text-emerald-600 rounded"><span>${h.label}</span></label>
-                        `).join('') + `</div>`;
+                        contentHtml = `<div class="p-4">
+                            <div class="grid grid-cols-2 gap-2">` + habitatKeys.map(h => `
+                                <label class="flex items-center space-x-2"><input type="checkbox" name="habitat" value="${h.key}" ${filters.habitat.includes(h.key) ? 'checked' : ''} class="form-checkbox text-emerald-600 rounded"><span>${h.label}</span></label>
+                            `).join('') + `</div>
+                            ${createSelectButtons(section.id)}
+                        </div>`;
                         break;
                     case 'size': 
-                        contentHtml = `<div class="p-4 grid grid-cols-2 gap-2">` + Object.entries(sizeRanges).map(([key, range]) => `
-                            <label class="flex items-center space-x-2"><input type="checkbox" name="size" value="${key}" ${filters.size.includes(key) ? 'checked' : ''} class="form-checkbox text-emerald-600 rounded"><span>${range.label}</span></label>
-                        `).join('') + `</div>`;
+                        contentHtml = `<div class="p-4">
+                            <div class="grid grid-cols-2 gap-2">` + Object.entries(sizeRanges).map(([key, range]) => `
+                                <label class="flex items-center space-x-2"><input type="checkbox" name="size" value="${key}" ${filters.size.includes(key) ? 'checked' : ''} class="form-checkbox text-emerald-600 rounded"><span>${range.label}</span></label>
+                            `).join('') + `</div>
+                            ${createSelectButtons(section.id)}
+                        </div>`;
                         break;
                     case 'photo':
                         contentHtml = `
@@ -647,8 +766,8 @@
                 // セクションのHTMLを組み立て
                 return `
                     <div class="border-b border-gray-200">
-                        <button class="accordion-header w-full flex justify-between items-center p-4 text-left font-semibold text-gray-700" data-section="${section.id}">
-                            <span>${section.title}</span>
+                        <button class="accordion-header w-full flex justify-between items-center p-4 text-left font-semibold text-gray-700 ${filteredClass}" data-section="${section.id}">
+                            <span>${section.title}</span> 
                             <svg class="h-5 w-5 ${isOpen ? 'arrow-up' : 'arrow-down'}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>
@@ -669,6 +788,8 @@
                 appState.listControls.currentPage = 1; 
                 applyFiltersAndRenderList();
                 saveListControlsState(); // 検索語も保存
+                updateHeader('list'); // 絞り込みマークを更新
+                renderSortAccordion(); // 検索中... の表示のため
             });
             
             // アコーディオンのヘッダー（開閉）
@@ -703,6 +824,8 @@
                     appState.listControls.currentPage = 1; 
                     applyFiltersAndRenderList();
                     saveListControlsState();
+                    updateHeader('list'); // 絞り込みマークを更新
+                    renderSortAccordion(); // マークを即時反映
                 });
             });
             
@@ -715,65 +838,59 @@
                     appState.listControls.currentPage = 1; 
                     applyFiltersAndRenderList();
                     saveListControlsState();
-                    renderSortAccordion(); 
+                    updateHeader('list'); // 絞り込みマークを更新
+                    renderSortAccordion(); // マークを即時反映
                 });
             }
-
-            // 区分 (チェックボックス)
-            sortAccordion.querySelectorAll('input[name="season"]').forEach(checkbox => {
-                checkbox.addEventListener('change', (e) => {
-                    if (e.target.checked) {
-                        appState.listControls.filters.season.push(e.target.value);
-                    } else {
-                        appState.listControls.filters.season = appState.listControls.filters.season.filter(s => s !== e.target.value);
-                    }
-                    appState.listControls.currentPage = 1; 
-                    applyFiltersAndRenderList();
-                    saveListControlsState(); 
-                });
-            });
             
-            // 種類 (チェックボックス)
-            sortAccordion.querySelectorAll('input[name="type"]').forEach(checkbox => {
-                checkbox.addEventListener('change', (e) => {
-                    if (e.target.checked) {
-                        appState.listControls.filters.type.push(e.target.value);
-                    } else {
-                        appState.listControls.filters.type = appState.listControls.filters.type.filter(t => t !== e.target.value);
-                    }
-                    appState.listControls.currentPage = 1; 
+            // 全選択/全解除ボタンのリスナー
+            const setupSelectButtons = (sectionId, allValues) => {
+                sortAccordion.querySelector(`.select-all-btn[data-section="${sectionId}"]`)?.addEventListener('click', () => {
+                    appState.listControls.filters[sectionId] = [...allValues];
+                    appState.listControls.currentPage = 1;
                     applyFiltersAndRenderList();
-                    saveListControlsState(); 
+                    saveListControlsState();
+                    updateHeader('list');
+                    renderSortAccordion(); // チェック状態を即時反映
                 });
-            });
+                
+                sortAccordion.querySelector(`.select-none-btn[data-section="${sectionId}"]`)?.addEventListener('click', () => {
+                    appState.listControls.filters[sectionId] = [];
+                    appState.listControls.currentPage = 1;
+                    applyFiltersAndRenderList();
+                    saveListControlsState();
+                    updateHeader('list');
+                    renderSortAccordion(); // チェック状態を即時反映
+                });
+            };
             
-            // 生息地 (チェックボックス)
-            sortAccordion.querySelectorAll('input[name="habitat"]').forEach(checkbox => {
-                checkbox.addEventListener('change', (e) => {
-                    if (e.target.checked) {
-                        appState.listControls.filters.habitat.push(e.target.value);
-                    } else {
-                        appState.listControls.filters.habitat = appState.listControls.filters.habitat.filter(h => h !== e.target.value);
-                    }
-                    appState.listControls.currentPage = 1; 
-                    applyFiltersAndRenderList();
-                    saveListControlsState(); 
-                });
-            });
+            setupSelectButtons('season', filterableSeasons);
+            setupSelectButtons('type', filterableTypes);
+            setupSelectButtons('habitat', habitatKeys.map(h => h.key));
+            setupSelectButtons('size', Object.keys(sizeRanges));
             
-            // 体サイズ (チェックボックス)
-            sortAccordion.querySelectorAll('input[name="size"]').forEach(checkbox => {
-                checkbox.addEventListener('change', (e) => {
-                    if (e.target.checked) {
-                        appState.listControls.filters.size.push(e.target.value);
-                    } else {
-                        appState.listControls.filters.size = appState.listControls.filters.size.filter(s => s !== e.target.value);
-                    }
-                    appState.listControls.currentPage = 1; 
-                    applyFiltersAndRenderList();
-                    saveListControlsState(); 
+            // チェックボックスのリスナー (汎用化)
+            const setupCheckboxListeners = (name) => {
+                sortAccordion.querySelectorAll(`input[name="${name}"]`).forEach(checkbox => {
+                    checkbox.addEventListener('change', (e) => {
+                        if (e.target.checked) {
+                            appState.listControls.filters[name].push(e.target.value);
+                        } else {
+                            appState.listControls.filters[name] = appState.listControls.filters[name].filter(s => s !== e.target.value);
+                        }
+                        appState.listControls.currentPage = 1; 
+                        applyFiltersAndRenderList();
+                        saveListControlsState(); 
+                        updateHeader('list'); // 絞り込みマークを更新
+                        renderSortAccordion(); // マークを即時反映
+                    });
                 });
-            });
+            };
+            
+            setupCheckboxListeners('season');
+            setupCheckboxListeners('type');
+            setupCheckboxListeners('habitat');
+            setupCheckboxListeners('size');
         }
 
 
@@ -789,23 +906,35 @@
 
             // 1. フィルタリング
             processedBirdList = birdDatabase.filter(bird => {
-                const matchesSearch = bird.name.toLowerCase().includes(lowerFilter) ||
-                                      bird.classification.toLowerCase().includes(lowerFilter);
+                const matchesSearch = (bird.name || '').toLowerCase().includes(lowerFilter) ||
+                                      (bird.classification || '').toLowerCase().includes(lowerFilter);
                 
-                const matchesSeason = filters.season.length === 0 || filters.season.includes(bird.season);
+                const matchesSeason = filters.season.length === 0 ? false : filters.season.includes(bird.season);
                 
-                const matchesType = filters.type.length === 0 || filters.type.includes(bird.type);
+                const matchesType = filters.type.length === 0 ? false : filters.type.includes(bird.type);
 
+                // --- (★変更) 「目」の絞り込みロジックを正規表現に変更 ---
                 const { order, family } = filters.classification;
-                const matchesOrder = !order || bird.classification.startsWith(order);
+                let matchesOrder = true;
+                if (order) { // 「目」が選択されている場合
+                    if (!bird.classification) {
+                        matchesOrder = false; // 分類データが無い鳥は除外
+                    } else {
+                        // (★変更) ドロップダウン生成時と同じ正規表現で「目」を抽出
+                        const match = bird.classification.match(/^(.+?目)/); 
+                        // 抽出した「目」が、選択された「目」(order) と一致するか判定
+                        matchesOrder = (match && match[1] === order);
+                    }
+                }
                 const matchesFamily = true; // (現在は未使用)
                 const matchesClassification = matchesOrder && matchesFamily;
+                // --- (変更ここまで) ---
 
-                const matchesHabitat = filters.habitat.length === 0 || 
-                                       filters.habitat.every(h_key => bird[h_key] === '1');
+                const matchesHabitat = filters.habitat.length === 0 ? false : 
+                                       filters.habitat.some(h_key => bird[h_key] === '1');
 
                 const birdSizeRange = getSizeRange(bird.size);
-                const matchesSize = filters.size.length === 0 || 
+                const matchesSize = filters.size.length === 0 ? false : 
                                     filters.size.includes(birdSizeRange);
                 
                 const matchesPhoto = filters.photo === 'all' || 
@@ -818,9 +947,9 @@
             processedBirdList.sort((a, b) => {
                 switch (sort) {
                     case 'name_asc':
-                        return a.name.localeCompare(b.name, 'ja');
+                        return (a.name || '').localeCompare(b.name || '', 'ja');
                     case 'name_desc':
-                        return b.name.localeCompare(a.name, 'ja');
+                        return (b.name || '').localeCompare(a.name || '', 'ja');
                     case 'size_asc': {
                         const sizeA_raw = parseFloat(a.size);
                         const sizeB_raw = parseFloat(b.size);
@@ -840,7 +969,7 @@
                         return sizeB - sizeA;
                     }
                     case 'classification':
-                        return a.classification.localeCompare(b.classification, 'ja');
+                        return (a.classification || '').localeCompare(b.classification || '', 'ja');
                     case 'rarity': {
                         const rarityA_raw = parseInt(a.rarity, 10);
                         const rarityB_raw = parseInt(b.rarity, 10);
@@ -851,7 +980,7 @@
                         return rarityA - rarityB;
                     }
                     default:
-                        return a.name.localeCompare(b.name, 'ja');
+                        return (a.name || '').localeCompare(b.name || '', 'ja');
                 }
             });
 
@@ -885,14 +1014,18 @@
 
                     const photoBg = bird.photo_url 
                         ? `style="background-image: url(${bird.photo_url})"` 
-                        : `style="background-image: url(https://placehold.co/150x150/e2e8f0/9ca3af?text=${bird.name[0]})"`;
+                        : `style="background-image: url(https://placehold.co/150x150/e2e8f0/9ca3af?text=${(bird.name || '?')[0]})"`;
+                    
+                    // (★変更) classification が空でもエラーにならないようにする
+                    const classificationOrder = bird.classification ? (bird.classification.match(/^(.+?目)/) || [null, '分類未設定'])[1] : '分類未設定';
+
 
                     return `
                         <div class="bg-white rounded-lg shadow overflow-hidden cursor-pointer transform transition-transform hover:scale-105" 
                              onclick="showDetailPage('${bird.id}')">
                             <div class="h-24 w-full bg-cover bg-center" ${photoBg}></div>
                             <div class="p-3">
-                                <p class="text-xs text-gray-500">${bird.classification.split(' ')[0]}</p>
+                                <p class="text-xs text-gray-500">${classificationOrder}</p>
                                 <h3 class="font-semibold text-gray-800 truncate">${bird.name}</h3>
                                 <p class="text-xs text-gray-600 mt-1">${habitats || '生息地未設定'}</p>
                             </div>
@@ -1032,7 +1165,7 @@
                         <h2 class="text-2xl font-bold text-gray-800">${bird.name}</h2>
                         <span class="text-sm text-gray-500">${bird.size}</span>
                     </div>
-                    <p class="text-sm text-gray-600 mb-3">${bird.classification}</p>
+                    <p class="text-sm text-gray-600 mb-3">${bird.classification || '(分類未設定)'}</p>
                     
                     <!-- タグエリア -->
                     <div class="flex flex-wrap gap-2">
@@ -1098,7 +1231,7 @@
                 { v: '1', l: '★☆☆☆☆' },
                 { v: '2', l: '★★☆☆☆' },
                 { v: '3', l: '★★★☆☆' },
-                { v: '4', l: '★★★★☆' }, 
+                { v: '4', l: '★★★★☆' },
                 { v: '5', l: '★★★★★' },
             ].map(r => 
                 `<option value="${r.v}" ${bird.rarity == r.v ? 'selected' : ''}>${r.l}</option>`
@@ -1126,7 +1259,7 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-600">分類 (目科属)</label>
-                                <p class="readonly-field">${bird.classification}</p>
+                                <p class="readonly-field">${bird.classification || '(分類未設定)'}</p>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-600">サイズ (cm)</label>
@@ -1292,7 +1425,7 @@
                         <h3 class="text-lg font-semibold mb-2 text-red-700">危険な操作</h3>
                         <p class="text-gray-600 text-sm mb-4">
                             現在ブラウザに保存されている、すべての図鑑データ（編集した内容含む）を消去します。
-                        </p>
+                        </D>
                         <button id="clearDataButton" class="w-full bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow hover:bg-red-700 transition-duration-150">
                             図鑑データを全消去
                         </button>
@@ -1324,6 +1457,9 @@
             
             birdDatabase = [];
             processedBirdList = [];
+            
+            // --- (変更) 消去時にデフォルト値(全選択)に戻す ---
+            loadListControlsState(); 
             
             // 設定ページを再描画（「データを消去しました」と表示するため）
             showSettingsPage();
