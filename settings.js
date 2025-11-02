@@ -29,10 +29,17 @@ function showSettingsPage() {
         const syncBtn = document.getElementById('syncDataButton'); 
         if (syncBtn) {
              syncBtn.onclick = async () => { 
+                
+                // ★ 修正(1): 同期時に古いフィルター設定を強制的にリセットする
+                try {
+                    localStorage.removeItem('birdListControls'); 
+                    console.log('古いフィルター設定をリセットしました。');
+                } catch(e) { console.error("Failed to clear list controls:", e); }
+                
                 syncBtn.disabled = true; syncBtn.textContent = '同期中...'; 
                 showLoadingMessage("図鑑データをダウンロード中..."); 
-                await fetchCSVAndSave(); 
-                loadListControlsState(); 
+                await fetchCSVAndSave(); // この中で allOrders が更新される
+                loadListControlsState(); // これで新しい allOrders を使ってフィルターが初期化される
                 showListPage();          
             };
         } else { console.error("Sync button not found"); }
@@ -47,7 +54,7 @@ function showSettingsPage() {
 
 // --- データ全消去 ---
 function handleClearData() { 
-    // (★変更) alertの代わりにconfirmを使用し、プロンプト入力を削除
+    // ★ 修正(2): "削除"と入力させるプロンプト(prompt)を、使いやすい確認(confirm)ダイアログに変更
     const confirmation = confirm("本当にすべてのデータ（図鑑の編集内容、イベント履歴）を削除しますか？\nこの操作は元に戻せません。");
     
     if (confirmation) {
@@ -66,13 +73,13 @@ function handleClearData() {
         birdDatabase = []; processedBirdList = []; birdEvents = []; 
         updateAllOrdersList(); 
         
-        // (★変更) リセット後にコントロールをデフォルトで再読み込み
+        // リセット後にコントロールをデフォルトで再読み込み
         loadListControlsState(); 
         
         // 図鑑タブを表示
         showListPage();
         
-        // (★変更) タブの表示状態を確実に「図鑑」に戻す
+        // タブの表示状態を確実に「図鑑」に戻す
         try {
             document.querySelectorAll('.tab-button').forEach(btn => {
                 btn.classList.replace('tab-active', 'tab-inactive');
