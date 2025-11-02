@@ -207,7 +207,6 @@ function applyFiltersAndRenderList() {
                           filters.size.includes(birdSizeRange); 
         }
         
-        // ★ 修正: bird.photo_url が null や undefined でも .startsWith でエラーにならないようにする
         const matchesEdited = filters.edited === 'all' || 
             (filters.edited === 'yes' && (typeof bird.photo_url === 'string' && bird.photo_url.startsWith('data:image'))); 
         
@@ -364,12 +363,13 @@ function showDetailPage(birdId) {
     const habitatLabels = getHabitatLabels(bird);
     const habitatText = habitatLabels.length > 0 ? habitatLabels.join(', ') : '(情報なし)';
     
-    // ★ 機能追加: 最新のイベント情報を取得
+    // ★ 機能追加: 最新のイベント情報を取得し、「場所」も追加
     let latestEventHtml = '';
     if (bird.lastObservedEventId) {
         const latestEvent = birdEvents.find(e => e.id === bird.lastObservedEventId);
         if (latestEvent) {
             const eventDate = latestEvent.dateTime ? latestEvent.dateTime.replace('T', ' ') : '日付不明';
+            const eventLocation = latestEvent.location || '(場所未設定)'; // ★ 場所を追加
             
             latestEventHtml = `
             <div id="latest-event-link" class="bg-emerald-50 rounded-lg shadow overflow-hidden border border-emerald-200 cursor-pointer hover:bg-emerald-100 transition-colors">
@@ -378,6 +378,7 @@ function showDetailPage(birdId) {
                     <div class="text-sm text-emerald-700 space-y-1">
                         <p><strong>イベント:</strong> ${escapeHTML(latestEvent.name || '無題のイベント')}</p>
                         <p><strong>日時:</strong> ${escapeHTML(eventDate)}</p>
+                        <p><strong>場所:</strong> ${escapeHTML(eventLocation)}</p> <!-- ★ 場所を追加 -->
                     </div>
                     <p class="text-xs text-emerald-600 mt-2 text-right">タップしてイベント詳細へ &gt;</p>
                 </div>
@@ -386,20 +387,22 @@ function showDetailPage(birdId) {
         }
     }
 
-    // ★ 修正: 「観察記録」のタイトルを変更し、イベント連携の旨を記載
-    const observationHtml = bird.observed_date || bird.observed_location ? `
-    <div class="bg-white rounded-lg shadow overflow-hidden">
-        <div class="p-4">
-            <h3 class="font-semibold text-gray-800 mb-2">最新の観察記録 (イベント連携)</h3>
-            <div class="text-sm text-gray-600 space-y-1">
-                ${bird.observed_date ? `<p><strong>日時:</strong> ${escapeHTML(bird.observed_date.replace('T', ' '))}</p>` : ''}
-                ${bird.observed_location ? `<p><strong>場所:</strong> ${escapeHTML(bird.observed_location)}</p>` : ''}
-            </div>
-            <p class="text-xs text-gray-400 mt-2">（この記録は「イベント」タブから自動更新されます）</p>
-        </div>
-    </div>` : '';
+    // ★ 修正: 重複していた「観察記録」セクションを削除
+    // const observationHtml = ... (このブロック全体を削除)
     
     const descriptionHtml = bird.description ? `<p class="text-gray-700 leading-relaxed">${escapeHTML(bird.description).replace(/\n/g, '<br>')}</p>` : `<p class="text-gray-400 italic">(説明未記入)</p>`;
+
+    // ★ 機能追加: スピーカーボタンのHTML
+    let voiceButtonHtml = '';
+    if (bird.voice_url) {
+        voiceButtonHtml = `
+            <button id="play-voice-btn" class="text-emerald-600 hover:text-emerald-800 p-2 rounded-full hover:bg-emerald-100">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M20 12h.01M4 12H3.99M12 20v.01M12 4V3.99M8.536 15.464a5 5 0 010-7.072M12 12a3 3 0 100-6 3 3 0 000 6z"></path>
+                </svg>
+            </button>
+        `;
+    }
 
     app.innerHTML = `
         <div class="space-y-4">
@@ -411,17 +414,24 @@ function showDetailPage(birdId) {
             <div class="bg-white rounded-lg shadow overflow-hidden">
                 <div class="p-4">
                     <div class="flex flex-wrap gap-2 mb-3">${seasonTag}${rarityTag}${specialTags}</div>
-                    <h2 class="text-2xl font-bold text-gray-900 mb-2">${escapeHTML(bird.name)}</h2>
+                    
+                    <!-- ★ 修正: スピーカーボタンを配置するため flex に変更 -->
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-900">${escapeHTML(bird.name)}</h2>
+                            <p class="text-sm text-gray-600 mt-1"><strong>分類:</strong> ${escapeHTML(bird.classification) || 'N/A'}</p>
+                        </div>
+                        ${voiceButtonHtml} <!-- ★ スピーカーボタンを追加 -->
+                    </div>
+
                     <div class="text-sm text-gray-600 space-y-1">
-                        <p><strong>分類:</strong> ${escapeHTML(bird.classification) || 'N/A'}</p>
                         <p><strong>サイズ:</strong> ${escapeHTML(bird.size) || 'N/A'}</p>
                         <p><strong>生息地:</strong> ${escapeHTML(habitatText)}</p>
                     </div>
                 </div>
             </div>
             
-            ${latestEventHtml} <!-- ★ ここに追加 -->
-            ${observationHtml} <!-- ★ 文言変更 -->
+            ${latestEventHtml} <!-- ★ 「最新の観察イベント」のみ表示 -->
 
             <div class="bg-white rounded-lg shadow overflow-hidden">
                 <div class="p-4">
@@ -432,6 +442,9 @@ function showDetailPage(birdId) {
             <button id="editButton" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-emerald-700 transition-colors">
                 情報を編集する
             </button>
+
+            <!-- ★ 機能追加: 音声再生用の非表示オーディオ要素 -->
+            <audio id="bird-voice-player" class="hidden" src="${bird.voice_url || ''}"></audio>
         </div>
     `;
     updateHeader('detail', bird.name);
@@ -445,11 +458,26 @@ function showDetailPage(birdId) {
             console.error("Edit button not found on detail page.");
         }
         
-        // ★ 機能追加: イベントへのリンクのリスナー
         if (bird.lastObservedEventId) {
             const latestEventLink = document.getElementById('latest-event-link');
             if (latestEventLink) {
                 latestEventLink.onclick = () => handleGoToEvent(bird.lastObservedEventId);
+            }
+        }
+        
+        // ★ 機能追加: 音声再生ボタンのリスナー
+        if (bird.voice_url) {
+            const playVoiceBtn = document.getElementById('play-voice-btn');
+            const audioPlayer = document.getElementById('bird-voice-player');
+            if (playVoiceBtn && audioPlayer) {
+                playVoiceBtn.onclick = () => {
+                    if (audioPlayer.paused) {
+                        audioPlayer.play();
+                    } else {
+                        audioPlayer.pause();
+                        audioPlayer.currentTime = 0; // 停止して最初に戻す
+                    }
+                };
             }
         }
     }, 0);
@@ -461,12 +489,13 @@ function renderDetailEditPage(birdId) {
     const bird = birdDatabase.find(b => b.id === birdId); if (!bird) { showListPage(); return; } currentBird = bird;
     
     let newBase64Image = null; 
+    let newBase64Voice = null; // ★ 機能追加: 音声用
     
     const rarityOptions = [ { value: '', label: '未設定' }, { value: '1', label: '★☆☆☆☆' }, { value: '2', label: '★★☆☆☆' }, { value: '3', label: '★★★☆☆' }, { value: '4', label: '★★★★☆' }, { value: '5', label: '★★★★★' } ];
     
+    // --- 写真入力のHTML ---
     const placeholderUrl = `https://placehold.co/600x400/e0e0e0/b0b0b0?text=${escapeHTML(bird.name.charAt(0))}`;
     const currentImageUrl = bird.photo_url || placeholderUrl;
-    
     const photoInputHtml = `
         <div>
             <label for="edit_photo" class="block text-sm font-medium text-gray-700">写真</label>
@@ -481,8 +510,26 @@ function renderDetailEditPage(birdId) {
             <button type="button" id="remove_photo_btn" class="mt-2 text-sm font-medium text-red-600 hover:text-red-800 ${!bird.photo_url ? 'hidden' : ''}">
                 画像を削除
             </button>
+        </div>
+    `;
+
+    // ★ 機能追加: 音声入力のHTML ---
+    const voiceInputHtml = `
+        <div>
+            <label for="edit_voice" class="block text-sm font-medium text-gray-700">鳴き声 (音声)</label>
             
-            <input type="url" id="edit_photo_url_fallback" name="photo_url" value="${escapeHTML(bird.photo_url && !bird.photo_url.startsWith('data:') ? bird.photo_url : '')}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500 hidden" placeholder="https://...">
+            <!-- 音声プレビュー再生エリア -->
+            <div class="mt-2">
+                <audio id="voice_preview" controls class="w-full ${!bird.voice_url ? 'hidden' : ''}" src="${bird.voice_url || ''}"></audio>
+            </div>
+            
+            <input type="file" id="edit_voice" name="voice_file" accept="audio/*" class="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+            
+            <p id="voice_message" class="text-xs text-gray-500 mt-1">音声ファイルを選択できます (10MBまで)。</p>
+            
+            <button type="button" id="remove_voice_btn" class="mt-2 text-sm font-medium text-red-600 hover:text-red-800 ${!bird.voice_url ? 'hidden' : ''}">
+                音声を削除
+            </button>
         </div>
     `;
 
@@ -500,13 +547,18 @@ function renderDetailEditPage(birdId) {
                 
                 ${photoInputHtml}
                 
+                <hr class="my-4"> <!-- ★ 区切り線 -->
+
+                ${voiceInputHtml} <!-- ★ 音声入力欄を追加 -->
+                
+                <hr class="my-4"> <!-- ★ 区切り線 -->
+
                  <div><label for="edit_season" class="block text-sm font-medium text-gray-700">区分</label><select id="edit_season" name="season" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500"><option value="" ${!bird.season ? 'selected' : ''}>未設定</option>${filterableSeasons.map(s => `<option value="${s}" ${bird.season === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
                 <div><label for="edit_rarity" class="block text-sm font-medium text-gray-700">レア度</label><select id="edit_rarity" name="rarity" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500">${rarityOptions.map(opt => `<option value="${opt.value}" ${bird.rarity === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}</select></div>
                 
-                <!-- ★ 修正: イベント連携のため、これらのフィールドは編集不可（readonly）にする -->
                 <div>
                     <label for="edit_date" class="block text-sm font-medium text-gray-500">最新の観察日時 (イベント連携)</label>
-                    <p class="readonly-field">${escapeHTML(bird.observed_date || '(記録なし)')}</p>
+                    <p class="readonly-field">${escapeHTML(bird.observed_date ? bird.observed_date.replace('T', ' ') : '(記録なし)')}</p>
                     <input type="hidden" id="edit_date" name="observed_date" value="${escapeHTML(bird.observed_date || '')}">
                 </div>
                 <div>
@@ -525,17 +577,30 @@ function renderDetailEditPage(birdId) {
     // ★ 修正: DOMの描画が完了するのを待つ
     setTimeout(() => {
         const editForm = document.getElementById('editForm');
+        
+        // --- 写真のリスナー ---
         const photoInput = document.getElementById('edit_photo');
         const photoPreview = document.getElementById('photo_preview');
         const removePhotoBtn = document.getElementById('remove_photo_btn');
         const photoMessage = document.getElementById('photo_message');
 
         if (!editForm || !photoInput || !photoPreview || !removePhotoBtn || !photoMessage) {
-            console.error("Edit form elements not found.");
-            return;
+            console.error("Photo edit form elements not found.");
+            // return; // 続行
         }
 
-        // ファイル選択時の処理
+        // ★ 機能追加: 音声のリスナー
+        const voiceInput = document.getElementById('edit_voice');
+        const voicePreview = document.getElementById('voice_preview');
+        const removeVoiceBtn = document.getElementById('remove_voice_btn');
+        const voiceMessage = document.getElementById('voice_message');
+        
+        if (!voiceInput || !voicePreview || !removeVoiceBtn || !voiceMessage) {
+             console.error("Voice edit form elements not found.");
+             // return; // 続行
+        }
+
+        // --- 写真ファイル選択時の処理 ---
         photoInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) {
@@ -545,11 +610,10 @@ function renderDetailEditPage(birdId) {
 
             // 5MB 制限チェック
             if (file.size > 5 * 1024 * 1024) {
-                // (★修正) confirm や alert の代わりに console.warn を使用
                 console.warn("画像サイズが5MBを超えています。より小さな画像を選択してください。"); 
-                e.target.value = null; // ファイル選択をリセット
+                e.target.value = null; 
                 newBase64Image = null;
-                photoPreview.src = bird.photo_url || placeholderUrl; // プレビューを元に戻す
+                photoPreview.src = bird.photo_url || placeholderUrl; 
                 photoMessage.textContent = "5MB以下の画像を選択してください。";
                 photoMessage.classList.add('text-red-600');
                 return;
@@ -557,45 +621,92 @@ function renderDetailEditPage(birdId) {
 
             const reader = new FileReader();
             reader.onload = (event) => {
-                newBase64Image = event.target.result; // Base64データを保持
-                photoPreview.src = newBase64Image; // プレビューを更新
-                removePhotoBtn.classList.remove('hidden'); // 「削除」ボタンを表示
+                newBase64Image = event.target.result; 
+                photoPreview.src = newBase64Image; 
+                removePhotoBtn.classList.remove('hidden'); 
                 photoMessage.textContent = "画像が選択されました。";
                 photoMessage.classList.remove('text-red-600');
             };
             reader.onerror = (error) => {
                 console.error("File reading error:", error);
-                // (★修正) confirm や alert の代わりに console.warn を使用
                 console.warn("画像の読み込みに失敗しました。");
                 newBase64Image = null;
             };
-            reader.readAsDataURL(file); // Base64として読み込む
+            reader.readAsDataURL(file); 
         });
 
-        // 画像削除ボタンの処理
+        // --- 写真削除ボタンの処理 ---
         removePhotoBtn.addEventListener('click', () => {
-            newBase64Image = ""; // 削除をマーク (空文字列)
-            photoPreview.src = placeholderUrl; // プレビューをプレースホルダーに
-            photoInput.value = null; // ファイル選択をリセット
-            removePhotoBtn.classList.add('hidden'); // 「削除」ボタンを隠す
+            newBase64Image = ""; // 削除をマーク
+            photoPreview.src = placeholderUrl; 
+            photoInput.value = null; 
+            removePhotoBtn.classList.add('hidden'); 
             photoMessage.textContent = "画像は削除されます（保存時に確定）。";
             photoMessage.classList.remove('text-red-600');
         });
+        
+        // --- ★ 機能追加: 音声ファイル選択時の処理 ---
+        voiceInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) {
+                newBase64Voice = null;
+                return;
+            }
+            
+            // 10MB 制限チェック
+            if (file.size > 10 * 1024 * 1024) {
+                console.warn("音声サイズが10MBを超えています。");
+                e.target.value = null;
+                newBase64Voice = null;
+                voicePreview.src = bird.voice_url || '';
+                voicePreview.classList.toggle('hidden', !bird.voice_url);
+                voiceMessage.textContent = "10MB以下の音声を選択してください。";
+                voiceMessage.classList.add('text-red-600');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                newBase64Voice = event.target.result; // Base64 (data:audio/...)
+                voicePreview.src = newBase64Voice;
+                voicePreview.classList.remove('hidden');
+                removeVoiceBtn.classList.remove('hidden');
+                voiceMessage.textContent = "音声が選択されました。";
+                voiceMessage.classList.remove('text-red-600');
+            };
+            reader.onerror = (error) => {
+                console.error("File reading error:", error);
+                console.warn("音声の読み込みに失敗しました。");
+                newBase64Voice = null;
+            };
+            reader.readAsDataURL(file);
+        });
+        
+        // --- ★ 機能追加: 音声削除ボタンの処理 ---
+        removeVoiceBtn.addEventListener('click', () => {
+            newBase64Voice = ""; // 削除をマーク
+            voicePreview.src = '';
+            voicePreview.classList.add('hidden');
+            voiceInput.value = null;
+            removeVoiceBtn.classList.add('hidden');
+            voiceMessage.textContent = "音声は削除されます（保存時に確定）。";
+            voiceMessage.classList.remove('text-red-600');
+        });
 
-        // フォーム送信（保存）時の処理
+        // --- フォーム送信（保存）時の処理 ---
         editForm.onsubmit = async (event) => {
             event.preventDefault();
             
-            // 保存処理を handleSave に渡す
-            await handleSave(event, newBase64Image); 
+            // ★ 修正: 音声データも handleSave に渡す
+            await handleSave(event, newBase64Image, newBase64Voice); 
         };
 
     }, 0);
 }
 
 // --- 編集保存 ---
-async function handleSave(event, newBase64Image) { 
-    // event.preventDefault() は呼び出し元 (onsubmit) で実行済み
+// ★ 修正: newBase64Voice を受け取る
+async function handleSave(event, newBase64Image, newBase64Voice) { 
     
     const formData = new FormData(event.target); 
     const birdId = appState.currentBirdId;
@@ -609,9 +720,8 @@ async function handleSave(event, newBase64Image) {
     // 1. メモリ上の birdDatabase 配列を更新
     LOCAL_COLUMNS.forEach(key => { 
         if (formData.has(key)) {
-            // ★ 修正: observed_date と observed_location はイベント連携で更新されるため、
-            // 編集フォームからは保存しない (season, rarity, description のみ保存)
-            if (key === 'season' || key === 'rarity' || key === 'description') {
+            // ★ 修正: observed_date, observed_location, photo_url, voice_url 以外を保存
+            if (key !== 'photo_url' && key !== 'voice_url' && key !== 'observed_date' && key !== 'observed_location') {
                 birdDatabase[idx][key] = formData.get(key);
             }
         } 
@@ -619,41 +729,34 @@ async function handleSave(event, newBase64Image) {
     
     // 2. 画像データを処理
     if (newBase64Image !== null) {
-        // newBase64Image が null でない場合（＝ファイル選択または削除ボタンが押された）
-        // "" (削除) または "data:..." (新規) の値をセット
+        // 写真の変更があった場合（新規 "data:..." または 削除 ""）
         birdDatabase[idx]['photo_url'] = newBase64Image;
-    } else {
-        // 変更なし。
-        // 従来のURLフォールバック入力欄は廃止（Base64のみサポート）
-        // ただし、既存の 'data:' でないURLは保持する
-        if (birdDatabase[idx]['photo_url'] === undefined || birdDatabase[idx]['photo_url'] === null || !birdDatabase[idx]['photo_url'].startsWith('data:')) {
-            // URLフォールバック入力欄の値を取得（もしあれば）
-             const fallbackUrl = formData.get('photo_url');
-             if (fallbackUrl) {
-                 birdDatabase[idx]['photo_url'] = fallbackUrl;
-             }
-             // 変更がなければ、既存の birdDatabase[idx]['photo_url'] が保持される
-        }
     }
+    // (newBase64Image === null の場合は、既存の bird.photo_url がそのまま保持される)
+    
+    // 3. ★ 機能追加: 音声データを処理
+    if (newBase64Voice !== null) {
+        // 音声の変更があった場合（新規 "data:..." または 削除 ""）
+        birdDatabase[idx]['voice_url'] = newBase64Voice;
+    }
+    // (newBase64Voice === null の場合は、既存の bird.voice_url がそのまま保持される)
+
 
     try {
-        // 3. IndexedDB に保存 (app.js の関数を呼ぶ)
-        // saveDatabase() はメモリ上の birdDatabase 全体をDBに書き込む
+        // 4. IndexedDB に保存 (app.js の関数を呼ぶ)
         await saveDatabase(); 
         
-        // 4. 詳細ページに戻る
+        // 5. 詳細ページに戻る
         showDetailPage(birdId);
         
     } catch (error) {
         console.error("Failed to save bird data:", error);
-        // (★修正) confirm や alert の代わりに console.warn を使用
         console.warn("データの保存に失敗しました。");
     }
 }
 
 /**
  * ★ 機能追加: IDからイベントを探して詳細ページに飛ぶ
- * (この関数は pokedex.js の末尾に追加します)
  */
 function handleGoToEvent(eventId) {
     if (!eventId) return;
@@ -676,7 +779,6 @@ function handleGoToEvent(eventId) {
         window.scrollTo(0, 0); 
     } else {
         console.warn(`Event with ID ${eventId} not found.`);
-        // (★修正) alert の代わりに console.warn
         console.warn("エラー: 該当のイベントが見つかりませんでした。");
     }
 }

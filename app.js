@@ -88,7 +88,7 @@ const appState = {
         },
         viewMode: 'tile', activePopup: null, openFilterSection: null, 
         currentPage: 1, itemsPerPage: 30, 
-    }, // ★ 修正: オブジェクトのカンマを追加
+    }, 
     eventControls: { // イベントタブの並び替え状態
         listSort: 'dateTime_desc',
         detailSort: 'added_asc',
@@ -104,7 +104,8 @@ function convertPapaRowToBirdObject(row) {
         'habitat_hokkaido', 'habitat_honshu', 'habitat_shikoku', 'habitat_kyushu', 'habitat_islands', 
         'type', 'season', 'rarity',
         'description', 'photo_url', 'observed_date', 'observed_location',
-        'lastObservedEventId' // ★ 機能追加: ヘッダーに追加
+        'lastObservedEventId',
+        'voice_url' // ★ 機能追加: ヘッダーに追加
     ];
     let hasRequiredData = true;
     allHeaders.forEach(key => {
@@ -117,7 +118,8 @@ function convertPapaRowToBirdObject(row) {
     if (obj.photo_url === undefined) obj.photo_url = "";
     if (obj.observed_date === undefined) obj.observed_date = "";
     if (obj.observed_location === undefined) obj.observed_location = "";
-    if (obj.lastObservedEventId === undefined) obj.lastObservedEventId = ""; // ★ 機能追加: 初期化
+    if (obj.lastObservedEventId === undefined) obj.lastObservedEventId = ""; 
+    if (obj.voice_url === undefined) obj.voice_url = ""; // ★ 機能追加: 初期化
     return hasRequiredData ? obj : null;
 }
 
@@ -129,11 +131,11 @@ const MASTER_COLUMNS = [
 ];
 const LOCAL_COLUMNS = [ 
     'season', 'rarity', 'description', 'photo_url', 'observed_date', 'observed_location',
-    'lastObservedEventId' // ★ 機能追加: カラムに追加
+    'lastObservedEventId',
+    'voice_url' // ★ 機能追加: カラムに追加
 ];
 
 // --- データベース初期化 ---
-// ★ 修正: localStorage から IndexedDB を使うように変更
 async function initializeDatabase() {
     let db;
     try {
@@ -199,8 +201,6 @@ function showLoadingMessage(message) {
 async function fetchCSVAndSave() {
     if (localStorage.getItem('birdDatabaseLoadError') && !GITHUB_CSV_URL.includes('[YOUR_USERNAME]')) {
         console.warn("Skipping fetchCSVAndSave due to existing load error. Clear data to retry.");
-        // (★変更) エラーがあっても、設定画面からの手動同期なら実行を許可
-        // return; 
     }
     if (GITHUB_CSV_URL.includes('[YOUR_USERNAME]')) { showSettingsPage(); return; }
     
@@ -232,7 +232,6 @@ async function fetchCSVAndSave() {
         birdDatabase = newBirdDatabase; // グローバル変数を更新
         updateAllOrdersList();
         
-        // ★ 修正: localStorage.setItem の代わりに、新しい saveDatabase (IndexedDB版) を呼ぶ
         await saveDatabase(); 
         
         localStorage.setItem('birdDataVersion', new Date().getTime().toString());
@@ -296,7 +295,6 @@ async function checkAndUpdateData() {
         const masterDataList = parsedResult.data.map(convertPapaRowToBirdObject).filter(Boolean); 
          if (masterDataList.length === 0) throw new Error('マスターCSVから有効な鳥データが0件でした (マージ時)。'); 
          
-        // ★ 修正: birdDatabase (IndexedDBから読み込んだデータ) をMapにする
         const localDataMap = new Map(birdDatabase.map(bird => [bird.id, bird]));
         const newDatabase = masterDataList.map(masterBird => {
             const localBird = localDataMap.get(masterBird.id);
@@ -312,7 +310,6 @@ async function checkAndUpdateData() {
         birdDatabase = newDatabase; // グローバル変数を更新
         updateAllOrdersList();
         
-        // ★ 修正: localStorage.setItem の代わりに、新しい saveDatabase (IndexedDB版) を呼ぶ
         await saveDatabase(); 
         
         localStorage.setItem('birdDataVersion', remoteVersion); 
@@ -329,19 +326,13 @@ async function checkAndUpdateData() {
 }
 
 // --- DB保存 (鳥) ---
-// ★ 修正: localStorage から IndexedDB への一括保存に書き換え
 async function saveDatabase() { 
      try { 
         const db = await openBirdDB();
         const tx = db.transaction(STORE_BIRDS, 'readwrite');
         
-        // ストアを一旦クリア
         await tx.store.clear(); 
-        
-        // メモリ上の birdDatabase 配列から、すべての鳥をDBに書き込む
-        // (Promise.all で並列処理)
         await Promise.all(birdDatabase.map(bird => tx.store.put(bird)));
-        
         await tx.done;
         
         console.log(`Successfully saved ${birdDatabase.length} birds to IndexedDB.`);
@@ -354,18 +345,13 @@ async function saveDatabase() {
 }
 
 // --- DB保存 (イベント) ---
-// ★ 修正: localStorage から IndexedDB への一括保存に書き換え
 async function saveEventsData() { 
      try { 
         const db = await openBirdDB();
         const tx = db.transaction(STORE_EVENTS, 'readwrite');
         
-        // ストアを一旦クリア
         await tx.store.clear();
-        
-        // メモリ上の birdEvents 配列から、すべてのイベントをDBに書き込む
         await Promise.all(birdEvents.map(event => tx.store.put(event)));
-        
         await tx.done;
 
         console.log(`Successfully saved ${birdEvents.length} events to IndexedDB.`);
@@ -378,10 +364,8 @@ async function saveEventsData() {
 }
 
 // --- 状態保存 (リスト制御) ---
-// (★ 変更なし: UI状態は localStorage が最適)
 function saveListControlsState() { 
     try {
-        // ★ 修正: appState.eventControls も保存する
         const stateToSave = { 
             ...appState.listControls, 
             eventControls: appState.eventControls,
@@ -394,7 +378,6 @@ function saveListControlsState() {
 }
 
 // --- 状態読み込み (リスト制御) ---
-// (★ 変更なし: UI状態は localStorage が最適)
 function loadListControlsState() { 
     let storedState = null;
     try {
@@ -413,7 +396,6 @@ function loadListControlsState() {
         edited: 'all',
     };
     
-    // ★ 修正: eventControls のデフォルト値をここで定義
     const defaultEventControls = {
         listSort: 'dateTime_desc',
         detailSort: 'added_asc',
@@ -451,10 +433,9 @@ function loadListControlsState() {
         };
         delete loadedState.filters.photo;
         
-        // ★ 修正: listControls と eventControls を別々にマージ
         appState.listControls = { ...appState.listControls, ...loadedState };
         appState.eventControls = loadedState.eventControls || defaultEventControls;
-        delete appState.listControls.eventControls; // listControls にネストしないように
+        delete appState.listControls.eventControls; 
 
     } else {
         defaultFilters.classification.orders = defaultClassificationOrders; 
@@ -513,14 +494,11 @@ function updateHeader(mode, title = "鳥類図鑑") {
              backButton.classList.remove('hidden');
              backButton.textContent = "< 戻る";
              backButton.onclick = () => {
-                 // (★変更) イベント詳細から戻る際に保存
                  if (mode === 'eventDetail') {
-                     // saveEventsData(); // メモが自動保存されるので、戻るボタンでの保存は不要
                  }
                  showEventsPage(); 
              };
         } else if (mode === 'error' || mode === 'loading') {
-            // エラー・ローディング中はボタンなどを表示しない
         }
     } catch (error) {
         console.error("Error updating header:", error);
