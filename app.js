@@ -59,6 +59,11 @@ const appState = {
         },
         viewMode: 'tile', activePopup: null, openFilterSection: null, 
         currentPage: 1, itemsPerPage: 30, 
+    },
+    // ★ 機能追加: イベント用の状態管理
+    eventControls: {
+        listSort: 'dateTime_desc', // イベント履歴のソート
+        detailSort: 'added_asc'     // イベント詳細の鳥リストのソート
     }
 };
 
@@ -98,6 +103,7 @@ const LOCAL_COLUMNS = [
 
 // --- データベース初期化 ---
 async function initializeDatabase() {
+    // イベントデータの読み込み
     const storedEvents = localStorage.getItem('birdEvents');
     if (storedEvents) {
         try {
@@ -113,13 +119,14 @@ async function initializeDatabase() {
         birdEvents = [];
     }
     
+    // 図鑑データの読み込み
     const storedData = localStorage.getItem('birdDatabase');
     if (storedData) {
         try {
             birdDatabase = JSON.parse(storedData);
             if (!Array.isArray(birdDatabase)) throw new Error("Parsed bird database is not an array"); 
             console.log('Loaded data from localStorage');
-            // ★ ローカルデータがある場合は、差分更新チェック（自動同期）
+            // データが既にある場合は、差分更新を試みる
             await checkAndUpdateData(); 
         } catch(e) {
             console.error("Failed to parse bird database, resetting:", e);
@@ -128,11 +135,13 @@ async function initializeDatabase() {
             birdDatabase = [];
         }
     } else {
-        birdDatabase = [];
-        console.log('No bird data found. Fetching initial data...');
-        // ★ 修正: ローカルデータがない場合（初回起動など）は、フル同期を試みる（自動同期）
+        // ★ 修正: データが全くない場合、自動同期を試みる
+        console.log('No bird data found. Attempting initial sync.');
         if (!GITHUB_CSV_URL.includes('[YOUR_USERNAME]')) {
-             await fetchCSVAndSave(); // これで初回データが入る
+            showLoadingMessage("図鑑データをダウンロード中...");
+            await fetchCSVAndSave();
+        } else {
+            birdDatabase = [];
         }
     }
     
@@ -163,10 +172,12 @@ function showLoadingMessage(message) {
 async function fetchCSVAndSave() {
     if (localStorage.getItem('birdDatabaseLoadError') && !GITHUB_CSV_URL.includes('[YOUR_USERNAME]')) {
         console.warn("Skipping fetchCSVAndSave due to existing load error. Clear data to retry.");
-        // (★変更) エラーがあっても、設定画面からの手動同期なら実行を許可
-        // return; 
     }
-    if (GITHUB_CSV_URL.includes('[YOUR_USERNAME]')) { showSettingsPage(); return; }
+    if (GITHUB_CSV_URL.includes('[YOUR_USERNAME]')) { 
+        // settings.js で showSettingsPage が呼ばれるので、ここでは何もしない
+        console.warn('GitHub URL not set. Sync skipped.');
+        return; 
+    }
     
     try {
         console.log("Fetching CSV from:", GITHUB_CSV_URL); 
@@ -310,7 +321,11 @@ function saveEventsData() {
 // --- 状態保存 (リスト制御) ---
 function saveListControlsState() { 
     try {
-        const stateToSave = { ...appState.listControls, currentPage: 1 };
+        // ★ 修正: listControls と eventControls の両方を保存
+        const stateToSave = { 
+            listControls: { ...appState.listControls, currentPage: 1 },
+            eventControls: { ...appState.eventControls }
+        };
         localStorage.setItem('birdListControls', JSON.stringify(stateToSave));
     } catch (e) {
         console.error('Failed to save list controls state:', e);
@@ -327,6 +342,7 @@ function loadListControlsState() {
         localStorage.removeItem('birdListControls'); 
     }
 
+    // --- デフォルト設定: 図鑑 ---
     const defaultSeasons = filterableSeasons.filter(s => s !== '迷鳥');
     const defaultClassificationOrders = Array.isArray(allOrders) ? [...allOrders] : []; 
     
@@ -335,7 +351,13 @@ function loadListControlsState() {
         size: Object.keys(sizeRanges), classification: { orders: defaultClassificationOrders, family: null }, 
         edited: 'all',
     };
-    
+
+    // --- デフォルト設定: イベント ---
+    const defaultEventControls = {
+        listSort: 'dateTime_desc',
+        detailSort: 'added_asc'
+    };
+
     if (storedState) {
         let loadedState = {};
         try {
@@ -349,12 +371,16 @@ function loadListControlsState() {
             loadedState = {}; 
         }
 
-        loadedState.activePopup = null; loadedState.openFilterSection = null; loadedState.currentPage = 1; 
+        // --- 図鑑フィルターの読み込み ---
+        const loadedListControls = loadedState.listControls || {};
+        loadedListControls.activePopup = null; 
+        loadedListControls.openFilterSection = null; 
+        loadedListControls.currentPage = 1; 
         
-        const loadedFilters = loadedState.filters || {};
+        const loadedFilters = loadedListControls.filters || {};
         const loadedClassification = (typeof loadedFilters.classification === 'object' && loadedFilters.classification !== null) ? loadedFilters.classification : {};
         
-        loadedState.filters = {
+        loadedListControls.filters = {
             ...defaultFilters, 
             ...loadedFilters,
             classification: { 
@@ -366,11 +392,19 @@ function loadListControlsState() {
             },
             season: loadedFilters.season || [...defaultSeasons]
         };
-        delete loadedState.filters.photo;
-        appState.listControls = { ...appState.listControls, ...loadedState };
+        delete loadedListControls.filters.photo; // 古い定義を削除
+        
+        appState.listControls = { ...appState.listControls, ...loadedListControls };
+
+        // --- イベントフィルターの読み込み ---
+        const loadedEventControls = loadedState.eventControls || {};
+        appState.eventControls = { ...defaultEventControls, ...loadedEventControls };
+
     } else {
+        // 保存された設定が何もない場合 (初回起動やリセット直後)
         defaultFilters.classification.orders = defaultClassificationOrders; 
         appState.listControls.filters = defaultFilters;
+        appState.eventControls = defaultEventControls;
     }
 }
 
@@ -424,8 +458,10 @@ function updateHeader(mode, title = "鳥類図鑑") {
              backButton.classList.remove('hidden');
              backButton.textContent = "< 戻る";
              backButton.onclick = () => {
-                 // (★変更) イベント詳細から戻る際に保存
+                 // イベント詳細から戻る際に保存
                  if (mode === 'eventDetail') {
+                     // ★ 修正: イベントの並び替え状態を保存
+                     saveListControlsState(); 
                      saveEventsData(); 
                  }
                  showEventsPage(); 
@@ -495,9 +531,10 @@ function toHiragana(str) {
     return str.replace(/[\u30A1-\u30F6]/g, m => String.fromCharCode(m.charCodeAt(0)-0x60));
 } 
 
-// ★ 共通関数として getSearchSuggestions をここに配置
+// ★ 修正: pokedex.js から移動 (イベント機能でも使うため)
 function getSearchSuggestions(text) { 
     if (!text) return []; const hText = toHiragana(text);
+    // 図鑑データベース(birdDatabase)から検索
     return birdDatabase.filter(b => toHiragana(b.name||'').includes(hText)).map(b => b.name).slice(0, 5); 
 } 
 
@@ -508,6 +545,9 @@ function setupTabs() {
         const button = document.getElementById(tab.id);
         if (button) { 
             button.addEventListener('click', (e) => {
+                // 戻るボタンのクリックイベントが残っている場合があるので、念のためリセット
+                backButton.onclick = null; 
+                
                 tabs.forEach(t => {
                     const btn = document.getElementById(t.id);
                     if (btn) btn.classList.replace('tab-active', 'tab-inactive');
@@ -521,6 +561,6 @@ function setupTabs() {
     });
  }
 
-// --- アプリケーション初期化 ---
-// ★ 修正: このブロック全体を app.js から削除し、settings.js の末尾に移動
+// --- アプリケーション初期化 (settings.js の最後に移動) ---
+// (DOMContentLoaded は settings.js で処理)
 
