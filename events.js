@@ -205,19 +205,16 @@ function showEventDetail(originalIndex) {
          { label: '同行者', name: 'companions', value: event.companions || '', type: 'text', placeholder: '例: Aさん' },
      ];
      
-     // ★ 機能追加: アコーディオンと編集フォーム
+     // ★ 修正: 編集ボタンを右端に配置
      const eventDetailsHtml = `
         <div class="bg-white rounded-lg shadow mb-4">
             <!-- アコーディオンヘッダー -->
             <button id="event-accordion-toggle" class="w-full flex justify-between items-center p-4 text-left">
                 <h3 class="text-lg font-semibold text-gray-800">イベント基本情報</h3>
-                <div class="flex items-center space-x-2">
-                    <button id="edit-event-btn" class="text-sm font-medium text-emerald-600 hover:text-emerald-800">編集</button>
-                    <!-- アコーディオン矢印 -->
-                    <svg id="event-accordion-arrow" class="h-5 w-5 text-gray-500 transition-transform transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                </div>
+                <!-- アコーディオン矢印 (左側) -->
+                <svg id="event-accordion-arrow" class="h-5 w-5 text-gray-500 transition-transform transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
             </button>
             
             <!-- アコーディオンコンテンツ -->
@@ -230,6 +227,10 @@ function showEventDetail(originalIndex) {
                             <dd class="mt-1 text-sm text-gray-900">${escapeHTML(d.value) || '(未設定)'}</dd>
                         </div>
                     `).join('')}
+                    <!-- 編集ボタン (閲覧モードの最後) -->
+                    <div class="pt-2">
+                        <button id="edit-event-btn" class="text-sm font-medium text-emerald-600 hover:text-emerald-800">編集</button>
+                    </div>
                 </dl>
                 
                 <!-- 編集モード (最初は隠す) -->
@@ -332,19 +333,19 @@ function toggleEventAccordion(forceOpen = false) {
 function setEventEditMode(isEditing) {
     const viewMode = document.getElementById('event-details-view');
     const editMode = document.getElementById('event-details-edit-form');
-    const editButton = document.getElementById('edit-event-btn');
+    // const editButton = document.getElementById('edit-event-btn'); // 編集ボタンは viewMode の中にある
 
-    if (!viewMode || !editMode || !editButton) return;
+    if (!viewMode || !editMode) return;
 
     if (isEditing) {
         viewMode.classList.add('hidden');
         editMode.classList.remove('hidden');
-        editButton.classList.add('hidden');
+        // editButton.classList.add('hidden'); // viewMode ごと隠れる
         toggleEventAccordion(true); // 編集時は強制的にアコーディオンを開く
     } else {
         viewMode.classList.remove('hidden');
         editMode.classList.add('hidden');
-        editButton.classList.remove('hidden');
+        // editButton.classList.remove('hidden'); // viewMode ごと表示される
     }
 }
 
@@ -370,9 +371,10 @@ function setupEventDetailListeners() {
         // ★ 機能追加: アコーディオンのリスナー
         const accordionToggle = document.getElementById('event-accordion-toggle');
         if (accordionToggle) {
+            // ★ 修正: クリックターゲットがボタンでないことを確認
             accordionToggle.onclick = (e) => {
-                // 編集ボタンが押された場合はトグルさせない
-                if (e.target.id !== 'edit-event-btn') {
+                // アコーディオンヘッダー自体、または矢印をクリックした場合のみトグル
+                if (e.target.closest('#event-accordion-arrow') || e.target.id === 'event-accordion-toggle' || e.target.closest('h3')) {
                     toggleEventAccordion();
                 }
             };
@@ -398,6 +400,7 @@ function setupEventDetailListeners() {
         const birdTable = document.getElementById('observed-birds-table');
         if (birdTable) {
             birdTable.onclick = (e) => {
+                // e.targetが 'remove-bird-btn' クラスを持つかチェック
                 if (e.target.classList.contains('remove-bird-btn')) {
                     const birdIndex = parseInt(e.target.dataset.index, 10);
                     handleRemoveBirdFromEvent(birdIndex);
@@ -524,12 +527,24 @@ function handleSaveEventDetails(e) {
              { label: '場所', value: event.location || '(未設定)' },
              { label: '同行者', value: event.companions || '(なし)' },
         ];
-        viewMode.innerHTML = details.map(d => `
-            <div>
-                <dt class="text-sm font-medium text-gray-500">${d.label}</dt>
-                <dd class="mt-1 text-sm text-gray-900">${escapeHTML(d.value) || '(未設定)'}</dd>
+        // ★ 修正: 閲覧ビューのinnerHTMLを更新（編集ボタンも含む）
+        viewMode.innerHTML = `
+            ${details.map(d => `
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">${d.label}</dt>
+                    <dd class="mt-1 text-sm text-gray-900">${escapeHTML(d.value) || '(未設定)'}</dd>
+                </div>
+            `).join('')}
+            <!-- 編集ボタン (閲覧モードの最後) -->
+            <div class="pt-2">
+                <button id="edit-event-btn" class="text-sm font-medium text-emerald-600 hover:text-emerald-800">編集</button>
             </div>
-        `).join('');
+        `;
+        // ★ 修正: 閲覧ビューが再描画されたので、編集ボタンのリスナーを再設定
+        const newEditButton = document.getElementById('edit-event-btn');
+        if (newEditButton) {
+            newEditButton.onclick = () => setEventEditMode(true);
+        }
     }
     
     // ★ 修正: h2 タイトルも更新
