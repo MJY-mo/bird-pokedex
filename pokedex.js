@@ -40,17 +40,16 @@ function renderSearchPopup() {
     const searchBox = searchPopup.querySelector('#searchBox');
     searchBox.addEventListener('input', (e) => {
         const newText = e.target.value; appState.listControls.filterText = newText; appState.listControls.currentPage = 1; 
-        applyFiltersAndRenderList(); renderSearchSuggestions(getSearchSuggestions(newText)); saveListControlsState();
+        applyFiltersAndRenderList(); renderSearchSuggestions(getSearchSuggestions(newText)); saveListControlsState(); // getSearchSuggestionsはapp.jsのものを使用
         const currentStatus = getFilterStatus(); filterActiveDot.classList.toggle('hidden', !currentStatus.isFiltered);
         const statusElem = searchPopup.querySelector('#search-status-text'); if(statusElem) statusElem.textContent = currentStatus.isTextFiltered ? '検索中...' : '';
     });
-    if (filterText) renderSearchSuggestions(getSearchSuggestions(filterText));
+    if (filterText) renderSearchSuggestions(getSearchSuggestions(filterText)); // getSearchSuggestionsはapp.jsのものを使用
     searchBox.focus();
 }
-function getSearchSuggestions(text) { 
-    if (!text) return []; const hText = toHiragana(text);
-    return birdDatabase.filter(b => toHiragana(b.name||'').includes(hText)).map(b => b.name).slice(0, 5); 
-} 
+
+// ★ 削除: getSearchSuggestions 関数は app.js に移動
+
 function renderSearchSuggestions(suggestions) { 
     const box = searchPopup.querySelector('#search-suggestions'); if (!box) return; 
     if (suggestions.length === 0) { box.innerHTML = ''; box.classList.add('hidden'); return; }
@@ -393,3 +392,4 @@ function handleSave(event) {
     LOCAL_COLUMNS.forEach(key => { if (formData.has(key)) birdDatabase[idx][key] = formData.get(key); });
     saveDatabase(); showDetailPage(birdId);
 }
+

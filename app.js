@@ -495,6 +495,12 @@ function toHiragana(str) {
     return str.replace(/[\u30A1-\u30F6]/g, m => String.fromCharCode(m.charCodeAt(0)-0x60));
 } 
 
+// ★ 追加: pokedex.js から getSearchSuggestions 関数をここに移動
+function getSearchSuggestions(text) { 
+    if (!text) return []; const hText = toHiragana(text);
+    return birdDatabase.filter(b => toHiragana(b.name||'').includes(hText)).map(b => b.name).slice(0, 5); 
+} 
+
 // --- タブ切り替え ---
 function setupTabs() { 
     const tabs = [ { id: 'tab-pokedex', page: showListPage }, { id: 'tab-events', page: showEventsPage }, { id: 'tab-settings', page: showSettingsPage } ];
