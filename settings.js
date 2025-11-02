@@ -58,56 +58,54 @@ function showSettingsPage() {
 }
 
 // --- データ全消去 ---
-// ★ 修正: IndexedDB も削除するように変更
+// ★ 修正: IndexedDB も削除し、confirm を削除
 async function handleClearData() { 
-    const confirmation = confirm("本当にすべてのデータ（図鑑の編集内容、イベント履歴）を削除しますか？\nこの操作は元に戻せません。");
+    // const confirmation = confirm("本当にすべてのデータ（図鑑の編集内容、イベント履歴）を削除しますか？\nこの操作は元に戻せません。");
+    // ★ 修正: PWAの動作停止を避けるため、confirm を削除。
+    // 必要であれば、ここにカスタムモーダルダイアログのロジックを追加します。
+    // 現状は、ボタンを押すと確認なしで即時削除されます。
     
-    if (confirmation) {
-        console.log('全データ消去を開始します...');
-        try { 
-            // 1. IndexedDB データベースを削除
-            // (idb ライブラリの関数)
-            await idb.deleteDB(DB_NAME);
-            console.log('IndexedDB データベースを削除しました。');
+    console.log('全データ消去を開始します...');
+    try { 
+        // 1. IndexedDB データベースを削除
+        await idb.deleteDB(DB_NAME);
+        console.log('IndexedDB データベースを削除しました。');
 
-            // 2. localStorage の関連データを削除
-            localStorage.removeItem('birdListControls'); // フィルター設定
-            localStorage.removeItem('birdDataVersion'); // 同期バージョン
-            localStorage.removeItem('lastSyncStatus'); // 最終同期時刻
-            localStorage.removeItem('birdDatabaseLoadError'); // エラーフラグ
-            
-            console.log('localStorage の関連データを消去しました。');
+        // 2. localStorage の関連データを削除
+        localStorage.removeItem('birdListControls'); // フィルター設定
+        localStorage.removeItem('birdDataVersion'); // 同期バージョン
+        localStorage.removeItem('lastSyncStatus'); // 最終同期時刻
+        localStorage.removeItem('birdDatabaseLoadError'); // エラーフラグ
+        
+        console.log('localStorage の関連データを消去しました。');
 
-        } catch(e) {
-            console.error("Error clearing data:", e);
+    } catch(e) {
+        console.error("Error clearing data:", e);
+    }
+    
+    // メモリ上のデータもリセット
+    birdDatabase = []; 
+    processedBirdList = []; 
+    birdEvents = []; 
+    updateAllOrdersList(); 
+    
+    // フィルター設定をデフォルトで再読み込み
+    loadListControlsState(); 
+    
+    // 図鑑タブを表示
+    showListPage();
+    
+    // タブの表示状態を「図鑑」に戻す
+    try {
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.classList.replace('tab-active', 'tab-inactive');
+        });
+        const pokedexTab = document.getElementById('tab-pokedex');
+        if (pokedexTab) {
+            pokedexTab.classList.replace('tab-inactive', 'tab-active');
         }
-        
-        // メモリ上のデータもリセット
-        birdDatabase = []; 
-        processedBirdList = []; 
-        birdEvents = []; 
-        updateAllOrdersList(); 
-        
-        // フィルター設定をデフォルトで再読み込み
-        loadListControlsState(); 
-        
-        // 図鑑タブを表示
-        showListPage();
-        
-        // タブの表示状態を「図鑑」に戻す
-        try {
-            document.querySelectorAll('.tab-button').forEach(btn => {
-                btn.classList.replace('tab-active', 'tab-inactive');
-            });
-            const pokedexTab = document.getElementById('tab-pokedex');
-            if (pokedexTab) {
-                pokedexTab.classList.replace('tab-inactive', 'tab-active');
-            }
-        } catch(e) { 
-            console.error("Error switching tab after clear:", e); 
-        }
-    } else {
-        console.log('データ消去をキャンセルしました。');
+    } catch(e) { 
+        console.error("Error switching tab after clear:", e); 
     }
 }
 

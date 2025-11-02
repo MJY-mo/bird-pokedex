@@ -281,7 +281,6 @@ function showEventDetail(originalIndex) {
      appState.currentPage = 'eventDetail'; 
      currentEventIndex = originalIndex; 
      
-     // イベントメモがundefinedの場合に備えて初期化
      if (event.memo === undefined) event.memo = '';
      
      const now = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
@@ -463,16 +462,20 @@ function toggleAccordion(contentId, arrowId, forceOpen = false) {
         console.error("Accordion elements not found:", contentId, arrowId);
         return;
     }
+    
+    // 現在の高さを取得
+    const currentMaxHeight = content.style.maxHeight;
 
     if (forceOpen) {
-        content.style.maxHeight = content.scrollHeight + 'px'; // コンテンツの高さに合わせる
+        // すでに開いている場合でも、高さを再計算して設定
+        content.style.maxHeight = content.scrollHeight + 'px'; 
         arrow.classList.add('arrow-up');
     } else {
-        if (content.style.maxHeight !== '0px') {
+        if (currentMaxHeight !== '0px' && currentMaxHeight !== '') {
             content.style.maxHeight = '0px';
             arrow.classList.remove('arrow-up');
         } else {
-            content.style.maxHeight = content.scrollHeight + 'px'; // コンテンツの高さに合わせる
+            content.style.maxHeight = content.scrollHeight + 'px'; 
         }
     }
 }
@@ -518,25 +521,22 @@ function setupEventDetailListeners() {
             accordionToggle.onclick = () => toggleAccordion('event-accordion-content', 'event-accordion-arrow');
         }
         
-        // ★ 機能追加: 鳥追加アコーディオンのリスナー
         const addBirdToggle = document.getElementById('add-bird-accordion-toggle');
         if (addBirdToggle) {
             addBirdToggle.onclick = () => toggleAccordion('add-bird-accordion-content', 'add-bird-accordion-arrow');
         }
         
-        // ★ 機能追加: 観察リストアコーディオンのリスナー
         const birdListToggle = document.getElementById('bird-list-accordion-toggle');
         if (birdListToggle) {
             birdListToggle.onclick = () => toggleAccordion('bird-list-accordion-content', 'bird-list-accordion-arrow');
         }
 
-        // ★ 機能追加: メモアコーディオンのリスナー
         const memoToggle = document.getElementById('memo-accordion-toggle');
         if (memoToggle) {
             memoToggle.onclick = () => toggleAccordion('memo-accordion-content', 'memo-accordion-arrow');
         }
 
-        // ★ 機能追加: メモの自動保存リスナー
+        // メモの自動保存リスナー
         const memoTextarea = document.getElementById('event-memo');
         if (memoTextarea) {
             memoTextarea.addEventListener('input', (e) => {
@@ -645,6 +645,7 @@ function handleAddBirdToEvent() {
         }
         
         // ★ 機能追加: 追加後もアコーディオンを開いたままにする
+        // （scrollHeightが変わる可能性があるため、高さを再計算）
         toggleAccordion('add-bird-accordion-content', 'add-bird-accordion-arrow', true);
         
     } catch(error) {
@@ -661,14 +662,16 @@ function handleRemoveBirdFromEvent(birdIndex) {
     }
 
     const birdName = event.observedBirds[birdIndex].name;
-    if (confirm(`「${escapeHTML(birdName)}」をリストから削除しますか？`)) {
-        event.observedBirds.splice(birdIndex, 1); 
-        saveEventsData(); 
+    
+    // ★ 修正: confirm を削除し、即時削除に変更
+    console.log(`「${escapeHTML(birdName)}」をリストから削除します。`);
+    
+    event.observedBirds.splice(birdIndex, 1); 
+    saveEventsData(); 
 
-        const tableBody = document.getElementById('observed-birds-table');
-        if (tableBody) {
-            tableBody.innerHTML = renderObservedBirdsTable();
-        }
+    const tableBody = document.getElementById('observed-birds-table');
+    if (tableBody) {
+        tableBody.innerHTML = renderObservedBirdsTable();
     }
 }
 
