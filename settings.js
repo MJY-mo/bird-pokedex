@@ -58,16 +58,16 @@ function showSettingsPage() {
 }
 
 // --- データ全消去 ---
-// ★ 修正: IndexedDB も削除し、confirm を削除
+// ★ 修正: IndexedDB も削除するように変更
 async function handleClearData() { 
+    // ★ 修正: PWAの動作停止を避けるため、confirm を削除
     // const confirmation = confirm("本当にすべてのデータ（図鑑の編集内容、イベント履歴）を削除しますか？\nこの操作は元に戻せません。");
-    // ★ 修正: PWAの動作停止を避けるため、confirm を削除。
-    // 必要であれば、ここにカスタムモーダルダイアログのロジックを追加します。
-    // 現状は、ボタンを押すと確認なしで即時削除されます。
+    // if (confirmation) {
     
     console.log('全データ消去を開始します...');
     try { 
         // 1. IndexedDB データベースを削除
+        // (idb ライブラリの関数)
         await idb.deleteDB(DB_NAME);
         console.log('IndexedDB データベースを削除しました。');
 
@@ -107,6 +107,9 @@ async function handleClearData() {
     } catch(e) { 
         console.error("Error switching tab after clear:", e); 
     }
+    // } else {
+    //     console.log('データ消去をキャンセルしました。');
+    // }
 }
 
 

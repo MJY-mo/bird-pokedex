@@ -103,7 +103,8 @@ function convertPapaRowToBirdObject(row) {
         'id', 'name', 'classification', 'size', 'special_notes', 
         'habitat_hokkaido', 'habitat_honshu', 'habitat_shikoku', 'habitat_kyushu', 'habitat_islands', 
         'type', 'season', 'rarity',
-        'description', 'photo_url', 'observed_date', 'observed_location'
+        'description', 'photo_url', 'observed_date', 'observed_location',
+        'lastObservedEventId' // ★ 機能追加: ヘッダーに追加
     ];
     let hasRequiredData = true;
     allHeaders.forEach(key => {
@@ -116,6 +117,7 @@ function convertPapaRowToBirdObject(row) {
     if (obj.photo_url === undefined) obj.photo_url = "";
     if (obj.observed_date === undefined) obj.observed_date = "";
     if (obj.observed_location === undefined) obj.observed_location = "";
+    if (obj.lastObservedEventId === undefined) obj.lastObservedEventId = ""; // ★ 機能追加: 初期化
     return hasRequiredData ? obj : null;
 }
 
@@ -127,6 +129,7 @@ const MASTER_COLUMNS = [
 ];
 const LOCAL_COLUMNS = [ 
     'season', 'rarity', 'description', 'photo_url', 'observed_date', 'observed_location',
+    'lastObservedEventId' // ★ 機能追加: カラムに追加
 ];
 
 // --- データベース初期化 ---

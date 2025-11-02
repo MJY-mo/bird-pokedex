@@ -270,7 +270,7 @@ function renderObservedBirdsTable() {
 function handleSaveNewEvent(eventData) { 
     if (!eventData) return;
     birdEvents.push({ ...eventData, observedBirds: [] }); 
-    saveEventsData(); 
+    saveEventsData(); // IndexedDBに保存
     currentEventIndex = -1; 
     showEventsPage(); 
 }
@@ -468,14 +468,15 @@ function toggleAccordion(contentId, arrowId, forceOpen = false) {
 
     if (forceOpen) {
         // すでに開いている場合でも、高さを再計算して設定
-        content.style.maxHeight = content.scrollHeight + 'px'; 
+        // scrollHeight が 0 の場合があるため、最小高さを設定 (例: 500px)
+        content.style.maxHeight = (content.scrollHeight > 0 ? content.scrollHeight : 500) + 'px'; 
         arrow.classList.add('arrow-up');
     } else {
         if (currentMaxHeight !== '0px' && currentMaxHeight !== '') {
             content.style.maxHeight = '0px';
             arrow.classList.remove('arrow-up');
         } else {
-            content.style.maxHeight = content.scrollHeight + 'px'; 
+            content.style.maxHeight = (content.scrollHeight > 0 ? content.scrollHeight : 500) + 'px'; 
         }
     }
 }
@@ -593,7 +594,8 @@ function setupEventDetailListeners() {
 }
 
 // --- イベントに鳥を追加する処理 ---
-function handleAddBirdToEvent() {
+// ★ 修正: async に変更 (saveDatabase を待つため)
+async function handleAddBirdToEvent() {
     try {
         const nameInput = document.getElementById('bird_name_input');
         const countInput = document.getElementById('bird_count_input');
@@ -622,7 +624,22 @@ function handleAddBirdToEvent() {
         
         event.observedBirds.push({ name, count, seen, heard, photo, video });
         
-        saveEventsData(); 
+        // ★ 機能追加: birdDatabase を更新
+        const birdInDB = birdDatabase.find(b => b.name === name);
+        let birdDataNeedsSave = false;
+        if (birdInDB) {
+            birdInDB.observed_date = event.dateTime;
+            birdInDB.observed_location = event.location;
+            birdInDB.lastObservedEventId = event.id;
+            birdDataNeedsSave = true;
+            console.log(`図鑑データを連携: ${name}`);
+        }
+        
+        // イベントデータと、(必要なら)図鑑データの両方をDBに保存
+        await saveEventsData(); 
+        if (birdDataNeedsSave) {
+            await saveDatabase(); // app.js の関数
+        }
 
         const tableBody = document.getElementById('observed-birds-table');
         if (tableBody) {
@@ -644,8 +661,6 @@ function handleAddBirdToEvent() {
             suggestionsBox.classList.add('hidden');
         }
         
-        // ★ 機能追加: 追加後もアコーディオンを開いたままにする
-        // （scrollHeightが変わる可能性があるため、高さを再計算）
         toggleAccordion('add-bird-accordion-content', 'add-bird-accordion-arrow', true);
         
     } catch(error) {
@@ -663,9 +678,13 @@ function handleRemoveBirdFromEvent(birdIndex) {
 
     const birdName = event.observedBirds[birdIndex].name;
     
-    // ★ 修正: confirm を削除し、即時削除に変更
+    // ★ 修正: PWAの動作停止を避けるため、confirm を削除
     console.log(`「${escapeHTML(birdName)}」をリストから削除します。`);
     
+    // TODO: 削除した鳥の birdDatabase 側をどうするか？
+    // 現状: 削除しても birdDatabase 側の 'lastObserved...' はそのまま残る。
+    // (削除の取り消しや、他のイベントから最新情報を再構築するのは複雑なため)
+
     event.observedBirds.splice(birdIndex, 1); 
     saveEventsData(); 
 
@@ -676,7 +695,8 @@ function handleRemoveBirdFromEvent(birdIndex) {
 }
 
 // --- イベント詳細を保存する処理 ---
-function handleSaveEventDetails(e) {
+// ★ 修正: async に変更 (saveDatabase を待つため)
+async function handleSaveEventDetails(e) {
     e.preventDefault();
     const event = birdEvents[currentEventIndex];
     if (!event) return;
@@ -692,7 +712,24 @@ function handleSaveEventDetails(e) {
     event.location = formData.get('location');
     event.companions = formData.get('companions');
     
-    saveEventsData(); 
+    // ★ 機能追加: このイベントに登録されている鳥の情報を、図鑑側でも更新
+    let birdDataNeedsSave = false;
+    for (const observedBird of event.observedBirds) {
+        const birdInDB = birdDatabase.find(b => b.name === observedBird.name);
+        if (birdInDB && birdInDB.lastObservedEventId === event.id) {
+            // このイベントが最新の観察記録である鳥だけ、情報を更新
+            birdInDB.observed_date = event.dateTime;
+            birdInDB.observed_location = event.location;
+            birdDataNeedsSave = true;
+        }
+    }
+    
+    // 両方のDBを保存
+    await saveEventsData(); 
+    if (birdDataNeedsSave) {
+        await saveDatabase();
+        console.log("イベント情報変更に伴い、図鑑データを更新しました。");
+    }
 
     setEventEditMode(false);
 
