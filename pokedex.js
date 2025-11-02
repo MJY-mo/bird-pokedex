@@ -19,44 +19,64 @@ function showListPage() {
 
     app.innerHTML = `<div id="pokedex-list-container"><div id="pokedex-list"></div><div id="pagination-controls" class="mt-6 flex justify-between items-center"></div></div>`;
     updateHeader('list'); 
-    try { 
-        applyFiltersAndRenderList();
-    } catch(e) {
-        console.error("Error rendering list:", e);
-        app.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow" role="alert"><strong class="font-bold">表示エラー</strong><span class="block sm:inline">リストの表示中にエラーが発生しました。</span></div>`;
-    }
-    if (searchToggleButton) searchToggleButton.onclick = () => togglePopup('search');
-    else console.error("Search toggle button not found");
-    if (filterToggleButton) filterToggleButton.onclick = () => togglePopup('filter');
-    else console.error("Filter toggle button not found");
-    if (viewToggleButton) viewToggleButton.onclick = () => togglePopup('view');
-    else console.error("View toggle button not found");
+
+    // ★ 修正: DOMの描画が完了するのを待つため、setTimeoutで呼び出す
+    setTimeout(() => {
+        try { 
+            applyFiltersAndRenderList();
+        } catch(e) {
+            console.error("Error rendering list:", e);
+            app.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow" role="alert"><strong class="font-bold">表示エラー</strong><span class="block sm:inline">リストの表示中にエラーが発生しました。</span></div>`;
+        }
+        
+        // これらのボタンはHeader内（app.innerHTMLの外）にあるため、setTimeoutの外でも安全だが、
+        // applyFiltersAndRenderList() の実行後に設定するのが自然なため、ここに移設
+        if (searchToggleButton) searchToggleButton.onclick = () => togglePopup('search');
+        else console.error("Search toggle button not found");
+        if (filterToggleButton) filterToggleButton.onclick = () => togglePopup('filter');
+        else console.error("Filter toggle button not found");
+        if (viewToggleButton) viewToggleButton.onclick = () => togglePopup('view');
+        else console.error("View toggle button not found");
+    }, 0);
 }
 
 // --- ポップアップ描画 (図鑑: 検索) ---
 function renderSearchPopup() { 
     const { filterText } = appState.listControls; const filterStatus = getFilterStatus(); 
     searchPopup.innerHTML = `<input type="search" id="searchBox" placeholder="鳥を検索..." value="${escapeHTML(filterText)}" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent" autocomplete="off"><p id="search-status-text" class="text-xs text-green-600 mt-1">${filterStatus.isTextFiltered ? '検索中...' : ''}</p><div id="search-suggestions" class="mt-2 border border-gray-200 rounded-lg bg-white overflow-hidden shadow-lg max-h-48 overflow-y-auto"></div>`;
-    const searchBox = searchPopup.querySelector('#searchBox');
-    searchBox.addEventListener('input', (e) => {
-        const newText = e.target.value; appState.listControls.filterText = newText; appState.listControls.currentPage = 1; 
-        applyFiltersAndRenderList(); renderSearchSuggestions(getSearchSuggestions(newText)); saveListControlsState(); // getSearchSuggestionsはapp.jsのものを使用
-        const currentStatus = getFilterStatus(); filterActiveDot.classList.toggle('hidden', !currentStatus.isFiltered);
-        const statusElem = searchPopup.querySelector('#search-status-text'); if(statusElem) statusElem.textContent = currentStatus.isTextFiltered ? '検索中...' : '';
-    });
-    if (filterText) renderSearchSuggestions(getSearchSuggestions(filterText)); // getSearchSuggestionsはapp.jsのものを使用
-    searchBox.focus();
+    
+    // ★ 修正: DOMの描画が完了するのを待つ
+    setTimeout(() => {
+        const searchBox = searchPopup.querySelector('#searchBox');
+        if (searchBox) {
+            searchBox.addEventListener('input', (e) => {
+                const newText = e.target.value; appState.listControls.filterText = newText; appState.listControls.currentPage = 1; 
+                applyFiltersAndRenderList(); renderSearchSuggestions(getSearchSuggestions(newText)); saveListControlsState();
+                const currentStatus = getFilterStatus(); filterActiveDot.classList.toggle('hidden', !currentStatus.isFiltered);
+                const statusElem = searchPopup.querySelector('#search-status-text'); if(statusElem) statusElem.textContent = currentStatus.isTextFiltered ? '検索中...' : '';
+            });
+            if (filterText) renderSearchSuggestions(getSearchSuggestions(filterText));
+            searchBox.focus();
+        } else {
+            console.error("Search box not found in popup.");
+        }
+    }, 0);
 }
 
-// ★ 削除: getSearchSuggestions 関数は app.js に移動
+// (getSearchSuggestions は app.js に移動済み)
 
 function renderSearchSuggestions(suggestions) { 
     const box = searchPopup.querySelector('#search-suggestions'); if (!box) return; 
     if (suggestions.length === 0) { box.innerHTML = ''; box.classList.add('hidden'); return; }
     box.classList.remove('hidden');
     box.innerHTML = suggestions.map(n => `<div class="p-3 text-sm text-gray-700 cursor-pointer hover:bg-gray-100 search-suggestion-item" data-name="${escapeHTML(n)}">${escapeHTML(n)}</div>`).join(''); 
-    box.querySelectorAll('.search-suggestion-item').forEach(item => item.addEventListener('click', () => selectSearchSuggestion(item.dataset.name)));
+    
+    // ★ 修正: DOMの描画が完了するのを待つ
+    setTimeout(() => {
+        box.querySelectorAll('.search-suggestion-item').forEach(item => item.addEventListener('click', () => selectSearchSuggestion(item.dataset.name)));
+    }, 0);
 } 
+
 function selectSearchSuggestion(name) { 
     const box = searchPopup.querySelector('#searchBox'); if (box) box.value = name;
     appState.listControls.filterText = name; appState.listControls.currentPage = 1; 
@@ -91,40 +111,49 @@ function renderFilterPopup() {
         }
         return `<div class="border-b border-gray-200"><button class="accordion-header w-full flex justify-between items-center p-4 text-left font-semibold text-gray-700 ${filteredClass}" data-section="${section.id}"><span>${section.title}</span><svg class="h-5 w-5 ${isOpen?'arrow-up':'arrow-down'}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg></button><div class="accordion-content bg-white" style="${isOpen?'max-height: 500px;':''}">${contentHtml}</div></div>`;
     }).join('');
-    filterPopup.querySelectorAll('.accordion-header').forEach(btn => btn.addEventListener('click', () => {
-        const id = btn.dataset.section; appState.listControls.openFilterSection = (appState.listControls.openFilterSection === id) ? null : id; renderFilterPopup(); 
-    }));
-    const updateCheckboxFilter = (name, values, isOrder = false) => { 
-        if (isOrder) appState.listControls.filters.classification.orders = values; else appState.listControls.filters[name] = values;
-        appState.listControls.currentPage = 1; applyFiltersAndRenderList(); saveListControlsState(); updateHeader('list');
-    };
-    ['type', 'season', 'habitat', 'size', 'classification_order'].forEach(name => { 
-        filterPopup.querySelectorAll(`input[name="${name}"]`).forEach(cb => cb.addEventListener('change', () => {
-            const isOrder = name === 'classification_order'; const actualName = isOrder ? 'classification.orders' : name; 
-            const values = Array.from(filterPopup.querySelectorAll(`input[name="${name}"]:checked`)).map(c => c.value);
-            updateCheckboxFilter(actualName.split('.')[0], values, isOrder); 
+
+    // ★ 修正: DOMの描画が完了するのを待つ
+    setTimeout(() => {
+        filterPopup.querySelectorAll('.accordion-header').forEach(btn => btn.addEventListener('click', () => {
+            const id = btn.dataset.section; appState.listControls.openFilterSection = (appState.listControls.openFilterSection === id) ? null : id; renderFilterPopup(); 
         }));
-    });
-    ['edited'].forEach(name => { 
-        filterPopup.querySelectorAll(`input[name="${name}"]`).forEach(radio => radio.addEventListener('change', (e) => {
-            appState.listControls.filters[name] = e.target.value; appState.listControls.currentPage = 1;
-            applyFiltersAndRenderList(); saveListControlsState(); updateHeader('list');
-        }));
-    });
-    const handleSelectAll = (id, selectAll) => {
-        let name, allValues, isOrder = false; 
-        if (id === 'type') { name = 'type'; allValues = [...filterableTypes]; }
-        else if (id === 'season') { name = 'season'; allValues = [...filterableSeasons]; }
-        else if (id === 'habitat') { name = 'habitat'; allValues = habitatKeys.map(h => h.key); }
-        else if (id === 'size') { name = 'size'; allValues = Object.keys(sizeRanges); }
-        else if (id === 'classification') { name = 'classification_order'; allValues = [...allOrders]; isOrder = true; } 
-        else return;
-        const values = selectAll ? allValues : [];
-        filterPopup.querySelectorAll(`input[name="${name}"]`).forEach(cb => cb.checked = selectAll);
-        updateCheckboxFilter(isOrder ? 'classification' : name, values, isOrder);
-    };
-    filterPopup.querySelectorAll('.select-all-btn').forEach(btn => btn.addEventListener('click', (e) => handleSelectAll(e.target.dataset.section, true)));
-    filterPopup.querySelectorAll('.select-none-btn').forEach(btn => btn.addEventListener('click', (e) => handleSelectAll(e.target.dataset.section, false)));
+        
+        const updateCheckboxFilter = (name, values, isOrder = false) => { 
+            if (isOrder) appState.listControls.filters.classification.orders = values; else appState.listControls.filters[name] = values;
+            appState.listControls.currentPage = 1; applyFiltersAndRenderList(); saveListControlsState(); updateHeader('list');
+        };
+        
+        ['type', 'season', 'habitat', 'size', 'classification_order'].forEach(name => { 
+            filterPopup.querySelectorAll(`input[name="${name}"]`).forEach(cb => cb.addEventListener('change', () => {
+                const isOrder = name === 'classification_order'; const actualName = isOrder ? 'classification.orders' : name; 
+                const values = Array.from(filterPopup.querySelectorAll(`input[name="${name}"]:checked`)).map(c => c.value);
+                updateCheckboxFilter(actualName.split('.')[0], values, isOrder); 
+            }));
+        });
+        
+        ['edited'].forEach(name => { 
+            filterPopup.querySelectorAll(`input[name="${name}"]`).forEach(radio => radio.addEventListener('change', (e) => {
+                appState.listControls.filters[name] = e.target.value; appState.listControls.currentPage = 1;
+                applyFiltersAndRenderList(); saveListControlsState(); updateHeader('list');
+            }));
+        });
+        
+        const handleSelectAll = (id, selectAll) => {
+            let name, allValues, isOrder = false; 
+            if (id === 'type') { name = 'type'; allValues = [...filterableTypes]; }
+            else if (id === 'season') { name = 'season'; allValues = [...filterableSeasons]; }
+            else if (id === 'habitat') { name = 'habitat'; allValues = habitatKeys.map(h => h.key); }
+            else if (id === 'size') { name = 'size'; allValues = Object.keys(sizeRanges); }
+            else if (id === 'classification') { name = 'classification_order'; allValues = [...allOrders]; isOrder = true; } 
+            else return;
+            const values = selectAll ? allValues : [];
+            filterPopup.querySelectorAll(`input[name="${name}"]`).forEach(cb => cb.checked = selectAll);
+            updateCheckboxFilter(isOrder ? 'classification' : name, values, isOrder);
+        };
+        
+        filterPopup.querySelectorAll('.select-all-btn').forEach(btn => btn.addEventListener('click', (e) => handleSelectAll(e.target.dataset.section, true)));
+        filterPopup.querySelectorAll('.select-none-btn').forEach(btn => btn.addEventListener('click', (e) => handleSelectAll(e.target.dataset.section, false)));
+    }, 0);
 } 
 
 // --- ポップアップ描画 (図鑑: 表示切替) ---
@@ -137,8 +166,12 @@ function renderViewPopup() {
     ];
     const viewOptions = [ { value: 'tile', label: 'タイル表示 (写真あり)' }, { value: 'list', label: 'リスト表示 (名前のみ)' } ];
     viewPopup.innerHTML = `<div class="p-4 space-y-4"><div><h3 class="text-sm font-semibold text-gray-500 mb-2">並び替え</h3><div class="space-y-2">${sortOptions.map(o => `<label class="flex items-center space-x-2"><input type="radio" name="sort" value="${o.value}" ${sort===o.value?'checked':''} class="form-radio text-emerald-600"><span>${o.label}</span></label>`).join('')}</div></div><div class="pt-4 border-t border-gray-200"><h3 class="text-sm font-semibold text-gray-500 mb-2">表示形式</h3><div class="space-y-2">${viewOptions.map(o => `<label class="flex items-center space-x-2"><input type="radio" name="viewMode" value="${o.value}" ${viewMode===o.value?'checked':''} class="form-radio text-emerald-600"><span>${o.label}</span></label>`).join('')}</div></div></div>`;
-    viewPopup.querySelectorAll('input[name="sort"]').forEach(r => r.addEventListener('change', (e) => { appState.listControls.sort = e.target.value; appState.listControls.currentPage = 1; applyFiltersAndRenderList(); saveListControlsState(); }));
-    viewPopup.querySelectorAll('input[name="viewMode"]').forEach(r => r.addEventListener('change', (e) => { appState.listControls.viewMode = e.target.value; appState.listControls.currentPage = 1; applyFiltersAndRenderList(); saveListControlsState(); }));
+    
+    // ★ 修正: DOMの描画が完了するのを待つ
+    setTimeout(() => {
+        viewPopup.querySelectorAll('input[name="sort"]').forEach(r => r.addEventListener('change', (e) => { appState.listControls.sort = e.target.value; appState.listControls.currentPage = 1; applyFiltersAndRenderList(); saveListControlsState(); }));
+        viewPopup.querySelectorAll('input[name="viewMode"]').forEach(r => r.addEventListener('change', (e) => { appState.listControls.viewMode = e.target.value; appState.listControls.currentPage = 1; applyFiltersAndRenderList(); saveListControlsState(); }));
+    }, 0);
 }
 
 // --- 図鑑リスト描画 ---
@@ -257,7 +290,10 @@ function applyFiltersAndRenderList() {
 // --- ページネーション描画 ---
 function renderPaginationControls(listContainer, totalItems, totalPages) { 
     const controlsElement = listContainer.querySelector('#pagination-controls');
-    // (★修正) currentPage を state から直接読む
+    if (!controlsElement) {
+        console.error("Pagination controls element not found.");
+        return;
+    }
     const currentPg = appState.listControls.currentPage; 
 
     if (totalPages <= 1) {
@@ -285,27 +321,30 @@ function renderPaginationControls(listContainer, totalItems, totalPages) {
 
     controlsElement.innerHTML = `${prevButton} ${pageInfo} ${nextButton}`;
     
-    const prevBtn = controlsElement.querySelector('#prev-page');
-    const nextBtn = controlsElement.querySelector('#next-page');
-    
-    if (prevBtn) {
-        prevBtn.addEventListener('click', () => {
-            if (appState.listControls.currentPage > 1) {
-                appState.listControls.currentPage--;
-                applyFiltersAndRenderList();
-                window.scrollTo(0, 0); 
-            }
-        });
-    }
-    if (nextBtn) {
-        nextBtn.addEventListener('click', () => {
-            if (appState.listControls.currentPage < totalPages) {
-                appState.listControls.currentPage++;
-                applyFiltersAndRenderList();
-                window.scrollTo(0, 0); 
-            }
-        });
-    }
+    // ★ 修正: DOMの描画が完了するのを待つ
+    setTimeout(() => {
+        const prevBtn = controlsElement.querySelector('#prev-page');
+        const nextBtn = controlsElement.querySelector('#next-page');
+        
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                if (appState.listControls.currentPage > 1) {
+                    appState.listControls.currentPage--;
+                    applyFiltersAndRenderList();
+                    window.scrollTo(0, 0); 
+                }
+            });
+        }
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                if (appState.listControls.currentPage < totalPages) {
+                    appState.listControls.currentPage++;
+                    applyFiltersAndRenderList();
+                    window.scrollTo(0, 0); 
+                }
+            });
+        }
+    }, 0);
 }
 
 // --- 詳細画面 (閲覧) ---
@@ -352,7 +391,16 @@ function showDetailPage(birdId) {
         </div>
     `;
     updateHeader('detail', bird.name);
-    document.getElementById('editButton').onclick = () => renderDetailEditPage(birdId);
+
+    // ★ 修正: DOMの描画が完了するのを待つ
+    setTimeout(() => {
+        const editButton = document.getElementById('editButton');
+        if (editButton) {
+            editButton.onclick = () => renderDetailEditPage(birdId);
+        } else {
+            console.error("Edit button not found on detail page.");
+        }
+    }, 0);
 }
 
 // --- 詳細画面 (編集) ---
@@ -382,7 +430,16 @@ function renderDetailEditPage(birdId) {
         </div>
     `;
     updateHeader('edit', `編集: ${bird.name}`);
-    document.getElementById('editForm').onsubmit = handleSave;
+    
+    // ★ 修正: DOMの描画が完了するのを待つ
+    setTimeout(() => {
+        const editForm = document.getElementById('editForm');
+        if (editForm) {
+            editForm.onsubmit = handleSave;
+        } else {
+            console.error("Edit form not found on edit page.");
+        }
+    }, 0);
 }
 
 // --- 編集保存 ---

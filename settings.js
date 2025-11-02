@@ -25,38 +25,39 @@ function showSettingsPage() {
         </div>`;
     updateHeader('settings', '設定');
     
-    try {
-        const syncBtn = document.getElementById('syncDataButton'); 
-        if (syncBtn) {
-             syncBtn.onclick = async () => { 
-                
-                // ★ 修正(1): 同期時に古いフィルター設定を強制的にリセットする
-                try {
-                    localStorage.removeItem('birdListControls');
-                    console.log('古いフィルター設定をリセットしました。');
-                } catch(e) { console.error("Failed to clear list controls:", e); }
+    // ★ 修正: DOMの描画が完了するのを待つ
+    setTimeout(() => {
+        try {
+            const syncBtn = document.getElementById('syncDataButton'); 
+            if (syncBtn) {
+                 syncBtn.onclick = async () => { 
+                    
+                    // ★ 修正: 同期時に古いフィルター設定を強制的にリセットする
+                    try {
+                        localStorage.removeItem('birdListControls');
+                        console.log('古いフィルター設定をリセットしました。');
+                    } catch(e) { console.error("Failed to clear list controls:", e); }
 
-                syncBtn.disabled = true; syncBtn.textContent = '同期中...'; 
-                showLoadingMessage("図鑑データをダウンロード中..."); 
-                await fetchCSVAndSave(); 
-                
-                // ★ 修正(2): フィルターリセット後に再読み込み
-                loadListControlsState(); 
-                showListPage();          
-            };
-        } else { console.error("Sync button not found"); }
-        
-        const clearBtn = document.getElementById('clearDataButton');
-        if (clearBtn) { clearBtn.onclick = handleClearData; }
-        else { console.error("Clear data button not found"); }
-    } catch (error) {
-        console.error("Error setting up settings page listeners:", error);
-    }
+                    syncBtn.disabled = true; syncBtn.textContent = '同期中...'; 
+                    showLoadingMessage("図鑑データをダウンロード中..."); 
+                    await fetchCSVAndSave(); 
+                    loadListControlsState(); // リセット後にデフォルト値を再読み込み
+                    showListPage();          
+                };
+            } else { console.error("Sync button not found"); }
+            
+            const clearBtn = document.getElementById('clearDataButton');
+            if (clearBtn) { clearBtn.onclick = handleClearData; }
+            else { console.error("Clear data button not found"); }
+        } catch (error) {
+            console.error("Error setting up settings page listeners:", error);
+        }
+    }, 0);
 }
 
 // --- データ全消去 ---
 function handleClearData() { 
-    // (★変更) alertの代わりにconfirmを使用し、プロンプト入力を削除
+    // (★変更) alertの代わりにconfirmを使用
     const confirmation = confirm("本当にすべてのデータ（図鑑の編集内容、イベント履歴）を削除しますか？\nこの操作は元に戻せません。");
     
     if (confirmation) {
@@ -98,22 +99,33 @@ function handleClearData() {
     }
 }
 
-// --- ★ 修正: アプリケーション初期化 (app.jsから移動) ---
-// すべてのJSファイルが読み込まれた後に、これを実行する
+// --- アプリケーション初期化 ---
+// (★ 修正: app.jsから移動。即時実行関数(IIFE)で囲む)
 (async () => {
-    try { 
+    // DOMが読み込まれるのを待つ
+    if (document.readyState === 'loading') {
+        await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve));
+    }
+
+    try {
+        // (★ 修正: app.js にある関数を呼ぶ)
         setupTabs(); 
         await initializeDatabase(); 
         loadListControlsState();    
         showListPage(); // 初期表示は図鑑リスト
-        if (app) {
-            app.addEventListener('click', closePopupsOnMainTap);
+        
+        const appElement = document.getElementById('app'); // app変数はapp.jsにあるため、ここで再取得
+        if (appElement) {
+            appElement.addEventListener('click', closePopupsOnMainTap);
         } else {
             console.error("Main app element not found");
         }
     } catch (error) {
         console.error("Initialization failed:", error);
-        app.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow" role="alert"><strong class="font-bold">アプリ起動エラー</strong><span class="block sm:inline">アプリの起動に失敗しました。</span><p class="mt-2">開発者コンソール(F12)で詳細を確認してください。</p></div>`;
+        const appElement = document.getElementById('app');
+        if (appElement) {
+            appElement.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow" role="alert"><strong class="font-bold">アプリ起動エラー</strong><span class="block sm:inline">アプリの起動に失敗しました。</span><p class="mt-2">開発者コンソール(F12)で詳細を確認してください。</p></div>`;
+        }
         try { updateHeader('error', 'エラー'); } catch(e) { console.error("Failed to update header on error:", e); } 
     }
 })();
