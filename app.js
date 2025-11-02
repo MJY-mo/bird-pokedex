@@ -119,6 +119,7 @@ async function initializeDatabase() {
             birdDatabase = JSON.parse(storedData);
             if (!Array.isArray(birdDatabase)) throw new Error("Parsed bird database is not an array"); 
             console.log('Loaded data from localStorage');
+            // ★ ローカルデータがある場合は、差分更新チェック（自動同期）
             await checkAndUpdateData(); 
         } catch(e) {
             console.error("Failed to parse bird database, resetting:", e);
@@ -128,7 +129,11 @@ async function initializeDatabase() {
         }
     } else {
         birdDatabase = [];
-        console.log('No bird data found. Please sync from Settings.');
+        console.log('No bird data found. Fetching initial data...');
+        // ★ 修正: ローカルデータがない場合（初回起動など）は、フル同期を試みる（自動同期）
+        if (!GITHUB_CSV_URL.includes('[YOUR_USERNAME]')) {
+             await fetchCSVAndSave(); // これで初回データが入る
+        }
     }
     
     updateAllOrdersList(); 
@@ -528,3 +533,4 @@ document.addEventListener('DOMContentLoaded', async () => {
         try { updateHeader('error', 'エラー'); } catch(e) { console.error("Failed to update header on error:", e); } 
     }
 });
+
