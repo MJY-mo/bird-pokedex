@@ -19,8 +19,8 @@ function showListPage() {
 
     app.innerHTML = `<div id="pokedex-list-container"><div id="pokedex-list"></div><div id="pagination-controls" class="mt-6 flex justify-between items-center"></div></div>`;
     updateHeader('list'); 
-
-    // ★ 修正: DOMの描画が完了するのを待つため、setTimeoutで呼び出す
+    
+    // ★ 修正: DOM描画後にリスナーを設定
     setTimeout(() => {
         try { 
             applyFiltersAndRenderList();
@@ -43,7 +43,7 @@ function renderSearchPopup() {
     const { filterText } = appState.listControls; const filterStatus = getFilterStatus(); 
     searchPopup.innerHTML = `<input type="search" id="searchBox" placeholder="鳥を検索..." value="${escapeHTML(filterText)}" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent" autocomplete="off"><p id="search-status-text" class="text-xs text-green-600 mt-1">${filterStatus.isTextFiltered ? '検索中...' : ''}</p><div id="search-suggestions" class="mt-2 border border-gray-200 rounded-lg bg-white overflow-hidden shadow-lg max-h-48 overflow-y-auto"></div>`;
     
-    // ★ 修正: DOMの描画が完了するのを待つ
+    // ★ 修正: DOM描画後にリスナーを設定
     setTimeout(() => {
         const searchBox = searchPopup.querySelector('#searchBox');
         if (searchBox) {
@@ -206,8 +206,11 @@ function applyFiltersAndRenderList() {
                           filters.size.length === Object.keys(sizeRanges).length ? true : 
                           filters.size.includes(birdSizeRange); 
         }
-        // ★ 修正: bird.photo_url が存在するかどうかで判定
-        const matchesEdited = filters.edited === 'all' || (filters.edited === 'yes' && (bird.photo_url && bird.photo_url.startsWith('data:image'))); 
+        
+        // ★ 修正: bird.photo_url が null や undefined でも .startsWith でエラーにならないようにする
+        const matchesEdited = filters.edited === 'all' || 
+            (filters.edited === 'yes' && (typeof bird.photo_url === 'string' && bird.photo_url.startsWith('data:image'))); 
+        
         return matchesSearch && matchesSeason && matchesType && matchesClassification && matchesHabitat && matchesSize && matchesEdited; 
     });
     
@@ -249,7 +252,6 @@ function applyFiltersAndRenderList() {
             listElement.className = 'grid grid-cols-2 gap-4';
             listElement.innerHTML = paginatedList.map(bird => {
                 const placeholderUrl = `https://placehold.co/150x150/e0e0e0/b0b0b0?text=${escapeHTML(bird.name.charAt(0))}`;
-                // ★ 修正: photo_url が Base64 (data:...) でも URL (http:...) でも対応
                 const imageUrl = bird.photo_url || placeholderUrl;
                 const seasonTag = getSeasonTag(bird.season);
                 const habitatLabels = getHabitatLabels(bird); 
@@ -258,7 +260,7 @@ function applyFiltersAndRenderList() {
                 
                 return `
                     <div class="bg-white rounded-lg shadow overflow-hidden cursor-pointer" onclick="showDetailPage('${bird.id}')">
-                        <img src="${escapeHTML(imageUrl)}" alt="${escapeHTML(bird.name)}" 
+                        <img src="${imageUrl}" alt="${escapeHTML(bird.name)}" 
                              onerror="this.onerror=null; this.src='${placeholderUrl}';"
                              class="w-full h-32 object-cover">
                         <div class="p-3">
@@ -357,8 +359,6 @@ function showDetailPage(birdId) {
     const specialTags = (bird.special_notes || '').split(';').filter(Boolean).map(note => `<span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-100 text-red-700">${escapeHTML(note)}</span>`).join(' ');
     const placeholderUrl = `https://placehold.co/600x400/e0e0e0/b0b0b0?text=${escapeHTML(bird.name.charAt(0))}`;
     
-    // ★ 修正: photo_url が Base64 (data:...) でも URL (http:...) でも対応
-    // Base64 の場合、エスケープすると表示されなくなるため、srcに直接セットする
     const imageUrl = bird.photo_url || placeholderUrl;
     
     const habitatLabels = getHabitatLabels(bird);
@@ -369,7 +369,6 @@ function showDetailPage(birdId) {
     app.innerHTML = `
         <div class="space-y-4">
             <div class="bg-gray-200 rounded-lg shadow overflow-hidden">
-                <!-- ★ 修正: Base64 のため escapeHTML を削除 -->
                 <img src="${imageUrl}" alt="${escapeHTML(bird.name)}" 
                      onerror="this.onerror=null; this.src='${placeholderUrl}';" 
                      class="w-full h-56 object-cover">
@@ -411,13 +410,10 @@ function showDetailPage(birdId) {
 }
 
 // --- 詳細画面 (編集) ---
-// ★ 修正: 画像アップロード機能（Base64）を追加
 function renderDetailEditPage(birdId) { 
     appState.currentPage = 'edit'; appState.isEditing = true;
     const bird = birdDatabase.find(b => b.id === birdId); if (!bird) { showListPage(); return; } currentBird = bird;
     
-    // この編集セッションで新しく選択された画像を保持する変数
-    // null = 変更なし, "" = 削除, "data:..." = 新規
     let newBase64Image = null; 
     
     const rarityOptions = [ { value: '', label: '未設定' }, { value: '1', label: '★☆☆☆☆' }, { value: '2', label: '★★☆☆☆' }, { value: '3', label: '★★★☆☆' }, { value: '4', label: '★★★★☆' }, { value: '5', label: '★★★★★' } ];
@@ -425,7 +421,6 @@ function renderDetailEditPage(birdId) {
     const placeholderUrl = `https://placehold.co/600x400/e0e0e0/b0b0b0?text=${escapeHTML(bird.name.charAt(0))}`;
     const currentImageUrl = bird.photo_url || placeholderUrl;
     
-    // 画像入力フィールドのHTML
     const photoInputHtml = `
         <div>
             <label for="edit_photo" class="block text-sm font-medium text-gray-700">写真</label>
@@ -441,7 +436,6 @@ function renderDetailEditPage(birdId) {
                 画像を削除
             </button>
             
-            <!-- 従来のURL入力（非表示・フォールバック用） -->
             <input type="url" id="edit_photo_url_fallback" name="photo_url" value="${escapeHTML(bird.photo_url && !bird.photo_url.startsWith('data:') ? bird.photo_url : '')}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500 hidden" placeholder="https://...">
         </div>
     `;
@@ -471,7 +465,7 @@ function renderDetailEditPage(birdId) {
     `;
     updateHeader('edit', `編集: ${bird.name}`);
     
-    // ★ 修正: DOM描画後にリスナーを設定
+    // ★ 修正: DOMの描画が完了するのを待つ
     setTimeout(() => {
         const editForm = document.getElementById('editForm');
         const photoInput = document.getElementById('edit_photo');
@@ -494,7 +488,8 @@ function renderDetailEditPage(birdId) {
 
             // 5MB 制限チェック
             if (file.size > 5 * 1024 * 1024) {
-                alert("画像サイズが5MBを超えています。より小さな画像を選択してください。");
+                // (★修正) confirm や alert の代わりに console.warn を使用
+                console.warn("画像サイズが5MBを超えています。より小さな画像を選択してください。"); 
                 e.target.value = null; // ファイル選択をリセット
                 newBase64Image = null;
                 photoPreview.src = bird.photo_url || placeholderUrl; // プレビューを元に戻す
@@ -513,7 +508,8 @@ function renderDetailEditPage(birdId) {
             };
             reader.onerror = (error) => {
                 console.error("File reading error:", error);
-                alert("画像の読み込みに失敗しました。");
+                // (★修正) confirm や alert の代わりに console.warn を使用
+                console.warn("画像の読み込みに失敗しました。");
                 newBase64Image = null;
             };
             reader.readAsDataURL(file); // Base64として読み込む
@@ -530,7 +526,6 @@ function renderDetailEditPage(birdId) {
         });
 
         // フォーム送信（保存）時の処理
-        // ★ 修正: async に変更し、IndexedDB保存 (saveDatabase) を待つ
         editForm.onsubmit = async (event) => {
             event.preventDefault();
             
@@ -542,7 +537,6 @@ function renderDetailEditPage(birdId) {
 }
 
 // --- 編集保存 ---
-// ★ 修正: async に変更し、newBase64Image を受け取り、IndexedDBに保存する
 async function handleSave(event, newBase64Image) { 
     // event.preventDefault() は呼び出し元 (onsubmit) で実行済み
     
@@ -571,9 +565,16 @@ async function handleSave(event, newBase64Image) {
         // "" (削除) または "data:..." (新規) の値をセット
         birdDatabase[idx]['photo_url'] = newBase64Image;
     } else {
-        // 変更なし。ただし、URLフォールバック入力欄の値は反映させる (Base64優先)
+        // 変更なし。
+        // 従来のURLフォールバック入力欄は廃止（Base64のみサポート）
+        // ただし、既存の 'data:' でないURLは保持する
         if (!birdDatabase[idx]['photo_url']?.startsWith('data:')) {
-             birdDatabase[idx]['photo_url'] = formData.get('photo_url');
+            // URLフォールバック入力欄の値を取得（もしあれば）
+             const fallbackUrl = formData.get('photo_url');
+             if (fallbackUrl) {
+                 birdDatabase[idx]['photo_url'] = fallbackUrl;
+             }
+             // 変更がなければ、既存の birdDatabase[idx]['photo_url'] が保持される
         }
     }
 
@@ -587,7 +588,8 @@ async function handleSave(event, newBase64Image) {
         
     } catch (error) {
         console.error("Failed to save bird data:", error);
-        alert("データの保存に失敗しました。");
+        // (★修正) confirm や alert の代わりに console.warn を使用
+        console.warn("データの保存に失敗しました。");
     }
 }
 
