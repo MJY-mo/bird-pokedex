@@ -363,7 +363,42 @@ function showDetailPage(birdId) {
     
     const habitatLabels = getHabitatLabels(bird);
     const habitatText = habitatLabels.length > 0 ? habitatLabels.join(', ') : '(情報なし)';
-    const observationHtml = bird.observed_date || bird.observed_location ? `<div class="bg-white rounded-lg shadow overflow-hidden"><div class="p-4"><h3 class="font-semibold text-gray-800 mb-2">観察記録</h3><div class="text-sm text-gray-600 space-y-1">${bird.observed_date ? `<p><strong>日時:</strong> ${escapeHTML(bird.observed_date)}</p>` : ''}${bird.observed_location ? `<p><strong>場所:</strong> ${escapeHTML(bird.observed_location)}</p>` : ''}</div></div></div>` : '';
+    
+    // ★ 機能追加: 最新のイベント情報を取得
+    let latestEventHtml = '';
+    if (bird.lastObservedEventId) {
+        const latestEvent = birdEvents.find(e => e.id === bird.lastObservedEventId);
+        if (latestEvent) {
+            const eventDate = latestEvent.dateTime ? latestEvent.dateTime.replace('T', ' ') : '日付不明';
+            
+            latestEventHtml = `
+            <div id="latest-event-link" class="bg-emerald-50 rounded-lg shadow overflow-hidden border border-emerald-200 cursor-pointer hover:bg-emerald-100 transition-colors">
+                <div class="p-4">
+                    <h3 class="font-semibold text-gray-800 mb-2">最新の観察イベント</h3>
+                    <div class="text-sm text-emerald-700 space-y-1">
+                        <p><strong>イベント:</strong> ${escapeHTML(latestEvent.name || '無題のイベント')}</p>
+                        <p><strong>日時:</strong> ${escapeHTML(eventDate)}</p>
+                    </div>
+                    <p class="text-xs text-emerald-600 mt-2 text-right">タップしてイベント詳細へ &gt;</p>
+                </div>
+            </div>
+            `;
+        }
+    }
+
+    // ★ 修正: 「観察記録」のタイトルを変更し、イベント連携の旨を記載
+    const observationHtml = bird.observed_date || bird.observed_location ? `
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="p-4">
+            <h3 class="font-semibold text-gray-800 mb-2">最新の観察記録 (イベント連携)</h3>
+            <div class="text-sm text-gray-600 space-y-1">
+                ${bird.observed_date ? `<p><strong>日時:</strong> ${escapeHTML(bird.observed_date.replace('T', ' '))}</p>` : ''}
+                ${bird.observed_location ? `<p><strong>場所:</strong> ${escapeHTML(bird.observed_location)}</p>` : ''}
+            </div>
+            <p class="text-xs text-gray-400 mt-2">（この記録は「イベント」タブから自動更新されます）</p>
+        </div>
+    </div>` : '';
+    
     const descriptionHtml = bird.description ? `<p class="text-gray-700 leading-relaxed">${escapeHTML(bird.description).replace(/\n/g, '<br>')}</p>` : `<p class="text-gray-400 italic">(説明未記入)</p>`;
 
     app.innerHTML = `
@@ -384,7 +419,10 @@ function showDetailPage(birdId) {
                     </div>
                 </div>
             </div>
-            ${observationHtml}
+            
+            ${latestEventHtml} <!-- ★ ここに追加 -->
+            ${observationHtml} <!-- ★ 文言変更 -->
+
             <div class="bg-white rounded-lg shadow overflow-hidden">
                 <div class="p-4">
                     <h3 class="font-semibold text-gray-800 mb-2">説明文</h3>
@@ -405,6 +443,14 @@ function showDetailPage(birdId) {
             editButton.onclick = () => renderDetailEditPage(birdId);
         } else {
             console.error("Edit button not found on detail page.");
+        }
+        
+        // ★ 機能追加: イベントへのリンクのリスナー
+        if (bird.lastObservedEventId) {
+            const latestEventLink = document.getElementById('latest-event-link');
+            if (latestEventLink) {
+                latestEventLink.onclick = () => handleGoToEvent(bird.lastObservedEventId);
+            }
         }
     }, 0);
 }
@@ -456,8 +502,19 @@ function renderDetailEditPage(birdId) {
                 
                  <div><label for="edit_season" class="block text-sm font-medium text-gray-700">区分</label><select id="edit_season" name="season" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500"><option value="" ${!bird.season ? 'selected' : ''}>未設定</option>${filterableSeasons.map(s => `<option value="${s}" ${bird.season === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
                 <div><label for="edit_rarity" class="block text-sm font-medium text-gray-700">レア度</label><select id="edit_rarity" name="rarity" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500">${rarityOptions.map(opt => `<option value="${opt.value}" ${bird.rarity === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}</select></div>
-                <div><label for="edit_date" class="block text-sm font-medium text-gray-700">観察日時</label><input type="text" id="edit_date" name="observed_date" value="${escapeHTML(bird.observed_date || '')}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="2024-01-01 10:00"></div>
-                <div><label for="edit_location" class="block text-sm font-medium text-gray-700">観察場所</label><input type="text" id="edit_location" name="observed_location" value="${escapeHTML(bird.observed_location || '')}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="〇〇公園"></div>
+                
+                <!-- ★ 修正: イベント連携のため、これらのフィールドは編集不可（readonly）にする -->
+                <div>
+                    <label for="edit_date" class="block text-sm font-medium text-gray-500">最新の観察日時 (イベント連携)</label>
+                    <p class="readonly-field">${escapeHTML(bird.observed_date || '(記録なし)')}</p>
+                    <input type="hidden" id="edit_date" name="observed_date" value="${escapeHTML(bird.observed_date || '')}">
+                </div>
+                <div>
+                    <label for="edit_location" class="block text-sm font-medium text-gray-500">最新の観察場所 (イベント連携)</label>
+                    <p class="readonly-field">${escapeHTML(bird.observed_location || '(記録なし)')}</p>
+                    <input type="hidden" id="edit_location" name="observed_location" value="${escapeHTML(bird.observed_location || '')}">
+                </div>
+
                 <div><label for="edit_desc" class="block text-sm font-medium text-gray-700">説明文</label><textarea id="edit_desc" name="description" rows="5" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="特徴や鳴き声など...">${escapeHTML(bird.description || '')}</textarea></div>
                 <button type="submit" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-emerald-700 transition-colors">保存する</button>
             </form>
@@ -552,8 +609,9 @@ async function handleSave(event, newBase64Image) {
     // 1. メモリ上の birdDatabase 配列を更新
     LOCAL_COLUMNS.forEach(key => { 
         if (formData.has(key)) {
-            // photo_url 以外はフォームの値を優先
-            if (key !== 'photo_url') {
+            // ★ 修正: observed_date と observed_location はイベント連携で更新されるため、
+            // 編集フォームからは保存しない (season, rarity, description のみ保存)
+            if (key === 'season' || key === 'rarity' || key === 'description') {
                 birdDatabase[idx][key] = formData.get(key);
             }
         } 
@@ -568,7 +626,7 @@ async function handleSave(event, newBase64Image) {
         // 変更なし。
         // 従来のURLフォールバック入力欄は廃止（Base64のみサポート）
         // ただし、既存の 'data:' でないURLは保持する
-        if (!birdDatabase[idx]['photo_url']?.startsWith('data:')) {
+        if (birdDatabase[idx]['photo_url'] === undefined || birdDatabase[idx]['photo_url'] === null || !birdDatabase[idx]['photo_url'].startsWith('data:')) {
             // URLフォールバック入力欄の値を取得（もしあれば）
              const fallbackUrl = formData.get('photo_url');
              if (fallbackUrl) {
@@ -590,6 +648,36 @@ async function handleSave(event, newBase64Image) {
         console.error("Failed to save bird data:", error);
         // (★修正) confirm や alert の代わりに console.warn を使用
         console.warn("データの保存に失敗しました。");
+    }
+}
+
+/**
+ * ★ 機能追加: IDからイベントを探して詳細ページに飛ぶ
+ * (この関数は pokedex.js の末尾に追加します)
+ */
+function handleGoToEvent(eventId) {
+    if (!eventId) return;
+    
+    // 1. イベントIDから、birdEvents 配列内のインデックスを探す
+    const eventIndex = birdEvents.findIndex(e => e.id === eventId);
+    
+    if (eventIndex > -1) {
+        // 2. タブを「イベント」に切り替える
+        document.querySelectorAll('.tab-button').forEach(btn => btn.classList.replace('tab-active', 'tab-inactive'));
+        const eventsTab = document.getElementById('tab-events');
+        if (eventsTab) {
+            eventsTab.classList.replace('tab-inactive', 'tab-active');
+        }
+        
+        // 3. イベント詳細ページを表示 (events.js の関数)
+        showEventDetail(eventIndex);
+
+        // 4. ページトップにスクロール
+        window.scrollTo(0, 0); 
+    } else {
+        console.warn(`Event with ID ${eventId} not found.`);
+        // (★修正) alert の代わりに console.warn
+        console.warn("エラー: 該当のイベントが見つかりませんでした。");
     }
 }
 
