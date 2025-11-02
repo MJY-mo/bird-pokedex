@@ -495,7 +495,7 @@ function toHiragana(str) {
     return str.replace(/[\u30A1-\u30F6]/g, m => String.fromCharCode(m.charCodeAt(0)-0x60));
 } 
 
-// ★ 追加: pokedex.js から getSearchSuggestions 関数をここに移動
+// ★ 共通関数として getSearchSuggestions をここに配置
 function getSearchSuggestions(text) { 
     if (!text) return []; const hText = toHiragana(text);
     return birdDatabase.filter(b => toHiragana(b.name||'').includes(hText)).map(b => b.name).slice(0, 5); 
@@ -522,21 +522,5 @@ function setupTabs() {
  }
 
 // --- アプリケーション初期化 ---
-document.addEventListener('DOMContentLoaded', async () => { 
-    try { 
-        setupTabs(); 
-        await initializeDatabase(); 
-        loadListControlsState();    
-        showListPage(); // 初期表示は図鑑リスト
-        if (app) {
-            app.addEventListener('click', closePopupsOnMainTap);
-        } else {
-            console.error("Main app element not found");
-        }
-    } catch (error) {
-        console.error("Initialization failed:", error);
-        app.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow" role="alert"><strong class="font-bold">アプリ起動エラー</strong><span class="block sm:inline">アプリの起動に失敗しました。</span><p class="mt-2">開発者コンソール(F12)で詳細を確認してください。</p></div>`;
-        try { updateHeader('error', 'エラー'); } catch(e) { console.error("Failed to update header on error:", e); } 
-    }
-});
+// ★ 修正: このブロック全体を app.js から削除し、settings.js の末尾に移動
 

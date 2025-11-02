@@ -32,14 +32,16 @@ function showSettingsPage() {
                 
                 // ★ 修正(1): 同期時に古いフィルター設定を強制的にリセットする
                 try {
-                    localStorage.removeItem('birdListControls'); 
+                    localStorage.removeItem('birdListControls');
                     console.log('古いフィルター設定をリセットしました。');
                 } catch(e) { console.error("Failed to clear list controls:", e); }
-                
+
                 syncBtn.disabled = true; syncBtn.textContent = '同期中...'; 
                 showLoadingMessage("図鑑データをダウンロード中..."); 
-                await fetchCSVAndSave(); // この中で allOrders が更新される
-                loadListControlsState(); // これで新しい allOrders を使ってフィルターが初期化される
+                await fetchCSVAndSave(); 
+                
+                // ★ 修正(2): フィルターリセット後に再読み込み
+                loadListControlsState(); 
                 showListPage();          
             };
         } else { console.error("Sync button not found"); }
@@ -54,7 +56,7 @@ function showSettingsPage() {
 
 // --- データ全消去 ---
 function handleClearData() { 
-    // ★ 修正(2): "削除"と入力させるプロンプト(prompt)を、使いやすい確認(confirm)ダイアログに変更
+    // (★変更) alertの代わりにconfirmを使用し、プロンプト入力を削除
     const confirmation = confirm("本当にすべてのデータ（図鑑の編集内容、イベント履歴）を削除しますか？\nこの操作は元に戻せません。");
     
     if (confirmation) {
@@ -73,13 +75,13 @@ function handleClearData() {
         birdDatabase = []; processedBirdList = []; birdEvents = []; 
         updateAllOrdersList(); 
         
-        // リセット後にコントロールをデフォルトで再読み込み
+        // (★変更) リセット後にコントロールをデフォルトで再読み込み
         loadListControlsState(); 
         
         // 図鑑タブを表示
         showListPage();
         
-        // タブの表示状態を確実に「図鑑」に戻す
+        // (★変更) タブの表示状態を確実に「図鑑」に戻す
         try {
             document.querySelectorAll('.tab-button').forEach(btn => {
                 btn.classList.replace('tab-active', 'tab-inactive');
@@ -95,3 +97,24 @@ function handleClearData() {
         console.log('データ消去をキャンセルしました。');
     }
 }
+
+// --- ★ 修正: アプリケーション初期化 (app.jsから移動) ---
+// すべてのJSファイルが読み込まれた後に、これを実行する
+(async () => {
+    try { 
+        setupTabs(); 
+        await initializeDatabase(); 
+        loadListControlsState();    
+        showListPage(); // 初期表示は図鑑リスト
+        if (app) {
+            app.addEventListener('click', closePopupsOnMainTap);
+        } else {
+            console.error("Main app element not found");
+        }
+    } catch (error) {
+        console.error("Initialization failed:", error);
+        app.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow" role="alert"><strong class="font-bold">アプリ起動エラー</strong><span class="block sm:inline">アプリの起動に失敗しました。</span><p class="mt-2">開発者コンソール(F12)で詳細を確認してください。</p></div>`;
+        try { updateHeader('error', 'エラー'); } catch(e) { console.error("Failed to update header on error:", e); } 
+    }
+})();
+
