@@ -29,8 +29,6 @@ function showListPage() {
             app.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow" role="alert"><strong class="font-bold">表示エラー</strong><span class="block sm:inline">リストの表示中にエラーが発生しました。</span></div>`;
         }
         
-        // これらのボタンはHeader内（app.innerHTMLの外）にあるため、setTimeoutの外でも安全だが、
-        // applyFiltersAndRenderList() の実行後に設定するのが自然なため、ここに移設
         if (searchToggleButton) searchToggleButton.onclick = () => togglePopup('search');
         else console.error("Search toggle button not found");
         if (filterToggleButton) filterToggleButton.onclick = () => togglePopup('filter');
@@ -208,7 +206,8 @@ function applyFiltersAndRenderList() {
                           filters.size.length === Object.keys(sizeRanges).length ? true : 
                           filters.size.includes(birdSizeRange); 
         }
-        const matchesEdited = filters.edited === 'all' || (filters.edited === 'yes' && bird.photo_url); 
+        // ★ 修正: bird.photo_url が存在するかどうかで判定
+        const matchesEdited = filters.edited === 'all' || (filters.edited === 'yes' && (bird.photo_url && bird.photo_url.startsWith('data:image'))); 
         return matchesSearch && matchesSeason && matchesType && matchesClassification && matchesHabitat && matchesSize && matchesEdited; 
     });
     
@@ -250,6 +249,7 @@ function applyFiltersAndRenderList() {
             listElement.className = 'grid grid-cols-2 gap-4';
             listElement.innerHTML = paginatedList.map(bird => {
                 const placeholderUrl = `https://placehold.co/150x150/e0e0e0/b0b0b0?text=${escapeHTML(bird.name.charAt(0))}`;
+                // ★ 修正: photo_url が Base64 (data:...) でも URL (http:...) でも対応
                 const imageUrl = bird.photo_url || placeholderUrl;
                 const seasonTag = getSeasonTag(bird.season);
                 const habitatLabels = getHabitatLabels(bird); 
@@ -356,7 +356,11 @@ function showDetailPage(birdId) {
     const rarityTag = !isNaN(rarity) && rarity > 0 ? `<span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700">${'★'.repeat(rarity)}${'☆'.repeat(5 - rarity)}</span>` : '';
     const specialTags = (bird.special_notes || '').split(';').filter(Boolean).map(note => `<span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-100 text-red-700">${escapeHTML(note)}</span>`).join(' ');
     const placeholderUrl = `https://placehold.co/600x400/e0e0e0/b0b0b0?text=${escapeHTML(bird.name.charAt(0))}`;
+    
+    // ★ 修正: photo_url が Base64 (data:...) でも URL (http:...) でも対応
+    // Base64 の場合、エスケープすると表示されなくなるため、srcに直接セットする
     const imageUrl = bird.photo_url || placeholderUrl;
+    
     const habitatLabels = getHabitatLabels(bird);
     const habitatText = habitatLabels.length > 0 ? habitatLabels.join(', ') : '(情報なし)';
     const observationHtml = bird.observed_date || bird.observed_location ? `<div class="bg-white rounded-lg shadow overflow-hidden"><div class="p-4"><h3 class="font-semibold text-gray-800 mb-2">観察記録</h3><div class="text-sm text-gray-600 space-y-1">${bird.observed_date ? `<p><strong>日時:</strong> ${escapeHTML(bird.observed_date)}</p>` : ''}${bird.observed_location ? `<p><strong>場所:</strong> ${escapeHTML(bird.observed_location)}</p>` : ''}</div></div></div>` : '';
@@ -365,7 +369,10 @@ function showDetailPage(birdId) {
     app.innerHTML = `
         <div class="space-y-4">
             <div class="bg-gray-200 rounded-lg shadow overflow-hidden">
-                <img src="${escapeHTML(imageUrl)}" alt="${escapeHTML(bird.name)}" onerror="this.onerror=null; this.src='${placeholderUrl}';" class="w-full h-56 object-cover">
+                <!-- ★ 修正: Base64 のため escapeHTML を削除 -->
+                <img src="${imageUrl}" alt="${escapeHTML(bird.name)}" 
+                     onerror="this.onerror=null; this.src='${placeholderUrl}';" 
+                     class="w-full h-56 object-cover">
             </div>
             <div class="bg-white rounded-lg shadow overflow-hidden">
                 <div class="p-4">
@@ -404,10 +411,41 @@ function showDetailPage(birdId) {
 }
 
 // --- 詳細画面 (編集) ---
+// ★ 修正: 画像アップロード機能（Base64）を追加
 function renderDetailEditPage(birdId) { 
     appState.currentPage = 'edit'; appState.isEditing = true;
     const bird = birdDatabase.find(b => b.id === birdId); if (!bird) { showListPage(); return; } currentBird = bird;
+    
+    // この編集セッションで新しく選択された画像を保持する変数
+    // null = 変更なし, "" = 削除, "data:..." = 新規
+    let newBase64Image = null; 
+    
     const rarityOptions = [ { value: '', label: '未設定' }, { value: '1', label: '★☆☆☆☆' }, { value: '2', label: '★★☆☆☆' }, { value: '3', label: '★★★☆☆' }, { value: '4', label: '★★★★☆' }, { value: '5', label: '★★★★★' } ];
+    
+    const placeholderUrl = `https://placehold.co/600x400/e0e0e0/b0b0b0?text=${escapeHTML(bird.name.charAt(0))}`;
+    const currentImageUrl = bird.photo_url || placeholderUrl;
+    
+    // 画像入力フィールドのHTML
+    const photoInputHtml = `
+        <div>
+            <label for="edit_photo" class="block text-sm font-medium text-gray-700">写真</label>
+            <img id="photo_preview" src="${currentImageUrl}" alt="プレビュー" 
+                 onerror="this.onerror=null; this.src='${placeholderUrl}';" 
+                 class="mt-2 w-full h-48 object-cover rounded-lg border border-gray-200 bg-gray-100">
+            
+            <input type="file" id="edit_photo" name="photo_file" accept="image/*" class="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
+            
+            <p id="photo_message" class="text-xs text-gray-500 mt-1">スマホから写真を選択できます (5MBまで)。</p>
+            
+            <button type="button" id="remove_photo_btn" class="mt-2 text-sm font-medium text-red-600 hover:text-red-800 ${!bird.photo_url ? 'hidden' : ''}">
+                画像を削除
+            </button>
+            
+            <!-- 従来のURL入力（非表示・フォールバック用） -->
+            <input type="url" id="edit_photo_url_fallback" name="photo_url" value="${escapeHTML(bird.photo_url && !bird.photo_url.startsWith('data:') ? bird.photo_url : '')}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500 hidden" placeholder="https://...">
+        </div>
+    `;
+
     app.innerHTML = `
         <div class="bg-white rounded-lg shadow p-4 space-y-4">
             <h2 class="text-xl font-bold text-gray-900 mb-2">情報の編集</h2>
@@ -419,7 +457,9 @@ function renderDetailEditPage(birdId) {
             </div>
             <hr class="my-4">
             <form id="editForm" class="space-y-4">
-                <div><label for="edit_photo" class="block text-sm font-medium text-gray-700">写真URL</label><input type="url" id="edit_photo" name="photo_url" value="${escapeHTML(bird.photo_url || '')}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="https://..."></div>
+                
+                ${photoInputHtml}
+                
                  <div><label for="edit_season" class="block text-sm font-medium text-gray-700">区分</label><select id="edit_season" name="season" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500"><option value="" ${!bird.season ? 'selected' : ''}>未設定</option>${filterableSeasons.map(s => `<option value="${s}" ${bird.season === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
                 <div><label for="edit_rarity" class="block text-sm font-medium text-gray-700">レア度</label><select id="edit_rarity" name="rarity" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500">${rarityOptions.map(opt => `<option value="${opt.value}" ${bird.rarity === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}</select></div>
                 <div><label for="edit_date" class="block text-sm font-medium text-gray-700">観察日時</label><input type="text" id="edit_date" name="observed_date" value="${escapeHTML(bird.observed_date || '')}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="2024-01-01 10:00"></div>
@@ -431,22 +471,123 @@ function renderDetailEditPage(birdId) {
     `;
     updateHeader('edit', `編集: ${bird.name}`);
     
-    // ★ 修正: DOMの描画が完了するのを待つ
+    // ★ 修正: DOM描画後にリスナーを設定
     setTimeout(() => {
         const editForm = document.getElementById('editForm');
-        if (editForm) {
-            editForm.onsubmit = handleSave;
-        } else {
-            console.error("Edit form not found on edit page.");
+        const photoInput = document.getElementById('edit_photo');
+        const photoPreview = document.getElementById('photo_preview');
+        const removePhotoBtn = document.getElementById('remove_photo_btn');
+        const photoMessage = document.getElementById('photo_message');
+
+        if (!editForm || !photoInput || !photoPreview || !removePhotoBtn || !photoMessage) {
+            console.error("Edit form elements not found.");
+            return;
         }
+
+        // ファイル選択時の処理
+        photoInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) {
+                newBase64Image = null; // 選択をキャンセル
+                return;
+            }
+
+            // 5MB 制限チェック
+            if (file.size > 5 * 1024 * 1024) {
+                alert("画像サイズが5MBを超えています。より小さな画像を選択してください。");
+                e.target.value = null; // ファイル選択をリセット
+                newBase64Image = null;
+                photoPreview.src = bird.photo_url || placeholderUrl; // プレビューを元に戻す
+                photoMessage.textContent = "5MB以下の画像を選択してください。";
+                photoMessage.classList.add('text-red-600');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                newBase64Image = event.target.result; // Base64データを保持
+                photoPreview.src = newBase64Image; // プレビューを更新
+                removePhotoBtn.classList.remove('hidden'); // 「削除」ボタンを表示
+                photoMessage.textContent = "画像が選択されました。";
+                photoMessage.classList.remove('text-red-600');
+            };
+            reader.onerror = (error) => {
+                console.error("File reading error:", error);
+                alert("画像の読み込みに失敗しました。");
+                newBase64Image = null;
+            };
+            reader.readAsDataURL(file); // Base64として読み込む
+        });
+
+        // 画像削除ボタンの処理
+        removePhotoBtn.addEventListener('click', () => {
+            newBase64Image = ""; // 削除をマーク (空文字列)
+            photoPreview.src = placeholderUrl; // プレビューをプレースホルダーに
+            photoInput.value = null; // ファイル選択をリセット
+            removePhotoBtn.classList.add('hidden'); // 「削除」ボタンを隠す
+            photoMessage.textContent = "画像は削除されます（保存時に確定）。";
+            photoMessage.classList.remove('text-red-600');
+        });
+
+        // フォーム送信（保存）時の処理
+        // ★ 修正: async に変更し、IndexedDB保存 (saveDatabase) を待つ
+        editForm.onsubmit = async (event) => {
+            event.preventDefault();
+            
+            // 保存処理を handleSave に渡す
+            await handleSave(event, newBase64Image); 
+        };
+
     }, 0);
 }
 
 // --- 編集保存 ---
-function handleSave(event) { 
-    event.preventDefault(); const formData = new FormData(event.target); const birdId = appState.currentBirdId;
-    const idx = birdDatabase.findIndex(b => b.id === birdId); if (idx === -1) return;
-    LOCAL_COLUMNS.forEach(key => { if (formData.has(key)) birdDatabase[idx][key] = formData.get(key); });
-    saveDatabase(); showDetailPage(birdId);
+// ★ 修正: async に変更し、newBase64Image を受け取り、IndexedDBに保存する
+async function handleSave(event, newBase64Image) { 
+    // event.preventDefault() は呼び出し元 (onsubmit) で実行済み
+    
+    const formData = new FormData(event.target); 
+    const birdId = appState.currentBirdId;
+    
+    const idx = birdDatabase.findIndex(b => b.id === birdId); 
+    if (idx === -1) {
+        console.error("Bird not found in memory DB.");
+        return;
+    }
+
+    // 1. メモリ上の birdDatabase 配列を更新
+    LOCAL_COLUMNS.forEach(key => { 
+        if (formData.has(key)) {
+            // photo_url 以外はフォームの値を優先
+            if (key !== 'photo_url') {
+                birdDatabase[idx][key] = formData.get(key);
+            }
+        } 
+    });
+    
+    // 2. 画像データを処理
+    if (newBase64Image !== null) {
+        // newBase64Image が null でない場合（＝ファイル選択または削除ボタンが押された）
+        // "" (削除) または "data:..." (新規) の値をセット
+        birdDatabase[idx]['photo_url'] = newBase64Image;
+    } else {
+        // 変更なし。ただし、URLフォールバック入力欄の値は反映させる (Base64優先)
+        if (!birdDatabase[idx]['photo_url']?.startsWith('data:')) {
+             birdDatabase[idx]['photo_url'] = formData.get('photo_url');
+        }
+    }
+
+    try {
+        // 3. IndexedDB に保存 (app.js の関数を呼ぶ)
+        // saveDatabase() はメモリ上の birdDatabase 全体をDBに書き込む
+        await saveDatabase(); 
+        
+        // 4. 詳細ページに戻る
+        showDetailPage(birdId);
+        
+    } catch (error) {
+        console.error("Failed to save bird data:", error);
+        alert("データの保存に失敗しました。");
+    }
 }
 

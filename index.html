@@ -16,6 +16,9 @@
     <!-- PapaParseライブラリの読み込み -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     
+    <!-- ★ 機能追加: IndexedDB ライブラリ -->
+    <script src="https://cdn.jsdelivr.net/npm/idb@7/build/umd.js"></script>
+
     <!-- ★変更点1: CSSファイルを読み込む -->
     <link rel="stylesheet" href="style.css">
 
@@ -71,8 +74,7 @@
     <!-- ▲▲▲ NAV (変更なし) ▲▲▲ -->
 
 
-    <!-- ★ 修正: ファイル名を event.js -> events.js (複数形) に変更 -->
-    <!-- ★ 修正: ファイル名を setting.js -> settings.js (複数形) に変更 -->
+    <!-- ★変更点2: JSファイルを4つに分割して読み込む (順番が重要) -->
     <script src="app.js"></script>
     <script src="pokedex.js"></script>
     <script src="events.js"></script>
@@ -80,3 +82,4 @@
 
 </body>
 </html>
+
