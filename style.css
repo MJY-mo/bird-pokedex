@@ -1,0 +1,47 @@
+/* Interフォントをデフォルトに */
+body {
+    font-family: 'Inter', sans-serif;
+    overscroll-behavior-y: none; /* iOSでのバウンススクロールを無効化 */
+    min-height: 100vh; /* 最小の高さを確保 */
+}
+.tab-active { @apply border-emerald-500 text-emerald-600; }
+.tab-inactive { @apply border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300; }
+main#app { padding-bottom: 12rem; }
+
+main#app.pt-popup { padding-top: 4rem; } /* ヘッダー分のみ */
+
+.accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+.arrow-down { transform: rotate(0deg); transition: transform 0.3s ease-in-out; }
+.arrow-up { transform: rotate(180deg); transition: transform 0.3s ease-in-out; }
+
+.readonly-field { @apply mt-1 block w-full border border-gray-200 rounded-md shadow-sm px-3 py-2 bg-gray-100 text-gray-600; }
+
+.pagination-button:disabled { @apply opacity-50 cursor-not-allowed; }
+
+/* 絞り込み中マーク (CSS版) */
+.accordion-header.filtered > span::after,
+.accordion-tab.filtered > span::after {
+    content: '';
+    display: inline-block;
+    width: 0.5rem; /* w-2 */
+    height: 0.5rem; /* h-2 */
+    background-color: #22c55e; /* bg-green-500 */
+    border-radius: 9999px; /* rounded-full */
+    margin-left: 0.5rem; /* ml-2 */
+    vertical-align: middle;
+}
+
+.header-action-button.active {
+    @apply text-emerald-600 bg-emerald-50 rounded-lg;
+}
+
+.popup-panel {
+    @apply fixed top-16 z-10 w-full max-w-lg mx-auto;
+}
+
+.event-suggestion-list {
+     @apply absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto mt-1;
+}
+.event-suggestion-item {
+    @apply p-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-100;
+}
