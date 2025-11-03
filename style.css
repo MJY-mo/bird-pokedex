@@ -3,6 +3,7 @@ body {
     font-family: 'Inter', sans-serif;
     overscroll-behavior-y: none; /* iOSでのバウンススクロールを無効化 */
     min-height: 100vh; /* 最小の高さを確保 */
+    /* ★ 修正: 背景色はJSで制御するため、ここでの指定を削除 */
 }
 .tab-active { @apply border-emerald-500 text-emerald-600; }
 .tab-inactive { @apply border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300; }
@@ -45,3 +46,53 @@ main#app.pt-popup { padding-top: 4rem; } /* ヘッダー分のみ */
 .event-suggestion-item {
     @apply p-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-100;
 }
+
+
+/* --- ★ 機能追加: カスタム確認モーダル --- */
+#custom-confirm-modal {
+    @apply fixed inset-0 w-full h-full flex items-center justify-center z-50;
+    background-color: rgba(0, 0, 0, 0.6); /* 半透明の黒背景 */
+    backdrop-filter: blur(5px); /* 背景ぼかし */
+}
+.confirm-modal-content {
+    @apply bg-white rounded-xl shadow-2xl p-6 m-4 max-w-sm w-full;
+    animation: modal-fade-in 0.2s ease-out;
+}
+.confirm-modal-title {
+    @apply text-xl font-bold text-gray-900 mb-3;
+}
+.confirm-modal-text {
+    @apply text-gray-600 mb-6 whitespace-pre-wrap; /* 改行(\n)を反映 */
+}
+.confirm-modal-buttons {
+    @apply flex justify-end space-x-3;
+}
+.confirm-btn {
+    @apply px-4 py-2 rounded-lg font-semibold shadow transition-transform transform active:scale-95;
+}
+.confirm-btn-ok {
+    @apply bg-red-600 text-white hover:bg-red-700;
+}
+.confirm-btn-cancel {
+    @apply bg-gray-200 text-gray-700 hover:bg-gray-300;
+}
+@keyframes modal-fade-in {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* --- ★ 機能追加: 背景設定用 --- */
+#background-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -20; /* main, header, nav より後ろ */
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    opacity: 0.1; /* デフォルトの透明度 (JSで上書き) */
+    transition: background-image 0.3s ease-in-out, opacity 0.3s ease-in-out;
+}
+

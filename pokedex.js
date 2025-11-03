@@ -207,6 +207,7 @@ function applyFiltersAndRenderList() {
                           filters.size.includes(birdSizeRange); 
         }
         
+        // ★ 修正: bird.photo_url が null や undefined でも .startsWith でエラーにならないようにする
         const matchesEdited = filters.edited === 'all' || 
             (filters.edited === 'yes' && (typeof bird.photo_url === 'string' && bird.photo_url.startsWith('data:image'))); 
         
@@ -388,7 +389,6 @@ function showDetailPage(birdId) {
     }
 
     // ★ 修正: 重複していた「観察記録」セクションを削除
-    // const observationHtml = ... (このブロック全体を削除)
     
     const descriptionHtml = bird.description ? `<p class="text-gray-700 leading-relaxed">${escapeHTML(bird.description).replace(/\n/g, '<br>')}</p>` : `<p class="text-gray-400 italic">(説明未記入)</p>`;
 
@@ -586,7 +586,6 @@ function renderDetailEditPage(birdId) {
 
         if (!editForm || !photoInput || !photoPreview || !removePhotoBtn || !photoMessage) {
             console.error("Photo edit form elements not found.");
-            // return; // 続行
         }
 
         // ★ 機能追加: 音声のリスナー
@@ -597,109 +596,132 @@ function renderDetailEditPage(birdId) {
         
         if (!voiceInput || !voicePreview || !removeVoiceBtn || !voiceMessage) {
              console.error("Voice edit form elements not found.");
-             // return; // 続行
         }
 
         // --- 写真ファイル選択時の処理 ---
-        photoInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) {
-                newBase64Image = null; // 選択をキャンセル
-                return;
-            }
+        if (photoInput) {
+            photoInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) {
+                    newBase64Image = null; // 選択をキャンセル
+                    return;
+                }
 
-            // 5MB 制限チェック
-            if (file.size > 5 * 1024 * 1024) {
-                console.warn("画像サイズが5MBを超えています。より小さな画像を選択してください。"); 
-                e.target.value = null; 
-                newBase64Image = null;
-                photoPreview.src = bird.photo_url || placeholderUrl; 
-                photoMessage.textContent = "5MB以下の画像を選択してください。";
-                photoMessage.classList.add('text-red-600');
-                return;
-            }
+                // 5MB 制限チェック
+                if (file.size > 5 * 1024 * 1024) {
+                    console.warn("画像サイズが5MBを超えています。より小さな画像を選択してください。"); 
+                    e.target.value = null; 
+                    newBase64Image = null;
+                    photoPreview.src = bird.photo_url || placeholderUrl; 
+                    photoMessage.textContent = "5MB以下の画像を選択してください。";
+                    photoMessage.classList.add('text-red-600');
+                    return;
+                }
 
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                newBase64Image = event.target.result; 
-                photoPreview.src = newBase64Image; 
-                removePhotoBtn.classList.remove('hidden'); 
-                photoMessage.textContent = "画像が選択されました。";
-                photoMessage.classList.remove('text-red-600');
-            };
-            reader.onerror = (error) => {
-                console.error("File reading error:", error);
-                console.warn("画像の読み込みに失敗しました。");
-                newBase64Image = null;
-            };
-            reader.readAsDataURL(file); 
-        });
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    newBase64Image = event.target.result; 
+                    photoPreview.src = newBase64Image; 
+                    removePhotoBtn.classList.remove('hidden'); 
+                    photoMessage.textContent = "画像が選択されました。";
+                    photoMessage.classList.remove('text-red-600');
+                };
+                reader.onerror = (error) => {
+                    console.error("File reading error:", error);
+                    console.warn("画像の読み込みに失敗しました。");
+                    newBase64Image = null;
+                };
+                reader.readAsDataURL(file); 
+            });
+        }
 
         // --- 写真削除ボタンの処理 ---
-        removePhotoBtn.addEventListener('click', () => {
-            newBase64Image = ""; // 削除をマーク
-            photoPreview.src = placeholderUrl; 
-            photoInput.value = null; 
-            removePhotoBtn.classList.add('hidden'); 
-            photoMessage.textContent = "画像は削除されます（保存時に確定）。";
-            photoMessage.classList.remove('text-red-600');
-        });
+        if (removePhotoBtn) {
+            // ★ 修正: カスタム確認モーダル(showCustomConfirm)を使用
+            removePhotoBtn.onclick = async () => { 
+                const confirmed = await showCustomConfirm(
+                    '本当にこの画像を削除しますか？\n（「保存する」ボタンを押すまで確定されません）',
+                    '画像を削除'
+                );
+                if (confirmed) { 
+                    newBase64Image = ""; // 削除をマーク
+                    photoPreview.src = placeholderUrl; 
+                    photoInput.value = null; 
+                    removePhotoBtn.classList.add('hidden'); 
+                    photoMessage.textContent = "画像は削除されます（保存時に確定）。";
+                    photoMessage.classList.remove('text-red-600');
+                }
+            };
+        }
         
         // --- ★ 機能追加: 音声ファイル選択時の処理 ---
-        voiceInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) {
-                newBase64Voice = null;
-                return;
-            }
-            
-            // 10MB 制限チェック
-            if (file.size > 10 * 1024 * 1024) {
-                console.warn("音声サイズが10MBを超えています。");
-                e.target.value = null;
-                newBase64Voice = null;
-                voicePreview.src = bird.voice_url || '';
-                voicePreview.classList.toggle('hidden', !bird.voice_url);
-                voiceMessage.textContent = "10MB以下の音声を選択してください。";
-                voiceMessage.classList.add('text-red-600');
-                return;
-            }
-            
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                newBase64Voice = event.target.result; // Base64 (data:audio/...)
-                voicePreview.src = newBase64Voice;
-                voicePreview.classList.remove('hidden');
-                removeVoiceBtn.classList.remove('hidden');
-                voiceMessage.textContent = "音声が選択されました。";
-                voiceMessage.classList.remove('text-red-600');
-            };
-            reader.onerror = (error) => {
-                console.error("File reading error:", error);
-                console.warn("音声の読み込みに失敗しました。");
-                newBase64Voice = null;
-            };
-            reader.readAsDataURL(file);
-        });
+        if (voiceInput) {
+            voiceInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) {
+                    newBase64Voice = null;
+                    return;
+                }
+                
+                // 10MB 制限チェック
+                if (file.size > 10 * 1024 * 1024) {
+                    console.warn("音声サイズが10MBを超えています。");
+                    e.target.value = null;
+                    newBase64Voice = null;
+                    voicePreview.src = bird.voice_url || '';
+                    voicePreview.classList.toggle('hidden', !bird.voice_url);
+                    voiceMessage.textContent = "10MB以下の音声を選択してください。";
+                    voiceMessage.classList.add('text-red-600');
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    newBase64Voice = event.target.result; // Base64 (data:audio/...)
+                    voicePreview.src = newBase64Voice;
+                    voicePreview.classList.remove('hidden');
+                    removeVoiceBtn.classList.remove('hidden');
+                    voiceMessage.textContent = "音声が選択されました。";
+                    voiceMessage.classList.remove('text-red-600');
+                };
+                reader.onerror = (error) => {
+                    console.error("File reading error:", error);
+                    console.warn("音声の読み込みに失敗しました。");
+                    newBase64Voice = null;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
         
         // --- ★ 機能追加: 音声削除ボタンの処理 ---
-        removeVoiceBtn.addEventListener('click', () => {
-            newBase64Voice = ""; // 削除をマーク
-            voicePreview.src = '';
-            voicePreview.classList.add('hidden');
-            voiceInput.value = null;
-            removeVoiceBtn.classList.add('hidden');
-            voiceMessage.textContent = "音声は削除されます（保存時に確定）。";
-            voiceMessage.classList.remove('text-red-600');
-        });
+        if (removeVoiceBtn) {
+            // ★ 修正: カスタム確認モーダル(showCustomConfirm)を使用
+            removeVoiceBtn.onclick = async () => {
+                const confirmed = await showCustomConfirm(
+                    '本当にこの音声を削除しますか？\n（「保存する」ボタンを押すまで確定されません）',
+                    '音声を削除'
+                );
+                if (confirmed) {
+                    newBase64Voice = ""; // 削除をマーク
+                    voicePreview.src = '';
+                    voicePreview.classList.add('hidden');
+                    voiceInput.value = null;
+                    removeVoiceBtn.classList.add('hidden');
+                    voiceMessage.textContent = "音声は削除されます（保存時に確定）。";
+                    voiceMessage.classList.remove('text-red-600');
+                }
+            };
+        }
 
         // --- フォーム送信（保存）時の処理 ---
-        editForm.onsubmit = async (event) => {
-            event.preventDefault();
-            
-            // ★ 修正: 音声データも handleSave に渡す
-            await handleSave(event, newBase64Image, newBase64Voice); 
-        };
+        if (editForm) {
+            editForm.onsubmit = async (event) => {
+                event.preventDefault();
+                
+                // ★ 修正: 音声データも handleSave に渡す
+                await handleSave(event, newBase64Image, newBase64Voice); 
+            };
+        }
 
     }, 0);
 }

@@ -1,3 +1,6 @@
+// ★ 機能追加: イベントリストの1ページあたりの表示件数
+const EVENT_ITEMS_PER_PAGE = 10;
+
 // --- イベントリスト画面 ---
 function showEventsPage() { 
     appState.currentPage = 'events'; appState.isEditing = false;
@@ -5,15 +8,47 @@ function showEventsPage() {
     // 日本語ソート用のコレーター
     const jaCollator = new Intl.Collator('ja');
     
+    // --- ★ 機能追加: 検索フィルターのUI ---
+    const filterOptions = [
+        { value: 'any', label: '確認方法 (すべて)' },
+        { value: 'seen', label: '目視' },
+        { value: 'heard', label: '声' },
+        { value: 'photo', label: '写真' },
+        { value: 'video', label: '動画' }
+    ];
+    const currentFilterName = appState.eventControls.filterBirdName;
+    const currentFilterType = appState.eventControls.filterObservedType;
+    
+    const searchHtml = `
+        <div class="bg-white rounded-lg shadow p-4 space-y-3">
+            <h3 class="text-lg font-semibold text-gray-800">イベント検索</h3>
+            <div>
+                <label for="event-filter-name" class="block text-sm font-medium text-gray-700">鳥の名前</label>
+                <input type="search" id="event-filter-name" value="${escapeHTML(currentFilterName)}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="例: スズメ">
+            </div>
+            <div>
+                <label for="event-filter-type" class="block text-sm font-medium text-gray-700">確認方法</label>
+                <select id="event-filter-type" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500">
+                    ${filterOptions.map(opt => 
+                        `<option value="${opt.value}" ${opt.value === currentFilterType ? 'selected' : ''}>${opt.label}</option>`
+                    ).join('')}
+                </select>
+            </div>
+            <div class="flex space-x-2 pt-2">
+                <button id="event-search-button" class="flex-1 bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg shadow hover:bg-emerald-700">検索</button>
+                <button id="event-clear-button" class="flex-1 bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-lg shadow hover:bg-gray-300">クリア</button>
+            </div>
+        </div>
+    `;
+    
+    // --- 並び替えUI ---
     const sortOptions = [
         { value: 'dateTime_desc', label: '日時 (新しい順)' },
         { value: 'dateTime_asc', label: '日時 (古い順)' },
         { value: 'name_asc', label: '名前 (昇順)' },
         { value: 'name_desc', label: '名前 (降順)' }
     ];
-    
     const sortKey = appState.eventControls.listSort;
-    
     const sortSelectHtml = `
         <div class="mt-4">
             <label for="event-list-sort" class="block text-sm font-medium text-gray-500 mb-1">並び替え</label>
@@ -25,16 +60,30 @@ function showEventsPage() {
         </div>
     `;
 
-    const formatDate = (dateStr) => { 
-        if (!dateStr) return '日時未設定';
-        try {
-            const date = new Date(dateStr.replace(' ', 'T') + ':00'); 
-            if (isNaN(date)) return dateStr; 
-            return date.toLocaleDateString('ja-JP'); 
-        } catch { return dateStr; }
-    }; 
+    // --- ★ 機能追加: フィルターロジック ---
+    const hiraganaFilter = toHiragana(currentFilterName);
+    const typeFilter = currentFilterType;
     
-    let sortedEvents = [...birdEvents];
+    const filteredEvents = birdEvents.filter(event => {
+        // フィルターが両方とも「なし」なら、すべて通す
+        if (!hiraganaFilter && typeFilter === 'any') {
+            return true;
+        }
+        
+        // event.observedBirds の中に、条件に合う鳥が1羽でもいるか探す
+        return event.observedBirds.some(bird => {
+            // 1. 名前の条件
+            const nameMatch = !hiraganaFilter ? true : toHiragana(bird.name).includes(hiraganaFilter);
+            // 2. タイプの条件
+            const typeMatch = typeFilter === 'any' ? true : bird[typeFilter] === true;
+            
+            // 両方の条件を満たす場合に true
+            return nameMatch && typeMatch;
+        });
+    });
+
+    // --- 並び替えロジック (フィルター済みのリストに適用) ---
+    let sortedEvents = [...filteredEvents];
     switch (sortKey) {
         case 'dateTime_asc':
             sortedEvents.sort((a,b) => (a.dateTime || '').localeCompare(b.dateTime || ''));
@@ -50,31 +99,66 @@ function showEventsPage() {
             sortedEvents.sort((a,b) => (b.dateTime || '').localeCompare(a.dateTime || ''));
             break;
     }
+    
+    // --- ★ 機能追加: ページネーションロジック ---
+    const totalItems = sortedEvents.length;
+    const totalPages = Math.ceil(totalItems / EVENT_ITEMS_PER_PAGE);
+    let currentPage = appState.eventControls.currentPage;
+    if (currentPage < 1) currentPage = 1; 
+    else if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
+    appState.eventControls.currentPage = currentPage; // 補正したページ番号をstateに反映
 
-    let listHtml = sortedEvents.length === 0 ? '<p class="text-gray-500 text-center py-4">記録されたイベントはありません。</p>' : 
-        sortedEvents.map((ev) => {
+    const startIndex = (currentPage - 1) * EVENT_ITEMS_PER_PAGE;
+    const endIndex = startIndex + EVENT_ITEMS_PER_PAGE;
+    const paginatedEvents = sortedEvents.slice(startIndex, endIndex);
+
+    // --- リストHTML生成 (ページネーション適用済み) ---
+    const formatDate = (dateStr) => { 
+        if (!dateStr) return '日時未設定';
+        try {
+            const date = new Date(dateStr.replace(' ', 'T') + ':00'); 
+            if (isNaN(date)) return dateStr; 
+            return date.toLocaleDateString('ja-JP'); 
+        } catch { return dateStr; }
+    }; 
+    let listHtml = paginatedEvents.length === 0 ? 
+        (currentFilterName ? '<p class="text-gray-500 text-center py-4">検索条件に合うイベントはありません。</p>' : '<p class="text-gray-500 text-center py-4">記録されたイベントはありません。</p>') 
+        : 
+        paginatedEvents.map((ev) => {
             const originalIndex = birdEvents.findIndex(e => e.id === ev.id); 
             if (originalIndex === -1) return ''; 
-            return `<div class="p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 flex justify-between items-center" onclick="showEventDetail(${originalIndex})">
-                        <div>
+            // ★ 修正: イベント削除ボタンを追加
+            return `<div class="p-4 border-b border-gray-200 flex justify-between items-center">
+                        <div class="flex-1 cursor-pointer hover:bg-gray-50 -ml-4 -my-4 pl-4 py-4" data-index="${originalIndex}" data-action="view"> <!-- ★ View trigger -->
                             <h3 class="font-semibold text-gray-800">${escapeHTML(ev.name || '無題のイベント')}</h3>
                             <p class="text-sm text-gray-500">${escapeHTML(formatDate(ev.dateTime))}</p>
                         </div>
-                        <span class="text-xs text-gray-400">&gt;</span>
+                        <!-- ★ Delete Button -->
+                        <button type="button" data-index="${originalIndex}" data-action="delete" class="event-delete-btn text-red-400 hover:text-red-600 p-2 rounded-lg -mr-2 flex-shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
                     </div>`;
         }).join('');
         
+     // --- 画面全体の描画 ---
      app.innerHTML = `
         <div class="space-y-4">
              <button id="newEventButton" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-emerald-700 transition-colors">新規イベント作成</button>
+             ${searchHtml} <!-- ★ 検索UIを追加 -->
              ${sortSelectHtml}
              <div class="bg-white rounded-lg shadow overflow-hidden">
                 <h2 class="text-xl font-semibold p-4 border-b border-gray-200">イベント履歴</h2>
                 <div id="event-list">${listHtml}</div>
              </div>
+             <!-- ★ ページネーションUIのコンテナを追加 -->
+             <div id="event-pagination-controls" class="mt-6 flex justify-between items-center"></div>
         </div>`;
     updateHeader('events', 'イベント');
 
+    // ★ ページネーションUIを描画
+    renderEventPaginationControls(totalItems, totalPages);
+
+    // --- リスナー設定 ---
     setTimeout(() => {
         const newEventBtn = document.getElementById('newEventButton');
         if (newEventBtn) {
@@ -87,10 +171,61 @@ function showEventsPage() {
         if (sortSelect) {
             sortSelect.addEventListener('change', (e) => {
                 appState.eventControls.listSort = e.target.value;
+                appState.eventControls.currentPage = 1; // ソート変更時は1ページ目に戻る
                 saveListControlsState(); 
                 showEventsPage(); 
             });
         }
+        
+        // ★ 機能追加: 検索ボタンのリスナー
+        const searchBtn = document.getElementById('event-search-button');
+        if (searchBtn) {
+            searchBtn.onclick = () => {
+                const nameInput = document.getElementById('event-filter-name');
+                const typeInput = document.getElementById('event-filter-type');
+                
+                appState.eventControls.filterBirdName = nameInput.value;
+                appState.eventControls.filterObservedType = typeInput.value;
+                appState.eventControls.currentPage = 1; // 検索時は1ページ目に戻る
+                
+                saveListControlsState();
+                showEventsPage();
+            };
+        }
+        
+        // ★ 機能追加: クリアボタンのリスナー
+        const clearBtn = document.getElementById('event-clear-button');
+        if (clearBtn) {
+            clearBtn.onclick = () => {
+                appState.eventControls.filterBirdName = '';
+                appState.eventControls.filterObservedType = 'any';
+                appState.eventControls.currentPage = 1; 
+                
+                saveListControlsState();
+                showEventsPage();
+            };
+        }
+        
+        // ★ 修正: イベントリストのクリック処理（イベント委任）
+        const eventList = document.getElementById('event-list');
+        if (eventList) {
+            eventList.addEventListener('click', (e) => {
+                const actionTarget = e.target.closest('[data-action]');
+                if (!actionTarget) return;
+
+                const action = actionTarget.dataset.action;
+                const index = parseInt(actionTarget.dataset.index, 10);
+
+                if (isNaN(index)) return;
+
+                if (action === 'view') {
+                    showEventDetail(index);
+                } else if (action === 'delete') {
+                    handleDeleteEvent(index); // ★ 新しい削除関数を呼ぶ
+                }
+            });
+        }
+        
     }, 0);
 }
 
@@ -108,7 +243,7 @@ function showNewEventForm() {
         location: '', 
         companions: '', 
         observedBirds: [],
-        memo: '' // ★ 機能追加: メモ
+        memo: '' 
     };
     
     app.innerHTML = `
@@ -175,7 +310,7 @@ function setupNewEventFormListeners(eventData) {
             weather: formData.get('weather'),
             location: formData.get('location'),
             companions: formData.get('companions'),
-            memo: '', // メモは詳細画面で編集
+            memo: '', 
         };
 
         handleSaveNewEvent(finalEventData); 
@@ -270,7 +405,7 @@ function renderObservedBirdsTable() {
 function handleSaveNewEvent(eventData) { 
     if (!eventData) return;
     birdEvents.push({ ...eventData, observedBirds: [] }); 
-    saveEventsData(); // IndexedDBに保存
+    saveEventsData(); 
     currentEventIndex = -1; 
     showEventsPage(); 
 }
@@ -594,7 +729,6 @@ function setupEventDetailListeners() {
 }
 
 // --- イベントに鳥を追加する処理 ---
-// ★ 修正: async に変更 (saveDatabase を待つため)
 async function handleAddBirdToEvent() {
     try {
         const nameInput = document.getElementById('bird_name_input');
@@ -669,7 +803,8 @@ async function handleAddBirdToEvent() {
 }
 
 // --- イベントから鳥を削除する処理 ---
-function handleRemoveBirdFromEvent(birdIndex) {
+// ★ 修正: async に変更し、カスタムモーダルを使用
+async function handleRemoveBirdFromEvent(birdIndex) {
     const event = birdEvents[currentEventIndex];
     if (!event || !event.observedBirds[birdIndex]) {
         console.error("Bird not found for removal.");
@@ -678,24 +813,26 @@ function handleRemoveBirdFromEvent(birdIndex) {
 
     const birdName = event.observedBirds[birdIndex].name;
     
-    // ★ 修正: PWAの動作停止を避けるため、confirm を削除
-    console.log(`「${escapeHTML(birdName)}」をリストから削除します。`);
+    // ★ 修正: カスタム確認モーダル(showCustomConfirm)を使用
+    const confirmed = await showCustomConfirm(
+        `「${escapeHTML(birdName)}」をリストから削除しますか？`,
+        '削除'
+    );
     
-    // TODO: 削除した鳥の birdDatabase 側をどうするか？
-    // 現状: 削除しても birdDatabase 側の 'lastObserved...' はそのまま残る。
-    // (削除の取り消しや、他のイベントから最新情報を再構築するのは複雑なため)
+    if (confirmed) {
+        console.log(`「${escapeHTML(birdName)}」をリストから削除します。`);
+        
+        event.observedBirds.splice(birdIndex, 1); 
+        await saveEventsData(); // ★ await
 
-    event.observedBirds.splice(birdIndex, 1); 
-    saveEventsData(); 
-
-    const tableBody = document.getElementById('observed-birds-table');
-    if (tableBody) {
-        tableBody.innerHTML = renderObservedBirdsTable();
+        const tableBody = document.getElementById('observed-birds-table');
+        if (tableBody) {
+            tableBody.innerHTML = renderObservedBirdsTable();
+        }
     }
 }
 
 // --- イベント詳細を保存する処理 ---
-// ★ 修正: async に変更 (saveDatabase を待つため)
 async function handleSaveEventDetails(e) {
     e.preventDefault();
     const event = birdEvents[currentEventIndex];
@@ -764,5 +901,104 @@ async function handleSaveEventDetails(e) {
     if (titleElement) {
         titleElement.textContent = escapeHTML(event.name);
     }
+}
+
+// ★ 機能追加: イベント自体を削除する処理
+async function handleDeleteEvent(eventIndex) {
+    if (eventIndex < 0 || eventIndex >= birdEvents.length) {
+        console.error("Invalid event index for deletion.");
+        return;
+    }
+    
+    const event = birdEvents[eventIndex];
+    const eventName = event.name || '無題のイベント';
+
+    // ★ 修正: カスタム確認モーダル(showCustomConfirm)を使用
+    const confirmed = await showCustomConfirm(
+        `イベント「${escapeHTML(eventName)}」を本当に削除しますか？\nこのイベントの全ての観察記録（鳥、メモ）が失われます。`,
+        'イベントを削除'
+    );
+    
+    if (confirmed) {
+        console.log(`イベント「${escapeHTML(eventName)}」を削除します。`);
+        
+        // TODO: このイベントを 'lastObservedEventId' として持つ鳥のデータをどうするか？
+        // ひとまず、鳥側の 'lastObservedEventId' は残したままにする（削除が複雑なため）
+        
+        birdEvents.splice(eventIndex, 1); // 配列から削除
+        await saveEventsData(); // DBに保存
+
+        // ページ番号がリストの範囲外になったかチェック
+        const totalItems = birdEvents.length;
+        const totalPages = Math.ceil(totalItems / EVENT_ITEMS_PER_PAGE);
+        if (appState.eventControls.currentPage > totalPages && totalPages > 0) {
+            appState.eventControls.currentPage = totalPages;
+            saveListControlsState();
+        }
+
+        // イベントリストを再描画
+        showEventsPage();
+    }
+}
+
+// ★ 機能追加: イベントリストのページネーション描画
+function renderEventPaginationControls(totalItems, totalPages) { 
+    const controlsElement = document.getElementById('event-pagination-controls');
+    if (!controlsElement) {
+        console.error("Event pagination controls element not found.");
+        return;
+    }
+    
+    const currentPg = appState.eventControls.currentPage; 
+
+    if (totalPages <= 1) {
+        controlsElement.innerHTML = '';
+        return;
+    }
+
+    const pageInfo = `
+        <span class="text-sm text-gray-600">
+            ${totalItems} 件中 ${Math.min( (currentPg - 1) * EVENT_ITEMS_PER_PAGE + 1, totalItems )}
+            - ${Math.min( currentPg * EVENT_ITEMS_PER_PAGE, totalItems )} 件
+        </span>`;
+    
+    const prevButton = `
+        <button id="event-prev-page" class="pagination-button px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                ${currentPg === 1 ? 'disabled' : ''}>
+            前へ
+        </button>`;
+    
+    const nextButton = `
+        <button id="event-next-page" class="pagination-button px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                ${currentPg === totalPages ? 'disabled' : ''}>
+            次へ
+        </button>`;
+
+    controlsElement.innerHTML = `${prevButton} ${pageInfo} ${nextButton}`;
+    
+    // ★ 修正: リスナーをここで設定（DOM描画後）
+    setTimeout(() => {
+        const prevBtn = document.getElementById('event-prev-page');
+        const nextBtn = document.getElementById('event-next-page');
+        
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                if (appState.eventControls.currentPage > 1) {
+                    appState.eventControls.currentPage--;
+                    showEventsPage(); // ページ全体を再描画
+                    window.scrollTo(0, 0); 
+                }
+            });
+        }
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                if (appState.eventControls.currentPage < totalPages) {
+                    appState.eventControls.currentPage++;
+                    showEventsPage(); // ページ全体を再描画
+                    window.scrollTo(0, 0); 
+                }
+            });
+        }
+    }, 0);
 }
 

@@ -89,9 +89,12 @@ const appState = {
         viewMode: 'tile', activePopup: null, openFilterSection: null, 
         currentPage: 1, itemsPerPage: 30, 
     }, 
-    eventControls: { // イベントタブの並び替え状態
+    eventControls: { // イベントタブの並び替え・絞り込み状態
         listSort: 'dateTime_desc',
         detailSort: 'added_asc',
+        currentPage: 1, // ★ 機能追加: イベントリストのページ番号
+        filterBirdName: '', // ★ 機能追加: 検索する鳥の名前
+        filterObservedType: 'any' // ★ 機能追加: 検索する確認方法 (any, seen, heard, photo, video)
     }
 };
 
@@ -396,9 +399,13 @@ function loadListControlsState() {
         edited: 'all',
     };
     
+    // ★ 修正: eventControls のデフォルト値をここで定義
     const defaultEventControls = {
         listSort: 'dateTime_desc',
         detailSort: 'added_asc',
+        currentPage: 1,
+        filterBirdName: '',
+        filterObservedType: 'any'
     };
 
     if (storedState) {
@@ -434,7 +441,8 @@ function loadListControlsState() {
         delete loadedState.filters.photo;
         
         appState.listControls = { ...appState.listControls, ...loadedState };
-        appState.eventControls = loadedState.eventControls || defaultEventControls;
+        // ★ 修正: 保存された eventControls があれば、デフォルトとマージして読み込む
+        appState.eventControls = { ...defaultEventControls, ...(loadedState.eventControls || {}) };
         delete appState.listControls.eventControls; 
 
     } else {
@@ -587,6 +595,131 @@ function setupTabs() {
     });
  }
 
-// --- アプリケーション初期化 (★ settings.js に移動済み) ---
-// (コードは settings.js の末尾にあります)
+// --- ★ 機能追加: カスタム確認モーダル（クッション） ---
+
+/**
+ * 汎用の確認モーダルを表示します。
+ * @param {string} text - モーダルに表示するテキスト
+ * @param {string} okLabel - OKボタンのラベル (例: "削除")
+ * @param {boolean} [hideCancel=false] - キャンセルボタンを隠すかどうか
+ * @returns {Promise<boolean>} ユーザーがOK (true) か キャンセル (false) を押したか
+ */
+async function showCustomConfirm(text, okLabel = 'OK', hideCancel = false) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('custom-confirm-modal');
+        const modalText = document.getElementById('confirm-modal-text');
+        const okButton = document.getElementById('confirm-btn-ok');
+        const cancelButton = document.getElementById('confirm-btn-cancel');
+
+        if (!modal || !modalText || !okButton || !cancelButton) {
+            console.error("Custom confirm modal elements not found.");
+            resolve(false); // エラー時はキャンセルとして扱う
+            return;
+        }
+
+        // テキストとボタンラベルを設定
+        // ★ 修正: 改行(\n)を <br> に変換
+        modalText.innerHTML = escapeHTML(text).replace(/\n/g, '<br>');
+        okButton.textContent = okLabel;
+
+        // キャンセルボタンの表示/非表示
+        cancelButton.classList.toggle('hidden', hideCancel);
+        
+        // ボタンのスタイルをリセット (赤くない状態に)
+        okButton.classList.remove('bg-red-600', 'hover:bg-red-700', 'bg-emerald-600', 'hover:bg-emerald-700');
+        
+        // OKボタンが "削除" を含む場合、赤くする
+        if (okLabel.includes('削除') || okLabel.includes('リセット') || okLabel.includes('インポート') || okLabel.includes('上書き')) {
+            okButton.classList.add('bg-red-600', 'hover:bg-red-700');
+        } else {
+            okButton.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
+        }
+
+        // モーダルを表示
+        modal.classList.remove('hidden');
+
+        // リスナーを一度削除してから再設定（重複防止）
+        // cloneNode(true) を使うと、既存のリスナーが（もしあれば）コピーされない
+        const newOkButton = okButton.cloneNode(true);
+        okButton.parentNode.replaceChild(newOkButton, okButton);
+        
+        const newCancelButton = cancelButton.cloneNode(true);
+        cancelButton.parentNode.replaceChild(newCancelButton, cancelButton);
+
+        // OKボタンの処理
+        newOkButton.onclick = () => {
+            hideCustomConfirm();
+            resolve(true);
+        };
+
+        // キャンセルボタンの処理
+        newCancelButton.onclick = () => {
+            hideCustomConfirm();
+            resolve(false);
+        };
+        
+        // 背景クリックでキャンセル（させない）
+        modal.onclick = (e) => {
+            if (e.target.id === 'custom-confirm-modal') {
+                // hideCustomConfirm(); // 意図しないクリックで閉じないようにする
+                // resolve(false);
+            }
+        };
+    });
+}
+
+/**
+ * 汎用の確認モーダルを非表示にします。
+ */
+function hideCustomConfirm() {
+    const modal = document.getElementById('custom-confirm-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+
+// --- ★ 機能追加: 背景設定 ---
+
+/**
+ * localStorage から背景設定を読み込み、<body> と #background-overlay に適用します。
+ */
+function applyBackgroundSettings() {
+    const defaultSettings = {
+        bgColor: '#f3f4f6', // bg-gray-100
+        bgImage: '',
+        bgOpacity: 0.1
+    };
+    
+    let settings;
+    try {
+        const storedSettings = localStorage.getItem('birdAppBackground');
+        settings = storedSettings ? { ...defaultSettings, ...JSON.parse(storedSettings) } : defaultSettings;
+    } catch (e) {
+        console.error("Failed to parse background settings:", e);
+        settings = defaultSettings;
+    }
+
+    const body = document.body;
+    const overlay = document.getElementById('background-overlay');
+
+    if (!body || !overlay) {
+        // app.js の読み込み時点では DOM がまだ準備できていない可能性があるため、
+        // settings.js の (async () => { ... })() ブロックの先頭で呼び出す
+        // console.error("Body or background overlay not found.");
+        return;
+    }
+
+    // 1. 背景色を <body> に適用
+    body.style.backgroundColor = settings.bgColor;
+
+    // 2. 背景画像を #background-overlay に適用
+    if (settings.bgImage && settings.bgImage.startsWith('data:image')) {
+        overlay.style.backgroundImage = `url(${settings.bgImage})`;
+        overlay.style.opacity = settings.bgOpacity;
+    } else {
+        overlay.style.backgroundImage = 'none';
+        overlay.style.opacity = 0;
+    }
+}
 

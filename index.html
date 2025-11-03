@@ -23,7 +23,11 @@
     <link rel="stylesheet" href="style.css">
 
 </head>
-<body class="bg-gray-100">
+<!-- ★ 修正: 背景色をJSで制御するため "bg-gray-100" を削除 -->
+<body class="">
+
+    <!-- ★ 機能追加: 背景画像表示用のオーバーレイ -->
+    <div id="background-overlay"></div>
 
     <!-- ▼▼▼ HEADER (変更なし) ▼▼▼ -->
     <header id="header" class="bg-white shadow-md fixed top-0 z-20 w-full max-w-lg mx-auto">
@@ -73,7 +77,18 @@
     </nav>
     <!-- ▲▲▲ NAV (変更なし) ▲▲▲ -->
 
-
+    <!-- ★ 機能追加: カスタム確認モーダル -->
+    <div id="custom-confirm-modal" class="hidden">
+        <div class="confirm-modal-content">
+            <h3 id="confirm-modal-title" class="confirm-modal-title">確認</h3>
+            <p id="confirm-modal-text" class="confirm-modal-text">本当に実行しますか？</p>
+            <div class="confirm-modal-buttons">
+                <button id="confirm-btn-cancel" class="confirm-btn confirm-btn-cancel">キャンセル</button>
+                <button id="confirm-btn-ok" class="confirm-btn confirm-btn-ok">OK</button>
+            </div>
+        </div>
+    </div>
+    
     <!-- ★変更点2: JSファイルを4つに分割して読み込む (順番が重要) -->
     <script src="app.js"></script>
     <script src="pokedex.js"></script>
