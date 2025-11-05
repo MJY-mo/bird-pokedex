@@ -2,74 +2,108 @@
 function showSettingsPage() { 
     appState.currentPage = 'settings'; appState.isEditing = false;
     
-    // --- ★ 機能追加: バーダーカードの集計 ---
+    // --- 1. ライフリスト集計 ---
     const totalSpecies = birdDatabase.length;
     const liferTotals = {
-        seen: 0,
-        heard: 0,
-        photo: 0,
-        video: 0,
-        any: 0 // いずれか1つでも達成した鳥の総数
+        seen: 0, heard: 0, photo: 0, video: 0, any: 0 
     };
-    
     birdDatabase.forEach(bird => {
         let isLifer = false;
-        if (bird.lifer_seen) {
-            liferTotals.seen++;
-            isLifer = true;
-        }
-        if (bird.lifer_heard) {
-            liferTotals.heard++;
-            isLifer = true;
-        }
-        if (bird.lifer_photo) {
-            liferTotals.photo++;
-            isLifer = true;
-        }
-        if (bird.lifer_video) {
-            liferTotals.video++;
-            isLifer = true;
-        }
-        if (isLifer) {
-            liferTotals.any++;
-        }
+        if (bird.lifer_seen) { liferTotals.seen++; isLifer = true; }
+        if (bird.lifer_heard) { liferTotals.heard++; isLifer = true; }
+        if (bird.lifer_photo) { liferTotals.photo++; isLifer = true; }
+        if (bird.lifer_video) { liferTotals.video++; isLifer = true; }
+        if (isLifer) { liferTotals.any++; }
     });
 
-    const birderCardHtml = `
+    // --- 2. ★★★ 自分のバーダーカード（編集機能付き） ★★★ ---
+    const myCard = appState.settings; // birderName, birderPhoto を含む
+    const myPhotoUrl = myCard.birderPhoto || 'https://placehold.co/150x150/e0e0e0/b0b0b0?text=No+Image';
+
+    const myBirderCardHtml = `
         <div class="bg-white rounded-lg shadow p-6">
-            <h2 class="text-xl font-semibold mb-4">バーダーカード</h2>
+            <h2 class="text-xl font-semibold mb-4">マイ・バーダーカード</h2>
+            
+            <div class="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg mb-4">
+                <img id="birder-photo-preview" src="${myPhotoUrl}" 
+                     onerror="this.onerror=null; this.src='https://placehold.co/150x150/e0e0e0/b0b0b0?text=Error';"
+                     class="w-20 h-20 object-cover rounded-full border-2 border-emerald-500">
+                <div>
+                    <input type="text" id="birder-name-input" value="${escapeHTML(myCard.birderName || '')}" placeholder="あなたの名前" class="text-lg font-bold text-gray-800 border-b border-gray-300 focus:border-emerald-500 focus:outline-none">
+                    <p class="text-sm text-gray-600 mt-1">ライフリスト: ${liferTotals.any} 種</p>
+                </div>
+            </div>
+            
+            <div>
+                <label for="birder-photo-input" class="block text-sm font-medium text-gray-700">カードの写真 (5MBまで)</label>
+                <input type="file" id="birder-photo-input" accept="image/*" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
+                <button type="button" id="birder-remove-photo-btn" class="mt-2 text-sm font-medium text-red-600 hover:text-red-800 ${!myCard.birderPhoto ? 'hidden' : ''}">
+                    写真を削除
+                </button>
+                <p class="text-xs text-gray-500 mt-1">名前と写真は自動保存されます。</p>
+            </div>
+            
+            <hr class="my-6 border-gray-100">
+            
             <div class="space-y-3">
-                <div class="flex justify-between items-center">
-                    <span class="font-medium text-gray-700">ライフリスト総数</span>
-                    <!-- ★ 修正: 母数 (${totalSpecies}) を削除 -->
-                    <span class="font-bold text-xl text-emerald-600">${liferTotals.any} 種</span>
-                </div>
-                <hr class="border-gray-100">
-                <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                    <span class="text-gray-600">目視 (Seen):</span>
-                    <span class="font-medium text-gray-800 text-right">${liferTotals.seen} 種</span>
-                    
-                    <span class="text-gray-600">声 (Heard):</span>
-                    <span class="font-medium text-gray-800 text-right">${liferTotals.heard} 種</span>
-                    
-                    <span class="text-gray-600">写真 (Photo):</span>
-                    <span class="font-medium text-gray-800 text-right">${liferTotals.photo} 種</span>
-                    
-                    <span class="text-gray-600">動画 (Video):</span>
-                    <span class="font-medium text-gray-800 text-right">${liferTotals.video} 種</span>
-                </div>
+                <button id="share-card-btn" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-emerald-700 transition-colors">
+                    カードを送る (共有)
+                </button>
+                <p class="text-xs text-gray-500 text-center">
+                    ${!navigator.share ? '(お使いのブラウザは共有機能非対応です。ファイルとしてダウンロードします)' : 'LINEやAirDropでカードを送れます。'}
+                </p>
             </div>
         </div>
     `;
 
 
-    // --- ★ 機能追加: ライフリスト設定 ---
+    // --- 3. ★★★ もらったカード ★★★ ---
+    const receivedCardsHtml = `
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold mb-4">もらったカード</h2>
+            
+            <div>
+                <label for="import-card-file" class="w-full text-center block bg-gray-50 text-gray-700 font-bold py-3 px-4 rounded-lg shadow-inner hover:bg-gray-100 transition-colors cursor-pointer">
+                    カードを読み込む (.bcard)
+                </label>
+                <input type="file" id="import-card-file" accept=".bcard, application/json" class="hidden">
+                <p class="text-xs text-gray-500 mt-2">受信した `.bcard` ファイルを選択してください。</p>
+            </div>
+            
+            <hr class="my-6 border-gray-100">
+
+            <h3 class="text-lg font-medium text-gray-800 mb-3">受信箱</h3>
+            <div id="received-cards-list" class="space-y-3 max-h-60 overflow-y-auto pr-2">
+                ${receivedCards.length === 0 ? 
+                    '<p class="text-gray-400 text-sm">まだカードをもらっていません。</p>' : 
+                    receivedCards.map(card => `
+                        <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg" data-card-id="${card.id}">
+                            <div class="flex items-center space-x-3">
+                                <img src="${card.photo || 'https://placehold.co/100x100/e0e0e0/b0b0b0?text=No+Image'}" 
+                                     onerror="this.onerror=null; this.src='https://placehold.co/100x100/e0e0e0/b0b0b0?text=Error';"
+                                     class="w-12 h-12 object-cover rounded-full">
+                                <div>
+                                    <p class="font-semibold text-gray-700">${escapeHTML(card.name || '（名前なし）')}</p>
+                                    <p class="text-xs text-gray-500">Lifer: ${card.totals.any} 種 (受信日: ${new Date(card.receivedDate).toLocaleDateString()})</p>
+                                </div>
+                            </div>
+                            <button type="button" data-action="delete" class="text-red-400 hover:text-red-600 p-1 rounded-lg flex-shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        </div>
+                    `).join('')
+                }
+            </div>
+        </div>
+    `;
+
+
+    // --- 4. 既存の機能 (ライフリスト設定など) ---
     const autoUpdateChecked = appState.settings.autoUpdateLiferList ? 'checked' : '';
     const liferSettingsHtml = `
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-xl font-semibold mb-4">ライフリスト設定</h2>
             <div class="space-y-4">
-                <!-- 自動更新トグル -->
                 <div class="flex items-center justify-between">
                     <label for="auto-update-lifer" class="flex flex-col flex-1 mr-4">
                         <span class="font-medium text-gray-700">イベントから自動更新</span>
@@ -84,7 +118,6 @@ function showSettingsPage() {
                 
                 <hr class="border-gray-100">
 
-                <!-- 履歴から再集計 -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">ライフリスト再集計</label>
                     <p class="text-sm text-gray-500 mb-3">
@@ -99,7 +132,7 @@ function showSettingsPage() {
         </div>
     `;
 
-    // --- 背景設定 ---
+    // --- 5. 既存の機能 (背景設定) ---
     const defaultBgSettings = { bgColor: '#f3f4f6', bgImage: '', bgOpacity: 0.1 };
     let currentBgSettings;
     try {
@@ -112,13 +145,11 @@ function showSettingsPage() {
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-xl font-semibold mb-4">背景設定</h2>
             <div class="space-y-4">
-                <!-- 背景色 -->
                 <div>
                     <label for="bg-color-picker" class="block text-sm font-medium text-gray-700">背景色</label>
                     <input type="color" id="bg-color-picker" value="${escapeHTML(currentBgSettings.bgColor)}" class="mt-1 block w-full h-10 border border-gray-300 rounded-md cursor-pointer">
                 </div>
                 
-                <!-- 背景画像 -->
                 <div>
                     <label for="bg-image-input" class="block text-sm font-medium text-gray-700">背景画像 (5MBまで)</label>
                     <input type="file" id="bg-image-input" accept="image/*" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
@@ -127,7 +158,6 @@ function showSettingsPage() {
                     </button>
                 </div>
                 
-                <!-- 画像の透明度 -->
                 <div>
                     <label for="bg-opacity-slider" class="block text-sm font-medium text-gray-700">画像の透明度: <span id="bg-opacity-value">${currentBgSettings.bgOpacity}</span></label>
                     <input type="range" id="bg-opacity-slider" min="0.05" max="1" step="0.05" value="${currentBgSettings.bgOpacity}" class="mt-1 block w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
@@ -136,9 +166,8 @@ function showSettingsPage() {
         </div>
     `;
 
-    // --- インポート/エクスポート ---
+    // --- 6. 既存の機能 (インポート/エクスポート) ---
     const importExportHtml = `
-        <!-- ★ 機能追加: 観察記録CSVのエクスポート -->
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-xl font-semibold mb-4">観察記録のエクスポート (CSV)</h2>
             <p class="text-gray-600 mb-4">
@@ -149,7 +178,6 @@ function showSettingsPage() {
             </button>
         </div>
 
-        <!-- データのエクスポート -->
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-xl font-semibold mb-4">データのエクスポート</h2>
             <p class="text-gray-600 mb-4">
@@ -160,7 +188,6 @@ function showSettingsPage() {
             </button>
         </div>
 
-        <!-- データのインポート -->
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-xl font-semibold mb-4 text-red-700">データのインポート</h2>
             <p class="text-gray-600 mb-4">
@@ -179,7 +206,8 @@ function showSettingsPage() {
     // --- 画面全体の描画 ---
     app.innerHTML = `
         <div class="space-y-6">
-            ${birderCardHtml}
+            ${myBirderCardHtml}
+            ${receivedCardsHtml}
             ${liferSettingsHtml}
             ${backgroundSettingsHtml}
             ${importExportHtml}
@@ -187,16 +215,59 @@ function showSettingsPage() {
     updateHeader('settings', '設定');
     
     
-    // --- リスナー設定 ---
+    // --- ★★★ リスナー設定 (バーダーカード機能を追加) ★★★ ---
     setTimeout(() => {
         try {
-            // --- ★ 機能追加: 観察記録CSVエクスポートのリスナー ---
-            const exportCsvBtn = document.getElementById('export-csv-btn');
-            if (exportCsvBtn) {
-                exportCsvBtn.onclick = handleExportCsvData; // ★ 新しい関数を呼ぶ
+            // --- マイ・バーダーカードのリスナー ---
+            const nameInput = document.getElementById('birder-name-input');
+            const photoInput = document.getElementById('birder-photo-input');
+            const photoPreview = document.getElementById('birder-photo-preview');
+            const removePhotoBtn = document.getElementById('birder-remove-photo-btn');
+            const shareCardBtn = document.getElementById('share-card-btn');
+
+            if (nameInput) {
+                nameInput.onchange = (e) => { 
+                    appState.settings.birderName = e.target.value;
+                    saveListControlsState(); // app.js の関数
+                };
+            }
+            if (photoInput && photoPreview && removePhotoBtn) {
+                photoInput.onchange = (e) => {
+                    handleBirderPhotoChange(e, photoPreview, removePhotoBtn);
+                };
+                removePhotoBtn.onclick = (e) => {
+                    handleBirderPhotoChange(e, photoPreview, removePhotoBtn, true);
+                };
+            }
+            if (shareCardBtn) {
+                shareCardBtn.onclick = () => handleShareMyCard(liferTotals);
             }
             
-            // --- インポート/エクスポートのリスナー ---
+            // --- もらったカードのリスナー ---
+            const importCardFile = document.getElementById('import-card-file');
+            const receivedList = document.getElementById('received-cards-list');
+
+            if (importCardFile) {
+                importCardFile.onchange = handleImportReceivedCard;
+            }
+            if (receivedList) {
+                receivedList.onclick = (e) => {
+                    const deleteBtn = e.target.closest('[data-action="delete"]');
+                    if (deleteBtn) {
+                        const cardElement = e.target.closest('[data-card-id]');
+                        if (cardElement) {
+                            handleDeleteReceivedCard(cardElement.dataset.cardId);
+                        }
+                    }
+                };
+            }
+
+            // --- 既存のリスナー ---
+            const exportCsvBtn = document.getElementById('export-csv-btn');
+            if (exportCsvBtn) {
+                exportCsvBtn.onclick = handleExportCsvData; 
+            }
+            
             const exportBtn = document.getElementById('export-data-btn');
             const importFile = document.getElementById('import-data-file');
             const importBtn = document.getElementById('import-data-btn');
@@ -204,7 +275,6 @@ function showSettingsPage() {
             if (exportBtn) {
                  exportBtn.onclick = handleExportData;
             }
-            
             if (importFile && importBtn) {
                 importFile.onchange = () => {
                     if (importFile.files.length > 0) {
@@ -222,20 +292,16 @@ function showSettingsPage() {
                 };
             }
 
-            // --- ★ 機能追加: ライフリスト設定のリスナー ---
             const autoUpdateToggle = document.getElementById('auto-update-lifer-toggle');
             const rescanBtn = document.getElementById('rescan-lifer-btn');
             
             if (autoUpdateToggle) {
                 autoUpdateToggle.onclick = () => {
-                    // 1. appState を更新
                     appState.settings.autoUpdateLiferList = !appState.settings.autoUpdateLiferList;
-                    // 2. UIを更新
                     autoUpdateToggle.classList.toggle('bg-emerald-600', appState.settings.autoUpdateLiferList);
                     autoUpdateToggle.classList.toggle('bg-gray-200', !appState.settings.autoUpdateLiferList);
                     autoUpdateToggle.querySelector('span').classList.toggle('translate-x-6', appState.settings.autoUpdateLiferList);
                     autoUpdateToggle.querySelector('span').classList.toggle('translate-x-1', !appState.settings.autoUpdateLiferList);
-                    // 3. localStorage に保存
                     saveListControlsState(); 
                 };
             }
@@ -243,7 +309,6 @@ function showSettingsPage() {
                 rescanBtn.onclick = handleRescanLiferList;
             }
 
-            // --- ★ 機能追加: 背景設定のリスナー ---
             const bgColorPicker = document.getElementById('bg-color-picker');
             const bgImageInput = document.getElementById('bg-image-input');
             const bgRemoveBtn = document.getElementById('bg-remove-image-btn');
@@ -265,7 +330,7 @@ function showSettingsPage() {
                     if (confirmed) {
                         saveBackgroundSettings({ bgImage: '' });
                         bgRemoveBtn.classList.add('hidden');
-                        if (bgImageInput) bgImageInput.value = null; // ファイル選択をリセット
+                        if (bgImageInput) bgImageInput.value = null; 
                     }
                 };
             }
@@ -273,17 +338,14 @@ function showSettingsPage() {
                 bgImageInput.onchange = (e) => {
                     const file = e.target.files[0];
                     if (!file) return;
-
-                    if (file.size > 5 * 1024 * 1024) { // 5MB 制限
-                        console.warn("画像サイズが5MBを超えています。");
+                    if (file.size > 5 * 1024 * 1024) { 
                         showCustomConfirm("画像サイズが5MBを超えています。5MB以下のファイルを選択してください。", "OK", true);
                         e.target.value = null;
                         return;
                     }
-
                     const reader = new FileReader();
                     reader.onload = (event) => {
-                        saveBackgroundSettings({ bgImage: event.target.result }); // Base64を保存
+                        saveBackgroundSettings({ bgImage: event.target.result }); 
                         bgRemoveBtn.classList.remove('hidden');
                     };
                     reader.onerror = (error) => {
@@ -300,7 +362,7 @@ function showSettingsPage() {
     }, 0);
 }
 
-// --- ★ 機能追加: 背景設定を保存する関数 ---
+// --- 背景設定を保存する関数 ---
 function saveBackgroundSettings(newSettings) {
     try {
         const defaultSettings = { bgColor: '#f3f4f6', bgImage: '', bgOpacity: 0.1 };
@@ -309,13 +371,10 @@ function saveBackgroundSettings(newSettings) {
         const storedSettings = localStorage.getItem('birdAppBackground');
         settings = storedSettings ? { ...defaultSettings, ...JSON.parse(storedSettings) } : defaultSettings;
 
-        // 新しい設定をマージ
         settings = { ...settings, ...newSettings };
         
-        // localStorageに保存
         localStorage.setItem('birdAppBackground', JSON.stringify(settings));
         
-        // 即座に背景に適用
         applyBackgroundSettings();
 
     } catch (e) {
@@ -324,49 +383,41 @@ function saveBackgroundSettings(newSettings) {
 }
 
 
-// --- ★ 機能追加: データのエクスポート処理 ---
+// --- データのエクスポート処理 ---
 async function handleExportData() {
     console.log('データのエクスポートを開始します...');
     
     try {
         const db = await openBirdDB();
         
-        // 1. 全データを IndexedDB から取得
         const birds = await db.getAll(STORE_BIRDS);
         const events = await db.getAll(STORE_EVENTS);
         
-        // 2. UI設定を localStorage から取得
         const settings = JSON.parse(localStorage.getItem('birdListControls') || '{}');
         const backgroundSettings = JSON.parse(localStorage.getItem('birdAppBackground') || '{}');
         
-        // 3. 1つのオブジェクトにまとめる
         const backupData = {
             birds: birds,
             events: events,
-            settings: settings, // ★ 修正: birdListControls (appState.settings を含む)
-            backgroundSettings: backgroundSettings, // ★ 背景設定も追加
+            settings: settings, 
+            backgroundSettings: backgroundSettings, 
             exportDate: new Date().toISOString()
         };
         
-        // 4. JSON文字列に変換
-        const jsonString = JSON.stringify(backupData); // (容量節約のためインデントなし)
+        const jsonString = JSON.stringify(backupData); 
         
-        // 5. Blobを作成
         const blob = new Blob([jsonString], { type: 'application/json' });
         
-        // 6. ダウンロードリンクを作成してクリック
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         
-        // 日付でファイル名を作成 (例: bird-pokedex-backup-2025-11-03.json)
         const dateStr = new Date().toISOString().split('T')[0];
         a.download = `bird-pokedex-backup-${dateStr}.json`;
         
         document.body.appendChild(a);
         a.click();
         
-        // 後片付け
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
@@ -374,20 +425,19 @@ async function handleExportData() {
 
     } catch (error) {
         console.error('エクスポートに失敗しました:', error);
-        // カスタムモーダルでエラー表示
         await showCustomConfirm(
             `エクスポートに失敗しました。\nエラー: ${error.message}`,
             'OK',
-            true // OKボタンのみ
+            true 
         );
     }
 }
 
-// --- ★ 機能追加: データのインポート処理 ---
+
+// --- データのインポート処理 ---
 async function handleImportData(file) {
     if (!file) return;
 
-    // 1. カスタム確認モーダルで最終確認
     const confirmed = await showCustomConfirm(
         '本当にインポートしますか？\n現在のすべてのデータ（設定含む）は、ファイルの内容で上書きされます。この操作は元に戻せません。',
         'インポート実行'
@@ -398,7 +448,6 @@ async function handleImportData(file) {
 
     if (!confirmed) {
         console.log('インポートがキャンセルされました。');
-        // ファイル選択をリセット
         if (importFile) importFile.value = null;
         if (importBtn) {
             importBtn.disabled = true;
@@ -410,24 +459,22 @@ async function handleImportData(file) {
     console.log('インポート処理を開始します...');
     showLoadingMessage("データをインポート中...");
 
-    // 2. ファイルを読み込む
     const reader = new FileReader();
     reader.onload = async (event) => {
         try {
             const jsonString = event.target.result;
             const backupData = JSON.parse(jsonString);
 
-            // 3. データのバリデーション
             if (!backupData || !Array.isArray(backupData.birds) || !Array.isArray(backupData.events)) {
                 throw new Error('バックアップファイルの形式が無効です。（鳥またはイベントのデータがありません）');
             }
 
-            // 4. IndexedDB をクリア
             const db = await openBirdDB();
             await db.clear(STORE_BIRDS);
             await db.clear(STORE_EVENTS);
+            // ★★★ もらったカードもクリアする ★★★
+            await db.clear(STORE_CARDS);
             
-            // 5. IndexedDB に新しいデータを書き込み
             const birdTx = db.transaction(STORE_BIRDS, 'readwrite');
             await Promise.all(backupData.birds.map(bird => birdTx.store.put(bird)));
             await birdTx.done;
@@ -436,52 +483,54 @@ async function handleImportData(file) {
             await Promise.all(backupData.events.map(ev => eventTx.store.put(ev)));
             await eventTx.done;
             
-            // 6. localStorage に設定を書き込み
+            // ★★★ もらったカードもインポート（古い形式のバックアップファイル対応） ★★★
+            if (backupData.receivedCards && Array.isArray(backupData.receivedCards)) {
+                 const cardTx = db.transaction(STORE_CARDS, 'readwrite');
+                 await Promise.all(backupData.receivedCards.map(card => cardTx.store.put(card)));
+                 await cardTx.done;
+            }
+
             if (backupData.settings) {
                 localStorage.setItem('birdListControls', JSON.stringify(backupData.settings));
             } else {
-                localStorage.removeItem('birdListControls'); // 古い設定を削除
+                localStorage.removeItem('birdListControls'); 
             }
             
             if (backupData.backgroundSettings) {
                 localStorage.setItem('birdAppBackground', JSON.stringify(backupData.backgroundSettings));
             } else {
-                localStorage.removeItem('birdAppBackground'); // 背景設定もリセット
+                localStorage.removeItem('birdAppBackground'); 
             }
-
 
             console.log('インポートが完了しました。アプリを再読み込みします...');
             
-            // 7. アプリをリロードして変更を反映
             await initializeDatabase(); 
             loadListControlsState();    
             
-            applyBackgroundSettings(); // app.js の関数
+            applyBackgroundSettings(); 
             
-            showListPage(); // 図鑑ページを表示
+            showListPage(); 
             
-            // UIをリセット
             if (importFile) importFile.value = null;
             if (importBtn) {
                  importBtn.disabled = true;
                  importBtn.classList.add('opacity-50', 'cursor-not-allowed');
             }
             
-            // 完了メッセージ
             await showCustomConfirm(
                 'データのインポートが完了しました。',
                 'OK',
-                true // OKボタンのみ
+                true 
             );
 
         } catch (error) {
             console.error('インポート処理中にエラーが発生しました:', error);
-            showListPage(); // エラーでもリストページに戻す
+            showListPage(); 
             
             await showCustomConfirm(
                 `インポートに失敗しました。\nエラー: ${error.message}\n\nファイルが破損していないか、正しいバックアップファイルか確認してください。`,
                 'OK',
-                true // キャンセルボタンを非表示
+                true 
             );
         }
     };
@@ -491,33 +540,26 @@ async function handleImportData(file) {
         await showCustomConfirm(
             'ファイルの読み込みに失敗しました。',
             'OK',
-            true // キャンセルボタンを非表示
+            true 
         );
     };
 
     reader.readAsText(file);
 }
 
-/**
- * ★ 機能追加: 全イベントの観察記録をCSVとしてエクスポートする
- * 形式: 1行 = 1観察記録
- */
+
+// --- 観察記録CSVのエクスポート ---
 async function handleExportCsvData() {
     console.log('CSVエクスポート処理を開始します...');
     
-    // 1. ヘッダー行を定義
     const headers = [
-        // イベント情報
         "EventID", "EventName", "EventDateTime", "EventWeather", "EventLocation", "EventCompanions", "EventMemo",
-        // 観察記録情報
         "ObservedBirdName", "ObservedCount", "ObservedSeen", "ObservedHeard", "ObservedPhoto", "ObservedVideo"
     ];
     
     const csvData = [headers];
     
     try {
-        // 2. 全イベントをループ
-        // birdEvents は app.js でグローバルに定義されている
         if (!birdEvents || birdEvents.length === 0) {
             await showCustomConfirm("エクスポートするイベントがありません。", "OK", true);
             return;
@@ -531,11 +573,10 @@ async function handleExportCsvData() {
                 event.weather || '',
                 event.location || '',
                 event.companions || '',
-                (event.memo || '').replace(/\n/g, ' '), // メモの改行はスペースに置換
+                (event.memo || '').replace(/\n/g, ' '), 
             ];
             
             if (event.observedBirds && event.observedBirds.length > 0) {
-                // 3. イベント内の全観察記録をループ
                 for (const bird of event.observedBirds) {
                     const birdData = [
                         bird.name || '',
@@ -548,19 +589,15 @@ async function handleExportCsvData() {
                     csvData.push([...eventBase, ...birdData]);
                 }
             } else {
-                // 観察記録がないイベントも、イベント情報だけは出力する
                 csvData.push([...eventBase, "", "", "", "", "", ""]);
             }
         }
 
-        // 4. CSV文字列に変換 (PapaParse を利用)
         const csvString = Papa.unparse(csvData);
         
-        // 5. Blobを作成 (UTF-8 with BOM を指定してExcelでの文字化けを防ぐ)
-        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]); // UTF-8 BOM
+        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]); 
         const blob = new Blob([bom, csvString], { type: 'text/csv;charset=utf-8;' });
         
-        // 6. ダウンロードリンクを作成してクリック
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -571,7 +608,6 @@ async function handleExportCsvData() {
         document.body.appendChild(a);
         a.click();
         
-        // 後片付け
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
@@ -582,13 +618,13 @@ async function handleExportCsvData() {
         await showCustomConfirm(
             `CSVエクスポートに失敗しました。\nエラー: ${error.message}`,
             'OK',
-            true // OKボタンのみ
+            true 
         );
     }
 }
 
 
-// --- ★ 機能追加: ライフリスト再集計 ---
+// --- ライフリスト再集計 ---
 async function handleRescanLiferList() {
     const confirmed = await showCustomConfirm(
         'イベント履歴全体からライフリストを再集計しますか？\n（手動でOFFにした項目も、履歴にあればONに更新されます）',
@@ -603,14 +639,10 @@ async function handleRescanLiferList() {
     let birdDataNeedsSave = false;
 
     try {
-        // 1. 全ての鳥について、ライフリストを一旦リセット（する必要はない、追加のみ）
-        // 2. 全てのイベントをループ
         for (const event of birdEvents) {
-            // 3. 全ての観察された鳥をループ
             for (const observedBird of event.observedBirds) {
                 const birdInDB = birdDatabase.find(b => b.name === observedBird.name);
                 if (birdInDB) {
-                    // 4. ご要望通り、false の場合のみ true に更新 (追加のみ)
                     if (observedBird.seen && !birdInDB.lifer_seen) {
                         birdInDB.lifer_seen = true;
                         birdDataNeedsSave = true;
@@ -632,7 +664,6 @@ async function handleRescanLiferList() {
             }
         }
 
-        // 5. 変更があった場合のみDBに保存
         if (birdDataNeedsSave) {
             await saveDatabase();
             console.log(`ライフリストの再集計が完了。${updatedCount}件の更新がありました。`);
@@ -640,7 +671,6 @@ async function handleRescanLiferList() {
             console.log('ライフリストの再集計が完了。更新はありませんでした。');
         }
         
-        // 6. 設定画面を再描画（バーダーカードを更新）
         showSettingsPage();
         
         await showCustomConfirm(
@@ -651,12 +681,181 @@ async function handleRescanLiferList() {
 
     } catch (error) {
         console.error('ライフリストの再集計中にエラー:', error);
-        showSettingsPage(); // エラーでも設定画面に戻す
+        showSettingsPage(); 
         await showCustomConfirm(
             `再集計中にエラーが発生しました。\n${error.message}`,
             'OK',
             true
         );
+    }
+}
+
+
+// --- ★★★ カードの写真変更ハンドラ ★★★ ---
+function handleBirderPhotoChange(event, previewElement, removeBtn, isRemove = false) {
+    const placeholder = 'https://placehold.co/150x150/e0e0e0/b0b0b0?text=No+Image';
+
+    if (isRemove) {
+        appState.settings.birderPhoto = '';
+        previewElement.src = placeholder;
+        removeBtn.classList.add('hidden');
+        saveListControlsState();
+        return;
+    }
+
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) { // 5MB 制限
+        showCustomConfirm("画像サイズが5MBを超えています。5MB以下のファイルを選択してください。", "OK", true);
+        event.target.value = null;
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        appState.settings.birderPhoto = e.target.result; // Base64
+        previewElement.src = e.target.result;
+        removeBtn.classList.remove('hidden');
+        saveListControlsState(); // 変更を即時保存
+    };
+    reader.onerror = (error) => {
+        console.error("File reading error:", error);
+        showCustomConfirm("画像の読み込みに失敗しました。", "OK", true);
+    };
+    reader.readAsDataURL(file);
+}
+
+// --- ★★★ カードを共有（またはエクスポート）するハンドラ ★★★ ---
+async function handleShareMyCard(liferTotals) {
+    const myCardData = {
+        type: 'BirdPokedexCard', // データの種類を識別
+        name: appState.settings.birderName || '名無しのバーダー',
+        photo: appState.settings.birderPhoto || '', // Base64
+        totals: liferTotals,
+        exportedDate: new Date().toISOString()
+    };
+    
+    const jsonString = JSON.stringify(myCardData);
+    // ファイル拡張子を .bcard にする (専用ファイルっぽく)
+    const fileName = `birder-card-${appState.settings.birderName || 'user'}.bcard`;
+    const file = new File([jsonString], fileName, { type: 'application/json' });
+
+    // 1. Web Share API (navigator.share) が使えるか試す
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+            await navigator.share({
+                title: '私のバーダーカード',
+                text: `${myCardData.name}さんのバーダーカードです。`,
+                files: [file]
+            });
+            console.log('カードが正常に共有されました。');
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                console.error('共有エラー:', error);
+                // 共有が失敗したら、フォールバックとしてダウンロードを実行
+                handleExportMyCardFallback(file);
+            } else {
+                console.log('共有がキャンセルされました。');
+            }
+        }
+    } else {
+        // 2. 共有機能が使えないブラウザ（PCなど）の場合は、ダウンロードにフォールバック
+        console.log('Web Share API (Files)非対応。ダウンロードにフォールバックします。');
+        handleExportMyCardFallback(file);
+    }
+}
+
+// --- ★★★ カード共有のフォールバック（ダウンロード） ★★★ ---
+function handleExportMyCardFallback(file) {
+    const url = URL.createObjectURL(file);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    console.log('カードをファイルとしてダウンロードしました。');
+}
+
+// --- ★★★ もらったカードを読み込むハンドラ ★★★ ---
+async function handleImportReceivedCard(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const jsonString = e.target.result;
+            const cardData = JSON.parse(jsonString);
+
+            // データのバリデーション
+            if (!cardData || cardData.type !== 'BirdPokedexCard' || !cardData.totals) {
+                throw new Error('これは有効なバーダーカードファイルではありません。');
+            }
+            
+            // スナップショットとして保存（ユニークIDと受信日を追加）
+            const newCard = {
+                ...cardData,
+                id: `card_${Date.now()}`, // ユニークID
+                receivedDate: new Date().toISOString()
+            };
+
+            // グローバル変数とDBに追加
+            receivedCards.push(newCard);
+            await saveReceivedCards(); // app.js の関数
+            
+            console.log('カードを読み込みました:', newCard);
+            await showCustomConfirm(
+                `${escapeHTML(newCard.name)}さんのカードを読み込みました！`,
+                'OK',
+                true
+            );
+            
+            // 設定画面を再描画して一覧に反映
+            showSettingsPage();
+
+        } catch (error) {
+            console.error('カードの読み込みに失敗しました:', error);
+            await showCustomConfirm(
+                `カードの読み込みに失敗しました。\nエラー: ${error.message}`,
+                'OK',
+                true
+            );
+        } finally {
+            // ファイル選択をリセット
+            event.target.value = null;
+        }
+    };
+    reader.onerror = async () => {
+        await showCustomConfirm('ファイルの読み取りに失敗しました。', 'OK', true);
+        event.target.value = null;
+    };
+    reader.readAsText(file);
+}
+
+// --- ★★★ もらったカードを削除するハンドラ ★★★ ---
+async function handleDeleteReceivedCard(cardId) {
+    if (!cardId) return;
+    
+    const cardIndex = receivedCards.findIndex(c => c.id === cardId);
+    if (cardIndex === -1) {
+        console.error('削除対象のカードが見つかりません。');
+        return;
+    }
+    
+    const cardName = receivedCards[cardIndex].name || '（名前なし）';
+
+    const confirmed = await showCustomConfirm(
+        `${escapeHTML(cardName)}さんのカードを削除しますか？`,
+        '削除'
+    );
+    
+    if (confirmed) {
+        receivedCards.splice(cardIndex, 1); // 配列から削除
+        await saveReceivedCards(); // DBを更新
+        showSettingsPage(); // 画面を再描画
     }
 }
 
@@ -684,3 +883,4 @@ async function handleRescanLiferList() {
         try { updateHeader('error', 'エラー'); } catch(e) { console.error("Failed to update header on error:", e); } 
     }
 })();
+```eof

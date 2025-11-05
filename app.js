@@ -7,6 +7,8 @@ const DB_NAME = 'BirdPokedexDB';
 const DB_VERSION = 1;
 const STORE_BIRDS = 'birdDatabase';
 const STORE_EVENTS = 'events';
+// ★★★ バーダーカード保存用のストアを追加 ★★★
+const STORE_CARDS = 'receivedCards'; 
 
 /**
  * IndexedDB データベースを開き、ストア（テーブル）を作成する
@@ -25,6 +27,11 @@ async function openBirdDB() {
                 // 'id' をキー（主キー）として使用
                 db.createObjectStore(STORE_EVENTS, { keyPath: 'id' });
             }
+            // ★★★ 'receivedCards' ストア（テーブル）を作成 ★★★
+            if (!db.objectStoreNames.contains(STORE_CARDS)) {
+                // 'id' をキー（主キー）として使用
+                db.createObjectStore(STORE_CARDS, { keyPath: 'id' });
+            }
         },
     });
     return db;
@@ -34,6 +41,7 @@ async function openBirdDB() {
 
 // --- グローバル変数 ---
 const app = document.getElementById('app');
+// ... (中略: header, headerTitle, backButton などは変更なし) ...
 const header = document.getElementById('header');
 const headerTitle = document.getElementById('headerTitle');
 const backButton = document.getElementById('backButton');
@@ -54,8 +62,11 @@ let currentBird = null;
 let allOrders = [];
 let birdEvents = [];
 let currentEventIndex = -1;
+// ★★★ もらったカードを保存するグローバル変数 ★★★
+let receivedCards = []; 
 
 // --- 絞り込み項目の定義 ---
+// ... (中略: filterableSeasons, filterableTypes などは変更なし) ...
 const filterableSeasons = ['留鳥', '夏鳥', '冬鳥', '旅鳥', '迷鳥'];
 const filterableTypes = [
     '海鳥', 'カモメ', 'ガンカモ', 'ツル', 'サギ', 'シギ', 'ハト', '猛禽',
@@ -73,6 +84,7 @@ const sizeRanges = {
     s5: { label: '100cm ~', min: 100, max: Infinity },
 };
 
+
 // --- アプリケーションの状態管理 ---
 const appState = {
     currentPage: 'list',
@@ -85,7 +97,6 @@ const appState = {
             season: [], type: [...filterableTypes], habitat: habitatKeys.map(h => h.key),
             size: Object.keys(sizeRanges), classification: { orders: [], family: null },
             edited: 'all',
-            // ★ 修正: ライフリスト絞り込みを詳細化
             lifer: {
                 seen: 'any', // 'any', 'yes', 'no'
                 heard: 'any',
@@ -104,11 +115,15 @@ const appState = {
         filterObservedType: 'any'
     },
     settings: {
-        autoUpdateLiferList: true
+        autoUpdateLiferList: true,
+        // ★★★ バーダーカード用の設定を追加 ★★★
+        birderName: '',
+        birderPhoto: '' // Base64文字列 または 図鑑の鳥ID
     }
 };
 
 // --- CSV行を鳥オブジェクトに変換 ---
+// ... (中略: convertPapaRowToBirdObject は変更なし) ...
 function convertPapaRowToBirdObject(row) {
     const obj = {};
     const requiredKeys = ['id', 'name', 'classification'];
@@ -133,7 +148,6 @@ function convertPapaRowToBirdObject(row) {
     if (obj.observed_location === undefined) obj.observed_location = "";
     if (obj.lastObservedEventId === undefined) obj.lastObservedEventId = "";
     if (obj.voice_url === undefined) obj.voice_url = "";
-    // ★ 修正: 'true'/'false' (文字列) を true/false (ブール値) に変換
     obj.lifer_seen = (obj.lifer_seen === 'true' || obj.lifer_seen === true);
     obj.lifer_heard = (obj.lifer_heard === 'true' || obj.lifer_heard === true);
     obj.lifer_photo = (obj.lifer_photo === 'true' || obj.lifer_photo === true);
@@ -141,7 +155,9 @@ function convertPapaRowToBirdObject(row) {
     return hasRequiredData ? obj : null;
 }
 
+
 // --- DBカラム定義 ---
+// ... (中略: MASTER_COLUMNS, LOCAL_COLUMNS は変更なし) ...
 const MASTER_COLUMNS = [
     'name', 'classification', 'size', 'special_notes',
     'habitat_hokkaido', 'habitat_honshu', 'habitat_shikoku', 'habitat_kyushu', 'habitat_islands',
@@ -153,12 +169,13 @@ const LOCAL_COLUMNS = [
     'lifer_seen', 'lifer_heard', 'lifer_photo', 'lifer_video'
 ];
 
+
 // --- データベース初期化 ---
 async function initializeDatabase() {
     let db;
     try {
         db = await openBirdDB();
-
+        
         // 1. イベントデータを IndexedDB から読み込む
         const storedEvents = await db.getAll(STORE_EVENTS);
         if (storedEvents && Array.isArray(storedEvents)) {
@@ -166,23 +183,26 @@ async function initializeDatabase() {
         } else {
             birdEvents = [];
         }
+        
+        // ★★★ 3. もらったカードデータを IndexedDB から読み込む ★★★
+        const storedCards = await db.getAll(STORE_CARDS);
+        if (storedCards && Array.isArray(storedCards)) {
+            receivedCards = storedCards;
+        } else {
+            receivedCards = [];
+        }
 
         // 2. 鳥データを IndexedDB から読み込む
         const storedData = await db.getAll(STORE_BIRDS);
+        // ... (中略: 鳥データの読み込みロジックは変更なし) ...
         if (storedData && Array.isArray(storedData) && storedData.length > 0) {
             birdDatabase = storedData;
             console.log(`Loaded ${birdDatabase.length} birds from IndexedDB`);
-            
-            // データ更新チェック（マスターCSVとのマージ）
             await checkAndUpdateData(); 
-            
         } else {
-            // IndexedDB が空の場合
             birdDatabase = [];
             console.log('No bird data found in IndexedDB. Checking remote CSV...');
-            
-            // ★ 機能追加: IndexedDBが空なら、自動でCSVを取得しにいく
-            await fetchCSVAndSave(); // これがデータをDBに保存し、birdDatabaseグローバル変数も更新する
+            await fetchCSVAndSave(); 
         }
 
     } catch (e) {
@@ -190,6 +210,7 @@ async function initializeDatabase() {
         localStorage.setItem('birdDatabaseLoadError', 'true'); 
         birdDatabase = [];
         birdEvents = [];
+        receivedCards = []; // ★ エラー時も初期化
     }
     
     updateAllOrdersList(); 
@@ -197,6 +218,7 @@ async function initializeDatabase() {
 }
 
 // --- 「目」リスト更新 ---
+// ... (中略: updateAllOrdersList は変更なし) ...
 function updateAllOrdersList() {
      allOrders = [...new Set(birdDatabase.map(b => {
         if (!b || !b.classification) return null;
@@ -205,7 +227,9 @@ function updateAllOrdersList() {
     }).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'ja'));
 }
 
+
 // --- ローディングメッセージ ---
+// ... (中略: showLoadingMessage は変更なし) ...
 function showLoadingMessage(message) {
     if (app) {
         app.innerHTML = `<div class="bg-white rounded-lg shadow p-6 text-center"><h2 class="text-xl font-semibold mb-4">${message}</h2><p class="text-gray-600">しばらくお待ちください...</p></div>`;
@@ -215,7 +239,9 @@ function showLoadingMessage(message) {
     updateHeader('loading');
 }
 
+
 // --- CSVダウンロード & 保存 ---
+// ... (中略: fetchCSVAndSave は変更なし) ...
 async function fetchCSVAndSave() {
     if (localStorage.getItem('birdDatabaseLoadError') && !GITHUB_CSV_URL.includes('[YOUR_USERNAME]')) {
         console.warn("Skipping fetchCSVAndSave due to existing load error. Clear data to retry.");
@@ -271,7 +297,9 @@ async function fetchCSVAndSave() {
     }
 }
 
+
 // --- データ更新 (マージ) ---
+// ... (中略: checkAndUpdateData は変更なし) ...
 async function checkAndUpdateData() {
     if (localStorage.getItem('birdDatabaseLoadError')) {
         console.warn("Skipping checkAndUpdateData due to existing load error.");
@@ -343,7 +371,9 @@ async function checkAndUpdateData() {
     loadListControlsState(); 
 }
 
+
 // --- DB保存 (鳥) ---
+// ... (中略: saveDatabase は変更なし) ...
 async function saveDatabase() { 
      try { 
         const db = await openBirdDB();
@@ -362,7 +392,9 @@ async function saveDatabase() {
     }
 }
 
+
 // --- DB保存 (イベント) ---
+// ... (中略: saveEventsData は変更なし) ...
 async function saveEventsData() { 
      try { 
         const db = await openBirdDB();
@@ -381,7 +413,27 @@ async function saveEventsData() {
      }
 }
 
+
+// ★★★ DB保存 (もらったカード) ★★★
+async function saveReceivedCards() { 
+     try { 
+        const db = await openBirdDB();
+        const tx = db.transaction(STORE_CARDS, 'readwrite');
+        
+        await tx.store.clear();
+        // receivedCards グローバル変数から保存
+        await Promise.all(receivedCards.map(card => tx.store.put(card)));
+        await tx.done;
+
+        console.log(`Successfully saved ${receivedCards.length} received cards to IndexedDB.`);
+     } 
+     catch (e) { 
+        console.error('Failed to save received cards to IndexedDB:', e); 
+     }
+}
+
 // --- 状態保存 (リスト制御) ---
+// ... (中略: saveListControlsState は変更なし) ...
 function saveListControlsState() { 
     try {
         const stateToSave = { 
@@ -396,6 +448,7 @@ function saveListControlsState() {
     }
 }
 
+
 // --- 状態読み込み (リスト制御) ---
 function loadListControlsState() { 
     let storedState = null;
@@ -407,9 +460,9 @@ function loadListControlsState() {
     }
 
     const defaultSeasons = filterableSeasons.filter(s => s !== '迷鳥');
+    // ... (中略) ...
     const defaultClassificationOrders = Array.isArray(allOrders) ? [...allOrders] : []; 
     
-    // ★ 修正: ライフリスト絞り込みのデフォルト
     const defaultLiferFilter = {
         seen: 'any', heard: 'any', photo: 'any', video: 'any'
     };
@@ -417,7 +470,7 @@ function loadListControlsState() {
         season: [...defaultSeasons], type: [...filterableTypes], habitat: habitatKeys.map(h => h.key),
         size: Object.keys(sizeRanges), classification: { orders: defaultClassificationOrders, family: null }, 
         edited: 'all',
-        lifer: defaultLiferFilter // ★ 修正
+        lifer: defaultLiferFilter 
     };
     
     const defaultEventControls = {
@@ -428,8 +481,11 @@ function loadListControlsState() {
         filterObservedType: 'any'
     };
     
+    // ★★★ デフォルトにカード設定を追加 ★★★
     const defaultSettings = {
-        autoUpdateLiferList: true
+        autoUpdateLiferList: true,
+        birderName: '',
+        birderPhoto: ''
     };
 
     if (storedState) {
@@ -448,6 +504,7 @@ function loadListControlsState() {
         loadedState.activePopup = null; loadedState.openFilterSection = null; loadedState.currentPage = 1; 
         
         const loadedFilters = loadedState.filters || {};
+        // ... (中略: フィルターのマージ処理) ...
         const loadedClassification = (typeof loadedFilters.classification === 'object' && loadedFilters.classification !== null) ? loadedFilters.classification : {};
         
         loadedState.filters = {
@@ -461,16 +518,16 @@ function loadListControlsState() {
                         : defaultClassificationOrders 
             },
             season: loadedFilters.season || [...defaultSeasons],
-            // ★ 修正: liferStatus の代わりに lifer オブジェクトを読み込む
             lifer: (loadedFilters.lifer && typeof loadedFilters.lifer === 'object') ? 
                    { ...defaultLiferFilter, ...loadedFilters.lifer } : 
                    defaultLiferFilter
         };
-        delete loadedState.filters.liferStatus; // 古いプロパティを削除
+        delete loadedState.filters.liferStatus; 
         delete loadedState.filters.photo;
         
         appState.listControls = { ...appState.listControls, ...loadedState };
         appState.eventControls = { ...defaultEventControls, ...(loadedState.eventControls || {}) };
+        // ★★★ settings もマージする ★★★
         appState.settings = { ...defaultSettings, ...(loadedState.settings || {}) }; 
         
         delete appState.listControls.eventControls; 
@@ -485,9 +542,10 @@ function loadListControlsState() {
 }
 
 // --- 絞り込み状態チェック ---
+// ... (中略: getFilterStatus は変更なし) ...
 function getFilterStatus() { 
     const { filterText, filters } = appState.listControls;
-    if (!filters || !filters.classification || !filters.lifer) { // ★ 修正
+    if (!filters || !filters.classification || !filters.lifer) { 
         console.warn("getFilterStatus: filters structure is incomplete.");
         return { isFiltered: false }; 
     }
@@ -498,7 +556,6 @@ function getFilterStatus() {
     const isSizeFiltered = (filters.size || []).length !== Object.keys(sizeRanges).length;
     const isClassificationFiltered = (filters.classification.orders || []).length !== allOrders.length;
     const isEditedFiltered = filters.edited !== 'all'; 
-    // ★ 修正: ライフリスト絞り込み
     const isLiferStatusFiltered = filters.lifer.seen !== 'any' || filters.lifer.heard !== 'any' || filters.lifer.photo !== 'any' || filters.lifer.video !== 'any';
     
     const isFiltered = isTextFiltered || isSeasonFiltered || isTypeFiltered || isHabitatFiltered || isSizeFiltered || isClassificationFiltered || isEditedFiltered || isLiferStatusFiltered; 
@@ -506,7 +563,9 @@ function getFilterStatus() {
     return { isFiltered, isTextFiltered, isSeasonFiltered, isTypeFiltered, isHabitatFiltered, isSizeFiltered, isClassificationFiltered, isEditedFiltered, isLiferStatusFiltered }; 
 } 
 
+
 // --- ヘッダー更新 ---
+// ... (中略: updateHeader は変更なし) ...
 function updateHeader(mode, title = "鳥類図鑑") { 
     try { 
         if (!headerTitle || !backButton || !headerActions || !searchPopup || !filterPopup || !viewPopup || !app || !searchToggleButton || !filterToggleButton || !viewToggleButton || !filterActiveDot) {
@@ -548,7 +607,9 @@ function updateHeader(mode, title = "鳥類図鑑") {
     }
 }
 
+
 // --- ポップアップ開閉 (共通) ---
+// ... (中略: togglePopup, closePopupsOnMainTap は変更なし) ...
 function togglePopup(popupName) { 
     const { activePopup } = appState.listControls;
     appState.listControls.activePopup = (activePopup === popupName) ? null : popupName;
@@ -568,7 +629,9 @@ function closePopupsOnMainTap(event) {
     }
 }
 
+
 // --- ユーティリティ関数 (共通) ---
+// ... (中略: getSizeRange, getSeasonTag, getHabitatLabels, escapeHTML, toHiragana, getSearchSuggestions は変更なし) ...
 function getSizeRange(sizeCm) { 
     const sizeString = String(sizeCm || '');
     const match = sizeString.match(/(\d+(\.\d+)?)/); 
@@ -604,7 +667,6 @@ function toHiragana(str) {
     if (!str) return '';
     return str.replace(/[\u30A1-\u30F6]/g, m => String.fromCharCode(m.charCodeAt(0)-0x60));
 } 
-// ★ 修正: getSearchSuggestions (先頭一致を優先)
 function getSearchSuggestions(text) { 
     if (!text) return []; 
     const hText = toHiragana(text);
@@ -620,7 +682,6 @@ function getSearchSuggestions(text) {
         }
     });
     
-    // 先頭一致をソートし、次に含むものをソートし、結合して上位5件
     const jaCollator = new Intl.Collator('ja');
     startsWith.sort(jaCollator.compare);
     includes.sort(jaCollator.compare);
@@ -628,7 +689,9 @@ function getSearchSuggestions(text) {
     return [...startsWith, ...includes].slice(0, 5); 
 } 
 
+
 // --- タブ切り替え ---
+// ... (中略: setupTabs は変更なし) ...
 function setupTabs() { 
     const tabs = [ { id: 'tab-pokedex', page: showListPage }, { id: 'tab-events', page: showEventsPage }, { id: 'tab-settings', page: showSettingsPage } ];
     tabs.forEach(tab => {
@@ -648,15 +711,9 @@ function setupTabs() {
     });
  }
 
-// --- ★ 機能追加: カスタム確認モーダル（クッション） ---
 
-/**
- * 汎用の確認モーダルを表示します。
- * @param {string} text - モーダルに表示するテキスト
- * @param {string} okLabel - OKボタンのラベル (例: "削除")
- * @param {boolean} [hideCancel=false] - キャンセルボタンを隠すかどうか
- * @returns {Promise<boolean>} ユーザーがOK (true) か キャンセル (false) を押したか
- */
+// --- ★ 機能追加: カスタム確認モーダル（クッション） ---
+// ... (中略: showCustomConfirm, hideCustomConfirm は変更なし) ...
 async function showCustomConfirm(text, okLabel = 'OK', hideCancel = false) {
     return new Promise((resolve) => {
         const modal = document.getElementById('custom-confirm-modal');
@@ -666,64 +723,47 @@ async function showCustomConfirm(text, okLabel = 'OK', hideCancel = false) {
 
         if (!modal || !modalText || !okButton || !cancelButton) {
             console.error("Custom confirm modal elements not found.");
-            resolve(false); // エラー時はキャンセルとして扱う
+            resolve(false); 
             return;
         }
 
-        // テキストとボタンラベルを設定
-        // ★ 修正: 改行(\n)を <br> に変換
         modalText.innerHTML = escapeHTML(text).replace(/\n/g, '<br>');
         okButton.textContent = okLabel;
 
-        // キャンセルボタンの表示/非表示
         cancelButton.classList.toggle('hidden', hideCancel);
         
-        // ボタンのスタイルをリセット (赤くない状態に)
         okButton.classList.remove('bg-red-600', 'hover:bg-red-700', 'bg-emerald-600', 'hover:bg-emerald-700');
         
-        // OKボタンが "削除" を含む場合、赤くする
         if (okLabel.includes('削除') || okLabel.includes('リセット') || okLabel.includes('インポート') || okLabel.includes('上書き')) {
             okButton.classList.add('bg-red-600', 'hover:bg-red-700');
         } else {
             okButton.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
         }
 
-        // モーダルを表示
         modal.classList.remove('hidden');
 
-        // リスナーを一度削除してから再設定（重複防止）
-        // cloneNode(true) を使うと、既存のリスナーが（もしあれば）コピーされない
         const newOkButton = okButton.cloneNode(true);
         okButton.parentNode.replaceChild(newOkButton, okButton);
         
         const newCancelButton = cancelButton.cloneNode(true);
         cancelButton.parentNode.replaceChild(newCancelButton, cancelButton);
 
-        // OKボタンの処理
         newOkButton.onclick = () => {
             hideCustomConfirm();
             resolve(true);
         };
 
-        // キャンセルボタンの処理
         newCancelButton.onclick = () => {
             hideCustomConfirm();
             resolve(false);
         };
         
-        // 背景クリックでキャンセル（させない）
         modal.onclick = (e) => {
             if (e.target.id === 'custom-confirm-modal') {
-                // hideCustomConfirm(); // 意図しないクリックで閉じないようにする
-                // resolve(false);
             }
         };
     });
 }
-
-/**
- * 汎用の確認モーダルを非表示にします。
- */
 function hideCustomConfirm() {
     const modal = document.getElementById('custom-confirm-modal');
     if (modal) {
@@ -733,10 +773,7 @@ function hideCustomConfirm() {
 
 
 // --- ★ 機能追加: 背景設定 ---
-
-/**
- * localStorage から背景設定を読み込み、<body> と #background-overlay に適用します。
- */
+// ... (中略: applyBackgroundSettings は変更なし) ...
 function applyBackgroundSettings() {
     const defaultSettings = {
         bgColor: '#f3f4f6', // bg-gray-100
@@ -757,16 +794,11 @@ function applyBackgroundSettings() {
     const overlay = document.getElementById('background-overlay');
 
     if (!body || !overlay) {
-        // app.js の読み込み時点では DOM がまだ準備できていない可能性があるため、
-        // settings.js の (async () => { ... })() ブロックの先頭で呼び出す
-        // console.error("Body or background overlay not found.");
         return;
     }
 
-    // 1. 背景色を <body> に適用
     body.style.backgroundColor = settings.bgColor;
 
-    // 2. 背景画像を #background-overlay に適用
     if (settings.bgImage && settings.bgImage.startsWith('data:image')) {
         overlay.style.backgroundImage = `url(${settings.bgImage})`;
         overlay.style.opacity = settings.bgOpacity;
