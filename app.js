@@ -85,12 +85,18 @@ const appState = {
             season: [], type: [...filterableTypes], habitat: habitatKeys.map(h => h.key), 
             size: Object.keys(sizeRanges), classification: { orders: [], family: null }, 
             edited: 'all', 
-            liferStatus: 'all' // ★ 機能追加: 'all', 'yes', 'no'
+            // ★ 修正: ライフリスト絞り込みを詳細化
+            lifer: {
+                seen: 'any', // 'any', 'yes', 'no'
+                heard: 'any',
+                photo: 'any',
+                video: 'any'
+            }
         },
         viewMode: 'tile', activePopup: null, openFilterSection: null, 
         currentPage: 1, itemsPerPage: 30, 
     }, 
-    eventControls: { // イベントタブの並び替え・絞り込み状態
+    eventControls: { 
         listSort: 'dateTime_desc',
         detailSort: 'added_asc',
         currentPage: 1, 
@@ -403,11 +409,15 @@ function loadListControlsState() {
     const defaultSeasons = filterableSeasons.filter(s => s !== '迷鳥');
     const defaultClassificationOrders = Array.isArray(allOrders) ? [...allOrders] : []; 
     
+    // ★ 修正: ライフリスト絞り込みのデフォルト
+    const defaultLiferFilter = {
+        seen: 'any', heard: 'any', photo: 'any', video: 'any'
+    };
     const defaultFilters = {
         season: [...defaultSeasons], type: [...filterableTypes], habitat: habitatKeys.map(h => h.key),
         size: Object.keys(sizeRanges), classification: { orders: defaultClassificationOrders, family: null }, 
         edited: 'all',
-        liferStatus: 'all' // ★ 機能追加: ライフリスト絞り込み
+        lifer: defaultLiferFilter // ★ 修正
     };
     
     const defaultEventControls = {
@@ -451,8 +461,12 @@ function loadListControlsState() {
                         : defaultClassificationOrders 
             },
             season: loadedFilters.season || [...defaultSeasons],
-            liferStatus: loadedFilters.liferStatus || 'all' // ★ 機能追加
+            // ★ 修正: liferStatus の代わりに lifer オブジェクトを読み込む
+            lifer: (loadedFilters.lifer && typeof loadedFilters.lifer === 'object') ? 
+                   { ...defaultLiferFilter, ...loadedFilters.lifer } : 
+                   defaultLiferFilter
         };
+        delete loadedState.filters.liferStatus; // 古いプロパティを削除
         delete loadedState.filters.photo;
         
         appState.listControls = { ...appState.listControls, ...loadedState };
@@ -473,8 +487,8 @@ function loadListControlsState() {
 // --- 絞り込み状態チェック ---
 function getFilterStatus() { 
     const { filterText, filters } = appState.listControls;
-    if (!filters || !filters.classification) {
-        console.warn("getFilterStatus: filters or filters.classification is undefined.");
+    if (!filters || !filters.classification || !filters.lifer) { // ★ 修正
+        console.warn("getFilterStatus: filters structure is incomplete.");
         return { isFiltered: false }; 
     }
     const isTextFiltered = (filterText || '').length > 0;
@@ -484,11 +498,12 @@ function getFilterStatus() {
     const isSizeFiltered = (filters.size || []).length !== Object.keys(sizeRanges).length;
     const isClassificationFiltered = (filters.classification.orders || []).length !== allOrders.length;
     const isEditedFiltered = filters.edited !== 'all'; 
-    const isLiferStatusFiltered = filters.liferStatus !== 'all'; // ★ 機能追加
+    // ★ 修正: ライフリスト絞り込み
+    const isLiferStatusFiltered = filters.lifer.seen !== 'any' || filters.lifer.heard !== 'any' || filters.lifer.photo !== 'any' || filters.lifer.video !== 'any';
     
-    const isFiltered = isTextFiltered || isSeasonFiltered || isTypeFiltered || isHabitatFiltered || isSizeFiltered || isClassificationFiltered || isEditedFiltered || isLiferStatusFiltered; // ★ 機能追加
+    const isFiltered = isTextFiltered || isSeasonFiltered || isTypeFiltered || isHabitatFiltered || isSizeFiltered || isClassificationFiltered || isEditedFiltered || isLiferStatusFiltered; 
     
-    return { isFiltered, isTextFiltered, isSeasonFiltered, isTypeFiltered, isHabitatFiltered, isSizeFiltered, isClassificationFiltered, isEditedFiltered, isLiferStatusFiltered }; // ★ 機能追加
+    return { isFiltered, isTextFiltered, isSeasonFiltered, isTypeFiltered, isHabitatFiltered, isSizeFiltered, isClassificationFiltered, isEditedFiltered, isLiferStatusFiltered }; 
 } 
 
 // --- ヘッダー更新 ---
@@ -589,10 +604,28 @@ function toHiragana(str) {
     if (!str) return '';
     return str.replace(/[\u30A1-\u30F6]/g, m => String.fromCharCode(m.charCodeAt(0)-0x60));
 } 
-// ★ 修正: getSearchSuggestions を pokedex.js から app.js (共通) に移動
+// ★ 修正: getSearchSuggestions (先頭一致を優先)
 function getSearchSuggestions(text) { 
-    if (!text) return []; const hText = toHiragana(text);
-    return birdDatabase.filter(b => toHiragana(b.name||'').includes(hText)).map(b => b.name).slice(0, 5); 
+    if (!text) return []; 
+    const hText = toHiragana(text);
+    const startsWith = [];
+    const includes = [];
+    
+    birdDatabase.forEach(b => {
+        const hName = toHiragana(b.name || '');
+        if (hName.startsWith(hText)) {
+            startsWith.push(b.name);
+        } else if (hName.includes(hText)) {
+            includes.push(b.name);
+        }
+    });
+    
+    // 先頭一致をソートし、次に含むものをソートし、結合して上位5件
+    const jaCollator = new Intl.Collator('ja');
+    startsWith.sort(jaCollator.compare);
+    includes.sort(jaCollator.compare);
+    
+    return [...startsWith, ...includes].slice(0, 5); 
 } 
 
 // --- タブ切り替え ---

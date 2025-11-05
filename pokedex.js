@@ -109,16 +109,28 @@ function renderFilterPopup() {
             case 'season': contentHtml = `<div class="p-4"><div class="grid grid-cols-2 gap-2">` + filterableSeasons.map(s => `<label class="flex items-center space-x-2"><input type="checkbox" name="season" value="${s}" ${filters.season.includes(s)?'checked':''} class="form-checkbox text-emerald-600 rounded"><span>${s}</span></label>`).join('') + `</div>${createSelectButtons(section.id)}</div>`; break;
             case 'habitat': contentHtml = `<div class="p-4"><div class="grid grid-cols-2 gap-2">` + habitatKeys.map(h => `<label class="flex items-center space-x-2"><input type="checkbox" name="habitat" value="${h.key}" ${filters.habitat.includes(h.key)?'checked':''} class="form-checkbox text-emerald-600 rounded"><span>${h.label}</span></label>`).join('') + `</div>${createSelectButtons(section.id)}</div>`; break;
             case 'size': contentHtml = `<div class="p-4"><div class="grid grid-cols-2 gap-2">` + Object.entries(sizeRanges).map(([k,r]) => `<label class="flex items-center space-x-2"><input type="checkbox" name="size" value="${k}" ${filters.size.includes(k)?'checked':''} class="form-checkbox text-emerald-600 rounded"><span>${r.label}</span></label>`).join('') + `</div>${createSelectButtons(section.id)}</div>`; break;
+            
             // ★ 修正: 「図鑑の編集履歴」セクションのUI
             case 'edited': 
+                const liferFilters = [
+                    { key: 'seen', label: '目視' },
+                    { key: 'heard', label: '声' },
+                    { key: 'photo', label: '写真' },
+                    { key: 'video', label: '動画' }
+                ];
                 contentHtml = `
                 <div class="p-4 space-y-4">
                     <div>
                         <h4 class="text-sm font-semibold text-gray-500 mb-2">ライフリストの有無</h4>
-                        <div class="space-y-2">
-                            <label class="flex items-center space-x-2"><input type="radio" name="liferStatus" value="all" ${filters.liferStatus === 'all' ? 'checked' : ''} class="form-radio text-emerald-600"><span>すべて</span></label>
-                            <label class="flex items-center space-x-2"><input type="radio" name="liferStatus" value="yes" ${filters.liferStatus === 'yes' ? 'checked' : ''} class="form-radio text-emerald-600"><span>ライフリスト登録あり</span></label>
-                            <label class="flex items-center space-x-2"><input type="radio" name="liferStatus" value="no" ${filters.liferStatus === 'no' ? 'checked' : ''} class="form-radio text-emerald-600"><span>ライフリスト登録なし</span></label>
+                        <div class="grid grid-cols-3 gap-x-3 gap-y-3">
+                            ${liferFilters.map(f => `
+                                <label class="block text-xs font-medium text-gray-700">${f.label}</label>
+                                <select name="lifer_${f.key}" class="col-span-2 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-1 text-sm focus:ring-emerald-500 focus:border-emerald-500">
+                                    <option value="any" ${filters.lifer[f.key] === 'any' ? 'selected' : ''}>すべて</option>
+                                    <option value="yes" ${filters.lifer[f.key] === 'yes' ? 'selected' : ''}>あり</option>
+                                    <option value="no" ${filters.lifer[f.key] === 'no' ? 'selected' : ''}>なし</option>
+                                </select>
+                            `).join('')}
                         </div>
                     </div>
                     <div class="pt-4 border-t border-gray-200">
@@ -154,12 +166,25 @@ function renderFilterPopup() {
             }));
         });
         
-        // ★ 修正: 'edited' と 'liferStatus' のラジオボタンリスナー
-        ['edited', 'liferStatus'].forEach(name => { 
+        // ★ 修正: 'edited' のラジオボタンリスナー
+        ['edited'].forEach(name => { 
             filterPopup.querySelectorAll(`input[name="${name}"]`).forEach(radio => radio.addEventListener('change', (e) => {
                 appState.listControls.filters[name] = e.target.value; appState.listControls.currentPage = 1;
                 applyFiltersAndRenderList(); saveListControlsState(); updateHeader('list');
             }));
+        });
+        
+        // ★ 機能追加: ライフリストのセレクトボックスリスナー
+        ['lifer_seen', 'lifer_heard', 'lifer_photo', 'lifer_video'].forEach(name => {
+            const select = filterPopup.querySelector(`select[name="${name}"]`);
+            if (select) {
+                select.addEventListener('change', (e) => {
+                    const key = name.split('_')[1]; // 'seen', 'heard', ...
+                    appState.listControls.filters.lifer[key] = e.target.value;
+                    appState.listControls.currentPage = 1;
+                    applyFiltersAndRenderList(); saveListControlsState(); updateHeader('list');
+                });
+            }
         });
         
         const handleSelectAll = (id, selectAll) => {
@@ -241,14 +266,23 @@ function applyFiltersAndRenderList() {
                               (filters.edited === 'yes' && isEdited) ||
                               (filters.edited === 'no' && !isEdited);
         
-        // ★ 機能追加: 「ライフリスト」のロジック
-        const isLifer = bird.lifer_seen || bird.lifer_heard || bird.lifer_photo || bird.lifer_video;
-        const matchesLiferStatus = filters.liferStatus === 'all' ||
-                                   (filters.liferStatus === 'yes' && isLifer) ||
-                                   (filters.liferStatus === 'no' && !isLifer);
-
+        // ★ 機能追加: 「ライフリスト」のロジック (詳細版)
+        const matchesLiferSeen = filters.lifer.seen === 'any' ||
+                                 (filters.lifer.seen === 'yes' && bird.lifer_seen) ||
+                                 (filters.lifer.seen === 'no' && !bird.lifer_seen);
+        const matchesLiferHeard = filters.lifer.heard === 'any' ||
+                                  (filters.lifer.heard === 'yes' && bird.lifer_heard) ||
+                                  (filters.lifer.heard === 'no' && !bird.lifer_heard);
+        const matchesLiferPhoto = filters.lifer.photo === 'any' ||
+                                  (filters.lifer.photo === 'yes' && bird.lifer_photo) ||
+                                  (filters.lifer.photo === 'no' && !bird.lifer_photo);
+        const matchesLiferVideo = filters.lifer.video === 'any' ||
+                                  (filters.lifer.video === 'yes' && bird.lifer_video) ||
+                                  (filters.lifer.video === 'no' && !bird.lifer_video);
         
-        return matchesSearch && matchesSeason && matchesType && matchesClassification && matchesHabitat && matchesSize && matchesEdited && matchesLiferStatus; 
+        return matchesSearch && matchesSeason && matchesType && matchesClassification && 
+               matchesHabitat && matchesSize && matchesEdited && 
+               matchesLiferSeen && matchesLiferHeard && matchesLiferPhoto && matchesLiferVideo; 
     });
     
     // (並び替えロジックは変更なし)

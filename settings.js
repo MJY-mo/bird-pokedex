@@ -41,7 +41,8 @@ function showSettingsPage() {
             <div class="space-y-3">
                 <div class="flex justify-between items-center">
                     <span class="font-medium text-gray-700">ライフリスト総数</span>
-                    <span class="font-bold text-xl text-emerald-600">${liferTotals.any} / ${totalSpecies} 種</span>
+                    <!-- ★ 修正: 母数 (${totalSpecies}) を削除 -->
+                    <span class="font-bold text-xl text-emerald-600">${liferTotals.any} 種</span>
                 </div>
                 <hr class="border-gray-100">
                 <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -68,6 +69,7 @@ function showSettingsPage() {
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-xl font-semibold mb-4">ライフリスト設定</h2>
             <div class="space-y-4">
+                <!-- 自動更新トグル -->
                 <div class="flex items-center justify-between">
                     <label for="auto-update-lifer" class="flex flex-col flex-1 mr-4">
                         <span class="font-medium text-gray-700">イベントから自動更新</span>
@@ -82,6 +84,7 @@ function showSettingsPage() {
                 
                 <hr class="border-gray-100">
 
+                <!-- 履歴から再集計 -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">ライフリスト再集計</label>
                     <p class="text-sm text-gray-500 mb-3">
@@ -109,11 +112,13 @@ function showSettingsPage() {
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-xl font-semibold mb-4">背景設定</h2>
             <div class="space-y-4">
+                <!-- 背景色 -->
                 <div>
                     <label for="bg-color-picker" class="block text-sm font-medium text-gray-700">背景色</label>
                     <input type="color" id="bg-color-picker" value="${escapeHTML(currentBgSettings.bgColor)}" class="mt-1 block w-full h-10 border border-gray-300 rounded-md cursor-pointer">
                 </div>
                 
+                <!-- 背景画像 -->
                 <div>
                     <label for="bg-image-input" class="block text-sm font-medium text-gray-700">背景画像 (5MBまで)</label>
                     <input type="file" id="bg-image-input" accept="image/*" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
@@ -122,6 +127,7 @@ function showSettingsPage() {
                     </button>
                 </div>
                 
+                <!-- 画像の透明度 -->
                 <div>
                     <label for="bg-opacity-slider" class="block text-sm font-medium text-gray-700">画像の透明度: <span id="bg-opacity-value">${currentBgSettings.bgOpacity}</span></label>
                     <input type="range" id="bg-opacity-slider" min="0.05" max="1" step="0.05" value="${currentBgSettings.bgOpacity}" class="mt-1 block w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
@@ -132,6 +138,7 @@ function showSettingsPage() {
 
     // --- インポート/エクスポート ---
     const importExportHtml = `
+        <!-- データのエクスポート -->
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-xl font-semibold mb-4">データのエクスポート</h2>
             <p class="text-gray-600 mb-4">
@@ -142,6 +149,7 @@ function showSettingsPage() {
             </button>
         </div>
 
+        <!-- データのインポート -->
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-xl font-semibold mb-4 text-red-700">データのインポート</h2>
             <p class="text-gray-600 mb-4">
@@ -318,7 +326,7 @@ async function handleExportData() {
         const backupData = {
             birds: birds,
             events: events,
-            settings: settings,
+            settings: settings, // ★ 修正: birdListControls (appState.settings を含む)
             backgroundSettings: backgroundSettings, // ★ 背景設定も追加
             exportDate: new Date().toISOString()
         };
