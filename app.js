@@ -41,7 +41,6 @@ async function openBirdDB() {
 
 // --- グローバル変数 ---
 const app = document.getElementById('app');
-// ... (中略: header, headerTitle, backButton などは変更なし) ...
 const header = document.getElementById('header');
 const headerTitle = document.getElementById('headerTitle');
 const backButton = document.getElementById('backButton');
@@ -66,7 +65,6 @@ let currentEventIndex = -1;
 let receivedCards = []; 
 
 // --- 絞り込み項目の定義 ---
-// ... (中略: filterableSeasons, filterableTypes などは変更なし) ...
 const filterableSeasons = ['留鳥', '夏鳥', '冬鳥', '旅鳥', '迷鳥'];
 const filterableTypes = [
     '海鳥', 'カモメ', 'ガンカモ', 'ツル', 'サギ', 'シギ', 'ハト', '猛禽',
@@ -118,12 +116,11 @@ const appState = {
         autoUpdateLiferList: true,
         // ★★★ バーダーカード用の設定を追加 ★★★
         birderName: '',
-        birderPhoto: '' // Base64文字列 または 図鑑の鳥ID
+        birderPhoto: '' // Base64文字列
     }
 };
 
 // --- CSV行を鳥オブジェクトに変換 ---
-// ... (中略: convertPapaRowToBirdObject は変更なし) ...
 function convertPapaRowToBirdObject(row) {
     const obj = {};
     const requiredKeys = ['id', 'name', 'classification'];
@@ -157,7 +154,6 @@ function convertPapaRowToBirdObject(row) {
 
 
 // --- DBカラム定義 ---
-// ... (中略: MASTER_COLUMNS, LOCAL_COLUMNS は変更なし) ...
 const MASTER_COLUMNS = [
     'name', 'classification', 'size', 'special_notes',
     'habitat_hokkaido', 'habitat_honshu', 'habitat_shikoku', 'habitat_kyushu', 'habitat_islands',
@@ -184,7 +180,7 @@ async function initializeDatabase() {
             birdEvents = [];
         }
         
-        // ★★★ 3. もらったカードデータを IndexedDB から読み込む ★★★
+        // ★★★ 2. もらったカードデータを IndexedDB から読み込む ★★★
         const storedCards = await db.getAll(STORE_CARDS);
         if (storedCards && Array.isArray(storedCards)) {
             receivedCards = storedCards;
@@ -192,9 +188,8 @@ async function initializeDatabase() {
             receivedCards = [];
         }
 
-        // 2. 鳥データを IndexedDB から読み込む
+        // 3. 鳥データを IndexedDB から読み込む
         const storedData = await db.getAll(STORE_BIRDS);
-        // ... (中略: 鳥データの読み込みロジックは変更なし) ...
         if (storedData && Array.isArray(storedData) && storedData.length > 0) {
             birdDatabase = storedData;
             console.log(`Loaded ${birdDatabase.length} birds from IndexedDB`);
@@ -218,7 +213,6 @@ async function initializeDatabase() {
 }
 
 // --- 「目」リスト更新 ---
-// ... (中略: updateAllOrdersList は変更なし) ...
 function updateAllOrdersList() {
      allOrders = [...new Set(birdDatabase.map(b => {
         if (!b || !b.classification) return null;
@@ -229,7 +223,6 @@ function updateAllOrdersList() {
 
 
 // --- ローディングメッセージ ---
-// ... (中略: showLoadingMessage は変更なし) ...
 function showLoadingMessage(message) {
     if (app) {
         app.innerHTML = `<div class="bg-white rounded-lg shadow p-6 text-center"><h2 class="text-xl font-semibold mb-4">${message}</h2><p class="text-gray-600">しばらくお待ちください...</p></div>`;
@@ -241,7 +234,6 @@ function showLoadingMessage(message) {
 
 
 // --- CSVダウンロード & 保存 ---
-// ... (中略: fetchCSVAndSave は変更なし) ...
 async function fetchCSVAndSave() {
     if (localStorage.getItem('birdDatabaseLoadError') && !GITHUB_CSV_URL.includes('[YOUR_USERNAME]')) {
         console.warn("Skipping fetchCSVAndSave due to existing load error. Clear data to retry.");
@@ -299,7 +291,6 @@ async function fetchCSVAndSave() {
 
 
 // --- データ更新 (マージ) ---
-// ... (中略: checkAndUpdateData は変更なし) ...
 async function checkAndUpdateData() {
     if (localStorage.getItem('birdDatabaseLoadError')) {
         console.warn("Skipping checkAndUpdateData due to existing load error.");
@@ -373,7 +364,6 @@ async function checkAndUpdateData() {
 
 
 // --- DB保存 (鳥) ---
-// ... (中略: saveDatabase は変更なし) ...
 async function saveDatabase() { 
      try { 
         const db = await openBirdDB();
@@ -394,7 +384,6 @@ async function saveDatabase() {
 
 
 // --- DB保存 (イベント) ---
-// ... (中略: saveEventsData は変更なし) ...
 async function saveEventsData() { 
      try { 
         const db = await openBirdDB();
@@ -433,7 +422,6 @@ async function saveReceivedCards() {
 }
 
 // --- 状態保存 (リスト制御) ---
-// ... (中略: saveListControlsState は変更なし) ...
 function saveListControlsState() { 
     try {
         const stateToSave = { 
@@ -460,7 +448,6 @@ function loadListControlsState() {
     }
 
     const defaultSeasons = filterableSeasons.filter(s => s !== '迷鳥');
-    // ... (中略) ...
     const defaultClassificationOrders = Array.isArray(allOrders) ? [...allOrders] : []; 
     
     const defaultLiferFilter = {
@@ -504,7 +491,6 @@ function loadListControlsState() {
         loadedState.activePopup = null; loadedState.openFilterSection = null; loadedState.currentPage = 1; 
         
         const loadedFilters = loadedState.filters || {};
-        // ... (中略: フィルターのマージ処理) ...
         const loadedClassification = (typeof loadedFilters.classification === 'object' && loadedFilters.classification !== null) ? loadedFilters.classification : {};
         
         loadedState.filters = {
@@ -542,7 +528,6 @@ function loadListControlsState() {
 }
 
 // --- 絞り込み状態チェック ---
-// ... (中略: getFilterStatus は変更なし) ...
 function getFilterStatus() { 
     const { filterText, filters } = appState.listControls;
     if (!filters || !filters.classification || !filters.lifer) { 
@@ -565,7 +550,6 @@ function getFilterStatus() {
 
 
 // --- ヘッダー更新 ---
-// ... (中略: updateHeader は変更なし) ...
 function updateHeader(mode, title = "鳥類図鑑") { 
     try { 
         if (!headerTitle || !backButton || !headerActions || !searchPopup || !filterPopup || !viewPopup || !app || !searchToggleButton || !filterToggleButton || !viewToggleButton || !filterActiveDot) {
@@ -597,10 +581,12 @@ function updateHeader(mode, title = "鳥類図鑑") {
              backButton.textContent = "< 戻る";
              backButton.onclick = () => {
                  if (mode === 'eventDetail') {
+                     // (将来的に: イベントリストの表示位置に戻る)
                  }
                  showEventsPage(); 
              };
         } else if (mode === 'error' || mode === 'loading') {
+            // アクションなし
         }
     } catch (error) {
         console.error("Error updating header:", error);
@@ -609,7 +595,6 @@ function updateHeader(mode, title = "鳥類図鑑") {
 
 
 // --- ポップアップ開閉 (共通) ---
-// ... (中略: togglePopup, closePopupsOnMainTap は変更なし) ...
 function togglePopup(popupName) { 
     const { activePopup } = appState.listControls;
     appState.listControls.activePopup = (activePopup === popupName) ? null : popupName;
@@ -631,7 +616,6 @@ function closePopupsOnMainTap(event) {
 
 
 // --- ユーティリティ関数 (共通) ---
-// ... (中略: getSizeRange, getSeasonTag, getHabitatLabels, escapeHTML, toHiragana, getSearchSuggestions は変更なし) ...
 function getSizeRange(sizeCm) { 
     const sizeString = String(sizeCm || '');
     const match = sizeString.match(/(\d+(\.\d+)?)/); 
@@ -691,7 +675,6 @@ function getSearchSuggestions(text) {
 
 
 // --- タブ切り替え ---
-// ... (中略: setupTabs は変更なし) ...
 function setupTabs() { 
     const tabs = [ { id: 'tab-pokedex', page: showListPage }, { id: 'tab-events', page: showEventsPage }, { id: 'tab-settings', page: showSettingsPage } ];
     tabs.forEach(tab => {
@@ -713,7 +696,6 @@ function setupTabs() {
 
 
 // --- ★ 機能追加: カスタム確認モーダル（クッション） ---
-// ... (中略: showCustomConfirm, hideCustomConfirm は変更なし) ...
 async function showCustomConfirm(text, okLabel = 'OK', hideCancel = false) {
     return new Promise((resolve) => {
         const modal = document.getElementById('custom-confirm-modal');
@@ -760,6 +742,7 @@ async function showCustomConfirm(text, okLabel = 'OK', hideCancel = false) {
         
         modal.onclick = (e) => {
             if (e.target.id === 'custom-confirm-modal') {
+                // (何もしない。モーダル背景クリックで閉じないようにする)
             }
         };
     });
@@ -773,7 +756,6 @@ function hideCustomConfirm() {
 
 
 // --- ★ 機能追加: 背景設定 ---
-// ... (中略: applyBackgroundSettings は変更なし) ...
 function applyBackgroundSettings() {
     const defaultSettings = {
         bgColor: '#f3f4f6', // bg-gray-100
@@ -807,3 +789,28 @@ function applyBackgroundSettings() {
         overlay.style.opacity = 0;
     }
 }
+
+// --- ★★★ アプリケーション初期化 ★★★ ---
+(async () => { 
+    try { 
+        // アプリ起動時に背景設定を適用
+        applyBackgroundSettings();
+        
+        setupTabs(); 
+        await initializeDatabase(); 
+        loadListControlsState();    
+        showListPage(); // 初期表示は図鑑リスト
+        if (app) {
+            app.addEventListener('click', closePopupsOnMainTap);
+        } else {
+            console.error("Main app element not found");
+        }
+    } catch (error) {
+        console.error("Initialization failed:", error);
+        if (app) {
+            app.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow" role="alert"><strong class="font-bold">アプリ起動エラー</strong><span class="block sm:inline">アプリの起動に失敗しました。</span><p class="mt-2">開発者コンソール(F12)で詳細を確認してください。</p></div>`;
+        }
+        try { updateHeader('error', 'エラー'); } catch(e) { console.error("Failed to update header on error:", e); } 
+    }
+})();
+```eof

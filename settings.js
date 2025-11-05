@@ -50,7 +50,7 @@ function showSettingsPage() {
                     カードを送る (共有)
                 </button>
                 <p class="text-xs text-gray-500 text-center">
-                    ${!navigator.share ? '(お使いのブラウザは共有機能非対応です。ファイルとしてダウンロードします)' : 'LINEやAirDropでカードを送れます。'}
+                    ${(navigator.share) ? 'LINEやAirDropでカードを送れます。' : '(お使いのブラウザは共有機能非対応です。ファイルとしてダウンロードします)'}
                 </p>
             </div>
         </div>
@@ -74,8 +74,7 @@ function showSettingsPage() {
 
             <h3 class="text-lg font-medium text-gray-800 mb-3">受信箱</h3>
             <div id="received-cards-list" class="space-y-3 max-h-60 overflow-y-auto pr-2">
-                ${receivedCards.length === 0 ? 
-                    '<p class="text-gray-400 text-sm">まだカードをもらっていません。</p>' : 
+                ${(receivedCards && receivedCards.length > 0) ? 
                     receivedCards.map(card => `
                         <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg" data-card-id="${card.id}">
                             <div class="flex items-center space-x-3">
@@ -91,7 +90,8 @@ function showSettingsPage() {
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                             </button>
                         </div>
-                    `).join('')
+                    `).join('') :
+                    '<p class="text-gray-400 text-sm">まだカードをもらっていません。</p>'
                 }
             </div>
         </div>
@@ -226,7 +226,7 @@ function showSettingsPage() {
             const shareCardBtn = document.getElementById('share-card-btn');
 
             if (nameInput) {
-                nameInput.onchange = (e) => { 
+                nameInput.onchange = (e) => { // oninput だと保存が頻発しすぎるため onchange
                     appState.settings.birderName = e.target.value;
                     saveListControlsState(); // app.js の関数
                 };
@@ -392,6 +392,8 @@ async function handleExportData() {
         
         const birds = await db.getAll(STORE_BIRDS);
         const events = await db.getAll(STORE_EVENTS);
+        // ★★★ もらったカードもエクスポートに含める ★★★
+        const receivedCardsData = await db.getAll(STORE_CARDS);
         
         const settings = JSON.parse(localStorage.getItem('birdListControls') || '{}');
         const backgroundSettings = JSON.parse(localStorage.getItem('birdAppBackground') || '{}');
@@ -399,6 +401,7 @@ async function handleExportData() {
         const backupData = {
             birds: birds,
             events: events,
+            receivedCards: receivedCardsData, // ★ 追加
             settings: settings, 
             backgroundSettings: backgroundSettings, 
             exportDate: new Date().toISOString()
@@ -589,6 +592,7 @@ async function handleExportCsvData() {
                     csvData.push([...eventBase, ...birdData]);
                 }
             } else {
+                // 鳥の記録がないイベント
                 csvData.push([...eventBase, "", "", "", "", "", ""]);
             }
         }
@@ -643,22 +647,26 @@ async function handleRescanLiferList() {
             for (const observedBird of event.observedBirds) {
                 const birdInDB = birdDatabase.find(b => b.name === observedBird.name);
                 if (birdInDB) {
+                    let updated = false;
                     if (observedBird.seen && !birdInDB.lifer_seen) {
                         birdInDB.lifer_seen = true;
-                        birdDataNeedsSave = true;
-                        updatedCount++;
+                        updated = true;
                     }
                     if (observedBird.heard && !birdInDB.lifer_heard) {
                         birdInDB.lifer_heard = true;
-                        birdDataNeedsSave = true;
+                        updated = true;
                     }
                     if (observedBird.photo && !birdInDB.lifer_photo) {
                         birdInDB.lifer_photo = true;
-                        birdDataNeedsSave = true;
+                        updated = true;
                     }
                     if (observedBird.video && !birdInDB.lifer_video) {
                         birdInDB.lifer_video = true;
+                        updated = true;
+                    }
+                    if(updated) {
                         birdDataNeedsSave = true;
+                        updatedCount++;
                     }
                 }
             }
@@ -666,7 +674,7 @@ async function handleRescanLiferList() {
 
         if (birdDataNeedsSave) {
             await saveDatabase();
-            console.log(`ライフリストの再集計が完了。${updatedCount}件の更新がありました。`);
+            console.log(`ライフリストの再集計が完了。${updatedCount}件の鳥データが更新されました。`);
         } else {
             console.log('ライフリストの再集計が完了。更新はありませんでした。');
         }
@@ -738,7 +746,7 @@ async function handleShareMyCard(liferTotals) {
     
     const jsonString = JSON.stringify(myCardData);
     // ファイル拡張子を .bcard にする (専用ファイルっぽく)
-    const fileName = `birder-card-${appState.settings.birderName || 'user'}.bcard`;
+    const fileName = `birder-card-${(appState.settings.birderName || 'user').replace(/[^a-zA-Z0-9]/g, '_')}.bcard`;
     const file = new File([jsonString], fileName, { type: 'application/json' });
 
     // 1. Web Share API (navigator.share) が使えるか試す
@@ -798,7 +806,7 @@ async function handleImportReceivedCard(event) {
             // スナップショットとして保存（ユニークIDと受信日を追加）
             const newCard = {
                 ...cardData,
-                id: `card_${Date.now()}`, // ユニークID
+                id: `card_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`, // ユニークID
                 receivedDate: new Date().toISOString()
             };
 
@@ -858,29 +866,4 @@ async function handleDeleteReceivedCard(cardId) {
         showSettingsPage(); // 画面を再描画
     }
 }
-
-
-// --- アプリケーション初期化 (app.js から移動) ---
-(async () => { 
-    try { 
-        // ★ 機能追加: アプリ起動時に背景設定を適用
-        applyBackgroundSettings();
-        
-        setupTabs(); 
-        await initializeDatabase(); 
-        loadListControlsState();    
-        showListPage(); // 初期表示は図鑑リスト
-        if (app) {
-            app.addEventListener('click', closePopupsOnMainTap);
-        } else {
-            console.error("Main app element not found");
-        }
-    } catch (error) {
-        console.error("Initialization failed:", error);
-        if (app) {
-            app.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow" role="alert"><strong class="font-bold">アプリ起動エラー</strong><span class="block sm:inline">アプリの起動に失敗しました。</span><p class="mt-2">開発者コンソール(F12)で詳細を確認してください。</p></div>`;
-        }
-        try { updateHeader('error', 'エラー'); } catch(e) { console.error("Failed to update header on error:", e); } 
-    }
-})();
 ```eof
