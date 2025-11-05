@@ -791,6 +791,7 @@ function applyBackgroundSettings() {
 }
 
 // --- ★★★ アプリケーション初期化 ★★★ ---
+// (このコードは app.js の末尾に *必須* です)
 (async () => { 
     try { 
         // アプリ起動時に背景設定を適用
@@ -813,4 +814,3 @@ function applyBackgroundSettings() {
         try { updateHeader('error', 'エラー'); } catch(e) { console.error("Failed to update header on error:", e); } 
     }
 })();
-```eof

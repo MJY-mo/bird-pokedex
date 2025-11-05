@@ -866,4 +866,3 @@ async function handleDeleteReceivedCard(cardId) {
         showSettingsPage(); // 画面を再描画
     }
 }
-```eof
