@@ -251,6 +251,10 @@ function applyFiltersAndRenderList() {
         if (viewMode === 'tile') {
             listElement.className = 'grid grid-cols-2 gap-4';
             listElement.innerHTML = paginatedList.map(bird => {
+                // ★ 機能追加: ライフリスト勲章
+                const isLifer = bird.lifer_seen || bird.lifer_heard || bird.lifer_photo || bird.lifer_video;
+                const liferMedal = isLifer ? '<span class="lifer-medal" title="ライフリスト登録済み"></span>' : '';
+            
                 const placeholderUrl = `https://placehold.co/150x150/e0e0e0/b0b0b0?text=${escapeHTML(bird.name.charAt(0))}`;
                 const imageUrl = bird.photo_url || placeholderUrl;
                 const seasonTag = getSeasonTag(bird.season);
@@ -264,7 +268,7 @@ function applyFiltersAndRenderList() {
                              onerror="this.onerror=null; this.src='${placeholderUrl}';"
                              class="w-full h-32 object-cover">
                         <div class="p-3">
-                            <h3 class="font-semibold text-gray-800 mb-1 truncate">${escapeHTML(bird.name)}</h3>
+                            <h3 class="font-semibold text-gray-800 mb-1 truncate">${liferMedal}${escapeHTML(bird.name)}</h3>
                             <div class="flex flex-col items-start space-y-1"> 
                                 ${seasonTag}
                                 ${habitatHtml}
@@ -276,9 +280,13 @@ function applyFiltersAndRenderList() {
         } else {
             listElement.className = 'bg-white rounded-lg shadow overflow-hidden divide-y divide-gray-200';
             listElement.innerHTML = paginatedList.map(bird => {
+                // ★ 機能追加: ライフリスト勲章
+                const isLifer = bird.lifer_seen || bird.lifer_heard || bird.lifer_photo || bird.lifer_video;
+                const liferMedal = isLifer ? '<span class="lifer-medal" title="ライフリスト登録済み"></span>' : '';
+
                 return `
                     <div class="p-4 cursor-pointer hover:bg-gray-50 flex justify-between items-center" onclick="showDetailPage('${bird.id}')">
-                        <h3 class="font-semibold text-gray-800">${escapeHTML(bird.name)}</h3>
+                        <h3 class="font-semibold text-gray-800">${liferMedal}${escapeHTML(bird.name)}</h3>
                         <span class="text-xs text-gray-400">&gt;</span>
                     </div>
                 `;
@@ -387,8 +395,6 @@ function showDetailPage(birdId) {
             `;
         }
     }
-
-    // ★ 修正: 重複していた「観察記録」セクションを削除
     
     const descriptionHtml = bird.description ? `<p class="text-gray-700 leading-relaxed">${escapeHTML(bird.description).replace(/\n/g, '<br>')}</p>` : `<p class="text-gray-400 italic">(説明未記入)</p>`;
 
@@ -404,6 +410,28 @@ function showDetailPage(birdId) {
         `;
     }
 
+    // ★ 機能追加: ライフリスト表示のHTML
+    const liferIcon = (checked, label) => {
+        const icon = checked 
+            ? `<svg class="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>`
+            : `<svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>`;
+        return `<span class="flex items-center space-x-2">${icon}<span>${label}</span></span>`;
+    };
+    const liferHtml = `
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="p-4">
+                <h3 class="font-semibold text-gray-800 mb-3">ライフリスト</h3>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-gray-700">
+                    ${liferIcon(bird.lifer_seen, '目視')}
+                    ${liferIcon(bird.lifer_heard, '声')}
+                    ${liferIcon(bird.lifer_photo, '写真')}
+                    ${liferIcon(bird.lifer_video, '動画')}
+                </div>
+            </div>
+        </div>
+    `;
+
+
     app.innerHTML = `
         <div class="space-y-4">
             <div class="bg-gray-200 rounded-lg shadow overflow-hidden">
@@ -415,13 +443,12 @@ function showDetailPage(birdId) {
                 <div class="p-4">
                     <div class="flex flex-wrap gap-2 mb-3">${seasonTag}${rarityTag}${specialTags}</div>
                     
-                    <!-- ★ 修正: スピーカーボタンを配置するため flex に変更 -->
                     <div class="flex justify-between items-start mb-2">
                         <div>
                             <h2 class="text-2xl font-bold text-gray-900">${escapeHTML(bird.name)}</h2>
                             <p class="text-sm text-gray-600 mt-1"><strong>分類:</strong> ${escapeHTML(bird.classification) || 'N/A'}</p>
                         </div>
-                        ${voiceButtonHtml} <!-- ★ スピーカーボタンを追加 -->
+                        ${voiceButtonHtml} 
                     </div>
 
                     <div class="text-sm text-gray-600 space-y-1">
@@ -431,7 +458,8 @@ function showDetailPage(birdId) {
                 </div>
             </div>
             
-            ${latestEventHtml} <!-- ★ 「最新の観察イベント」のみ表示 -->
+            ${liferHtml} <!-- ★ ライフリスト表示を追加 -->
+            ${latestEventHtml} 
 
             <div class="bg-white rounded-lg shadow overflow-hidden">
                 <div class="p-4">
@@ -443,7 +471,6 @@ function showDetailPage(birdId) {
                 情報を編集する
             </button>
 
-            <!-- ★ 機能追加: 音声再生用の非表示オーディオ要素 -->
             <audio id="bird-voice-player" class="hidden" src="${bird.voice_url || ''}"></audio>
         </div>
     `;
@@ -465,7 +492,6 @@ function showDetailPage(birdId) {
             }
         }
         
-        // ★ 機能追加: 音声再生ボタンのリスナー
         if (bird.voice_url) {
             const playVoiceBtn = document.getElementById('play-voice-btn');
             const audioPlayer = document.getElementById('bird-voice-player');
@@ -475,7 +501,7 @@ function showDetailPage(birdId) {
                         audioPlayer.play();
                     } else {
                         audioPlayer.pause();
-                        audioPlayer.currentTime = 0; // 停止して最初に戻す
+                        audioPlayer.currentTime = 0; 
                     }
                 };
             }
@@ -489,7 +515,7 @@ function renderDetailEditPage(birdId) {
     const bird = birdDatabase.find(b => b.id === birdId); if (!bird) { showListPage(); return; } currentBird = bird;
     
     let newBase64Image = null; 
-    let newBase64Voice = null; // ★ 機能追加: 音声用
+    let newBase64Voice = null; 
     
     const rarityOptions = [ { value: '', label: '未設定' }, { value: '1', label: '★☆☆☆☆' }, { value: '2', label: '★★☆☆☆' }, { value: '3', label: '★★★☆☆' }, { value: '4', label: '★★★★☆' }, { value: '5', label: '★★★★★' } ];
     
@@ -513,23 +539,46 @@ function renderDetailEditPage(birdId) {
         </div>
     `;
 
-    // ★ 機能追加: 音声入力のHTML ---
+    // --- 音声入力のHTML ---
     const voiceInputHtml = `
         <div>
             <label for="edit_voice" class="block text-sm font-medium text-gray-700">鳴き声 (音声)</label>
-            
-            <!-- 音声プレビュー再生エリア -->
             <div class="mt-2">
                 <audio id="voice_preview" controls class="w-full ${!bird.voice_url ? 'hidden' : ''}" src="${bird.voice_url || ''}"></audio>
             </div>
-            
             <input type="file" id="edit_voice" name="voice_file" accept="audio/*" class="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-            
             <p id="voice_message" class="text-xs text-gray-500 mt-1">音声ファイルを選択できます (10MBまで)。</p>
-            
             <button type="button" id="remove_voice_btn" class="mt-2 text-sm font-medium text-red-600 hover:text-red-800 ${!bird.voice_url ? 'hidden' : ''}">
                 音声を削除
             </button>
+        </div>
+    `;
+
+    // ★ 機能追加: ライフリスト編集のHTML
+    const liferEditHtml = `
+        <div class="space-y-3">
+            <label class="block text-sm font-medium text-gray-700">ライフリスト（手動編集）</label>
+            <p class="text-xs text-gray-500 -mt-2">
+                （「イベントから自動更新」がONの場合、ここでOFFにしても、次回のイベント登録で自動的にONに戻る可能性があります）
+            </p>
+            <div class="grid grid-cols-2 gap-x-4 gap-y-3">
+                <label class="flex items-center space-x-2">
+                    <input type="checkbox" id="edit_lifer_seen" name="lifer_seen" value="true" ${bird.lifer_seen ? 'checked' : ''} class="form-checkbox text-emerald-600 rounded h-5 w-5">
+                    <span>目視</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                    <input type="checkbox" id="edit_lifer_heard" name="lifer_heard" value="true" ${bird.lifer_heard ? 'checked' : ''} class="form-checkbox text-emerald-600 rounded h-5 w-5">
+                    <span>声</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                    <input type="checkbox" id="edit_lifer_photo" name="lifer_photo" value="true" ${bird.lifer_photo ? 'checked' : ''} class="form-checkbox text-emerald-600 rounded h-5 w-5">
+                    <span>写真</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                    <input type="checkbox" id="edit_lifer_video" name="lifer_video" value="true" ${bird.lifer_video ? 'checked' : ''} class="form-checkbox text-emerald-600 rounded h-5 w-5">
+                    <span>動画</span>
+                </label>
+            </div>
         </div>
     `;
 
@@ -546,15 +595,16 @@ function renderDetailEditPage(birdId) {
             <form id="editForm" class="space-y-4">
                 
                 ${photoInputHtml}
-                
-                <hr class="my-4"> <!-- ★ 区切り線 -->
-
-                ${voiceInputHtml} <!-- ★ 音声入力欄を追加 -->
-                
-                <hr class="my-4"> <!-- ★ 区切り線 -->
+                <hr class="my-4">
+                ${voiceInputHtml}
+                <hr class="my-4">
 
                  <div><label for="edit_season" class="block text-sm font-medium text-gray-700">区分</label><select id="edit_season" name="season" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500"><option value="" ${!bird.season ? 'selected' : ''}>未設定</option>${filterableSeasons.map(s => `<option value="${s}" ${bird.season === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
                 <div><label for="edit_rarity" class="block text-sm font-medium text-gray-700">レア度</label><select id="edit_rarity" name="rarity" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500">${rarityOptions.map(opt => `<option value="${opt.value}" ${bird.rarity === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}</select></div>
+                
+                <hr class="my-4">
+                ${liferEditHtml} <!-- ★ ライフリスト編集を追加 -->
+                <hr class="my-4">
                 
                 <div>
                     <label for="edit_date" class="block text-sm font-medium text-gray-500">最新の観察日時 (イベント連携)</label>
@@ -731,6 +781,7 @@ function renderDetailEditPage(birdId) {
 async function handleSave(event, newBase64Image, newBase64Voice) { 
     
     const formData = new FormData(event.target); 
+    const form = event.target; // ★ フォーム要素自体
     const birdId = appState.currentBirdId;
     
     const idx = birdDatabase.findIndex(b => b.id === birdId); 
@@ -742,8 +793,10 @@ async function handleSave(event, newBase64Image, newBase64Voice) {
     // 1. メモリ上の birdDatabase 配列を更新
     LOCAL_COLUMNS.forEach(key => { 
         if (formData.has(key)) {
-            // ★ 修正: observed_date, observed_location, photo_url, voice_url 以外を保存
-            if (key !== 'photo_url' && key !== 'voice_url' && key !== 'observed_date' && key !== 'observed_location') {
+            // ★ 修正: observed_date, observed_location, photo_url, voice_url, lifer_... 以外を保存
+            if (key !== 'photo_url' && key !== 'voice_url' && 
+                key !== 'observed_date' && key !== 'observed_location' &&
+                !key.startsWith('lifer_')) {
                 birdDatabase[idx][key] = formData.get(key);
             }
         } 
@@ -751,24 +804,27 @@ async function handleSave(event, newBase64Image, newBase64Voice) {
     
     // 2. 画像データを処理
     if (newBase64Image !== null) {
-        // 写真の変更があった場合（新規 "data:..." または 削除 ""）
         birdDatabase[idx]['photo_url'] = newBase64Image;
     }
-    // (newBase64Image === null の場合は、既存の bird.photo_url がそのまま保持される)
     
     // 3. ★ 機能追加: 音声データを処理
     if (newBase64Voice !== null) {
-        // 音声の変更があった場合（新規 "data:..." または 削除 ""）
         birdDatabase[idx]['voice_url'] = newBase64Voice;
     }
-    // (newBase64Voice === null の場合は、既存の bird.voice_url がそのまま保持される)
+    
+    // 4. ★ 機能追加: ライフリストのチェックボックスの値を保存
+    // (formData.get() はチェックなしの場合 null になるため、.checked で見る)
+    birdDatabase[idx]['lifer_seen'] = form.querySelector('#edit_lifer_seen').checked;
+    birdDatabase[idx]['lifer_heard'] = form.querySelector('#edit_lifer_heard').checked;
+    birdDatabase[idx]['lifer_photo'] = form.querySelector('#edit_lifer_photo').checked;
+    birdDatabase[idx]['lifer_video'] = form.querySelector('#edit_lifer_video').checked;
 
 
     try {
-        // 4. IndexedDB に保存 (app.js の関数を呼ぶ)
+        // 5. IndexedDB に保存
         await saveDatabase(); 
         
-        // 5. 詳細ページに戻る
+        // 6. 詳細ページに戻る
         showDetailPage(birdId);
         
     } catch (error) {
@@ -804,4 +860,3 @@ function handleGoToEvent(eventId) {
         console.warn("エラー: 該当のイベントが見つかりませんでした。");
     }
 }
-

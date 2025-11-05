@@ -95,6 +95,10 @@ const appState = {
         currentPage: 1, // ★ 機能追加: イベントリストのページ番号
         filterBirdName: '', // ★ 機能追加: 検索する鳥の名前
         filterObservedType: 'any' // ★ 機能追加: 検索する確認方法 (any, seen, heard, photo, video)
+    },
+    // ★ 機能追加: ライフリスト設定
+    settings: {
+        autoUpdateLiferList: true // イベントから自動でライフリストを更新するか
     }
 };
 
@@ -107,8 +111,9 @@ function convertPapaRowToBirdObject(row) {
         'habitat_hokkaido', 'habitat_honshu', 'habitat_shikoku', 'habitat_kyushu', 'habitat_islands', 
         'type', 'season', 'rarity',
         'description', 'photo_url', 'observed_date', 'observed_location',
-        'lastObservedEventId',
-        'voice_url' // ★ 機能追加: ヘッダーに追加
+        'lastObservedEventId', 'voice_url',
+        // ★ 機能追加: ライフリスト
+        'lifer_seen', 'lifer_heard', 'lifer_photo', 'lifer_video'
     ];
     let hasRequiredData = true;
     allHeaders.forEach(key => {
@@ -122,7 +127,13 @@ function convertPapaRowToBirdObject(row) {
     if (obj.observed_date === undefined) obj.observed_date = "";
     if (obj.observed_location === undefined) obj.observed_location = "";
     if (obj.lastObservedEventId === undefined) obj.lastObservedEventId = ""; 
-    if (obj.voice_url === undefined) obj.voice_url = ""; // ★ 機能追加: 初期化
+    if (obj.voice_url === undefined) obj.voice_url = ""; 
+    // ★ 機能追加: ライフリストの初期化 (CSVにカラムが無い場合も考慮)
+    // CSVの値が "TRUE" や "FALSE" の文字列で来る可能性も考慮
+    obj.lifer_seen = (obj.lifer_seen === 'true' || obj.lifer_seen === true);
+    obj.lifer_heard = (obj.lifer_heard === 'true' || obj.lifer_heard === true);
+    obj.lifer_photo = (obj.lifer_photo === 'true' || obj.lifer_photo === true);
+    obj.lifer_video = (obj.lifer_video === 'true' || obj.lifer_video === true);
     return hasRequiredData ? obj : null;
 }
 
@@ -134,8 +145,9 @@ const MASTER_COLUMNS = [
 ];
 const LOCAL_COLUMNS = [ 
     'season', 'rarity', 'description', 'photo_url', 'observed_date', 'observed_location',
-    'lastObservedEventId',
-    'voice_url' // ★ 機能追加: カラムに追加
+    'lastObservedEventId', 'voice_url',
+    // ★ 機能追加: ライフリスト
+    'lifer_seen', 'lifer_heard', 'lifer_photo', 'lifer_video'
 ];
 
 // --- データベース初期化 ---
@@ -372,6 +384,7 @@ function saveListControlsState() {
         const stateToSave = { 
             ...appState.listControls, 
             eventControls: appState.eventControls,
+            settings: appState.settings, // ★ 機能追加: ライフリスト設定も保存
             currentPage: 1 
         };
         localStorage.setItem('birdListControls', JSON.stringify(stateToSave));
@@ -399,13 +412,17 @@ function loadListControlsState() {
         edited: 'all',
     };
     
-    // ★ 修正: eventControls のデフォルト値をここで定義
     const defaultEventControls = {
         listSort: 'dateTime_desc',
         detailSort: 'added_asc',
         currentPage: 1,
         filterBirdName: '',
         filterObservedType: 'any'
+    };
+    
+    // ★ 機能追加: ライフリスト設定のデフォルト
+    const defaultSettings = {
+        autoUpdateLiferList: true
     };
 
     if (storedState) {
@@ -441,14 +458,17 @@ function loadListControlsState() {
         delete loadedState.filters.photo;
         
         appState.listControls = { ...appState.listControls, ...loadedState };
-        // ★ 修正: 保存された eventControls があれば、デフォルトとマージして読み込む
         appState.eventControls = { ...defaultEventControls, ...(loadedState.eventControls || {}) };
+        appState.settings = { ...defaultSettings, ...(loadedState.settings || {}) }; // ★ 機能追加: ライフリスト設定を読み込み
+        
         delete appState.listControls.eventControls; 
+        delete appState.listControls.settings; // 互換性のため
 
     } else {
         defaultFilters.classification.orders = defaultClassificationOrders; 
         appState.listControls.filters = defaultFilters;
         appState.eventControls = defaultEventControls;
+        appState.settings = defaultSettings; // ★ 機能追加: ライフリスト設定をデフォルトに
     }
 }
 

@@ -129,11 +129,9 @@ function showEventsPage() {
             if (originalIndex === -1) return ''; 
             // ★ 修正: イベント削除ボタンを追加
             return `<div class="p-4 border-b border-gray-200 flex justify-between items-center">
-                        <div class="flex-1 cursor-pointer hover:bg-gray-50 -ml-4 -my-4 pl-4 py-4" data-index="${originalIndex}" data-action="view"> <!-- ★ View trigger -->
-                            <h3 class="font-semibold text-gray-800">${escapeHTML(ev.name || '無題のイベント')}</h3>
+                        <div class="flex-1 cursor-pointer hover:bg-gray-50 -ml-4 -my-4 pl-4 py-4" data-index="${originalIndex}" data-action="view"> <h3 class="font-semibold text-gray-800">${escapeHTML(ev.name || '無題のイベント')}</h3>
                             <p class="text-sm text-gray-500">${escapeHTML(formatDate(ev.dateTime))}</p>
                         </div>
-                        <!-- ★ Delete Button -->
                         <button type="button" data-index="${originalIndex}" data-action="delete" class="event-delete-btn text-red-400 hover:text-red-600 p-2 rounded-lg -mr-2 flex-shrink-0">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                         </button>
@@ -144,13 +142,11 @@ function showEventsPage() {
      app.innerHTML = `
         <div class="space-y-4">
              <button id="newEventButton" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-emerald-700 transition-colors">新規イベント作成</button>
-             ${searchHtml} <!-- ★ 検索UIを追加 -->
-             ${sortSelectHtml}
+             ${searchHtml} ${sortSelectHtml}
              <div class="bg-white rounded-lg shadow overflow-hidden">
                 <h2 class="text-xl font-semibold p-4 border-b border-gray-200">イベント履歴</h2>
                 <div id="event-list">${listHtml}</div>
              </div>
-             <!-- ★ ページネーションUIのコンテナを追加 -->
              <div id="event-pagination-controls" class="mt-6 flex justify-between items-center"></div>
         </div>`;
     updateHeader('events', 'イベント');
@@ -762,10 +758,22 @@ async function handleAddBirdToEvent() {
         const birdInDB = birdDatabase.find(b => b.name === name);
         let birdDataNeedsSave = false;
         if (birdInDB) {
+            // 1. イベント連携（日付・場所）
             birdInDB.observed_date = event.dateTime;
             birdInDB.observed_location = event.location;
             birdInDB.lastObservedEventId = event.id;
             birdDataNeedsSave = true;
+            
+            // 2. ★ ライフリスト自動更新 (設定がONの場合のみ)
+            if (appState.settings.autoUpdateLiferList) {
+                // ユーザーの設計:「手動を優先し、その後にイベントで該当種を観察した場合、上書きされる」
+                // → 自動更新がONなら、イベントは常に手動設定（false）を上書き（trueに）する
+                if (seen) birdInDB.lifer_seen = true;
+                if (heard) birdInDB.lifer_heard = true;
+                if (photo) birdInDB.lifer_photo = true;
+                if (video) birdInDB.lifer_video = true;
+            }
+            
             console.log(`図鑑データを連携: ${name}`);
         }
         
@@ -1001,4 +1009,3 @@ function renderEventPaginationControls(totalItems, totalPages) {
         }
     }, 0);
 }
-

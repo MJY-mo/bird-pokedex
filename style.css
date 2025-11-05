@@ -96,3 +96,15 @@ main#app.pt-popup { padding-top: 4rem; } /* ヘッダー分のみ */
     transition: background-image 0.3s ease-in-out, opacity 0.3s ease-in-out;
 }
 
+/* --- ★ 機能追加: ライフリスト 勲章マーク --- */
+.lifer-medal {
+    display: inline-block;
+    width: 1rem; /* w-4 */
+    height: 1rem; /* h-4 */
+    margin-right: 0.25rem; /* mr-1 */
+    vertical-align: -0.125em; /* アイコンの位置調整 */
+    background-color: #f59e0b; /* bg-amber-500 */
+    /* 勲章の形 (CSS clip-path) */
+    clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+
