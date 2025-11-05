@@ -85,6 +85,7 @@ const appState = {
             season: [], type: [...filterableTypes], habitat: habitatKeys.map(h => h.key), 
             size: Object.keys(sizeRanges), classification: { orders: [], family: null }, 
             edited: 'all', 
+            liferStatus: 'all' // ★ 機能追加: 'all', 'yes', 'no'
         },
         viewMode: 'tile', activePopup: null, openFilterSection: null, 
         currentPage: 1, itemsPerPage: 30, 
@@ -92,13 +93,12 @@ const appState = {
     eventControls: { // イベントタブの並び替え・絞り込み状態
         listSort: 'dateTime_desc',
         detailSort: 'added_asc',
-        currentPage: 1, // ★ 機能追加: イベントリストのページ番号
-        filterBirdName: '', // ★ 機能追加: 検索する鳥の名前
-        filterObservedType: 'any' // ★ 機能追加: 検索する確認方法 (any, seen, heard, photo, video)
+        currentPage: 1, 
+        filterBirdName: '', 
+        filterObservedType: 'any' 
     },
-    // ★ 機能追加: ライフリスト設定
     settings: {
-        autoUpdateLiferList: true // イベントから自動でライフリストを更新するか
+        autoUpdateLiferList: true 
     }
 };
 
@@ -112,7 +112,6 @@ function convertPapaRowToBirdObject(row) {
         'type', 'season', 'rarity',
         'description', 'photo_url', 'observed_date', 'observed_location',
         'lastObservedEventId', 'voice_url',
-        // ★ 機能追加: ライフリスト
         'lifer_seen', 'lifer_heard', 'lifer_photo', 'lifer_video'
     ];
     let hasRequiredData = true;
@@ -128,8 +127,7 @@ function convertPapaRowToBirdObject(row) {
     if (obj.observed_location === undefined) obj.observed_location = "";
     if (obj.lastObservedEventId === undefined) obj.lastObservedEventId = ""; 
     if (obj.voice_url === undefined) obj.voice_url = ""; 
-    // ★ 機能追加: ライフリストの初期化 (CSVにカラムが無い場合も考慮)
-    // CSVの値が "TRUE" や "FALSE" の文字列で来る可能性も考慮
+    // ★ 修正: 'true'/'false' (文字列) を true/false (ブール値) に変換
     obj.lifer_seen = (obj.lifer_seen === 'true' || obj.lifer_seen === true);
     obj.lifer_heard = (obj.lifer_heard === 'true' || obj.lifer_heard === true);
     obj.lifer_photo = (obj.lifer_photo === 'true' || obj.lifer_photo === true);
@@ -146,7 +144,6 @@ const MASTER_COLUMNS = [
 const LOCAL_COLUMNS = [ 
     'season', 'rarity', 'description', 'photo_url', 'observed_date', 'observed_location',
     'lastObservedEventId', 'voice_url',
-    // ★ 機能追加: ライフリスト
     'lifer_seen', 'lifer_heard', 'lifer_photo', 'lifer_video'
 ];
 
@@ -384,7 +381,7 @@ function saveListControlsState() {
         const stateToSave = { 
             ...appState.listControls, 
             eventControls: appState.eventControls,
-            settings: appState.settings, // ★ 機能追加: ライフリスト設定も保存
+            settings: appState.settings, // ★ ライフリスト設定も保存
             currentPage: 1 
         };
         localStorage.setItem('birdListControls', JSON.stringify(stateToSave));
@@ -410,6 +407,7 @@ function loadListControlsState() {
         season: [...defaultSeasons], type: [...filterableTypes], habitat: habitatKeys.map(h => h.key),
         size: Object.keys(sizeRanges), classification: { orders: defaultClassificationOrders, family: null }, 
         edited: 'all',
+        liferStatus: 'all' // ★ 機能追加: ライフリスト絞り込み
     };
     
     const defaultEventControls = {
@@ -420,7 +418,6 @@ function loadListControlsState() {
         filterObservedType: 'any'
     };
     
-    // ★ 機能追加: ライフリスト設定のデフォルト
     const defaultSettings = {
         autoUpdateLiferList: true
     };
@@ -453,13 +450,14 @@ function loadListControlsState() {
                         ? loadedClassification.orders 
                         : defaultClassificationOrders 
             },
-            season: loadedFilters.season || [...defaultSeasons]
+            season: loadedFilters.season || [...defaultSeasons],
+            liferStatus: loadedFilters.liferStatus || 'all' // ★ 機能追加
         };
         delete loadedState.filters.photo;
         
         appState.listControls = { ...appState.listControls, ...loadedState };
         appState.eventControls = { ...defaultEventControls, ...(loadedState.eventControls || {}) };
-        appState.settings = { ...defaultSettings, ...(loadedState.settings || {}) }; // ★ 機能追加: ライフリスト設定を読み込み
+        appState.settings = { ...defaultSettings, ...(loadedState.settings || {}) }; 
         
         delete appState.listControls.eventControls; 
         delete appState.listControls.settings; // 互換性のため
@@ -468,7 +466,7 @@ function loadListControlsState() {
         defaultFilters.classification.orders = defaultClassificationOrders; 
         appState.listControls.filters = defaultFilters;
         appState.eventControls = defaultEventControls;
-        appState.settings = defaultSettings; // ★ 機能追加: ライフリスト設定をデフォルトに
+        appState.settings = defaultSettings; 
     }
 }
 
@@ -486,9 +484,11 @@ function getFilterStatus() {
     const isSizeFiltered = (filters.size || []).length !== Object.keys(sizeRanges).length;
     const isClassificationFiltered = (filters.classification.orders || []).length !== allOrders.length;
     const isEditedFiltered = filters.edited !== 'all'; 
-    const isFiltered = isTextFiltered || isSeasonFiltered || isTypeFiltered || isHabitatFiltered || isSizeFiltered || isClassificationFiltered || isEditedFiltered; 
+    const isLiferStatusFiltered = filters.liferStatus !== 'all'; // ★ 機能追加
     
-    return { isFiltered, isTextFiltered, isSeasonFiltered, isTypeFiltered, isHabitatFiltered, isSizeFiltered, isClassificationFiltered, isEditedFiltered };
+    const isFiltered = isTextFiltered || isSeasonFiltered || isTypeFiltered || isHabitatFiltered || isSizeFiltered || isClassificationFiltered || isEditedFiltered || isLiferStatusFiltered; // ★ 機能追加
+    
+    return { isFiltered, isTextFiltered, isSeasonFiltered, isTypeFiltered, isHabitatFiltered, isSizeFiltered, isClassificationFiltered, isEditedFiltered, isLiferStatusFiltered }; // ★ 機能追加
 } 
 
 // --- ヘッダー更新 ---
@@ -742,4 +742,3 @@ function applyBackgroundSettings() {
         overlay.style.opacity = 0;
     }
 }
-
