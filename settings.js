@@ -138,6 +138,17 @@ function showSettingsPage() {
 
     // --- インポート/エクスポート ---
     const importExportHtml = `
+        <!-- ★ 機能追加: 観察記録CSVのエクスポート -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold mb-4">観察記録のエクスポート (CSV)</h2>
+            <p class="text-gray-600 mb-4">
+                すべてのイベントと、それに紐づく観察記録（鳥の名前、数、確認方法など）をCSVファイルとしてダウンロードします。(1行 = 1観察記録)
+            </p>
+            <button id="export-csv-btn" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-green-700 transition-colors">
+                観察記録CSVをダウンロード
+            </button>
+        </div>
+
         <!-- データのエクスポート -->
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-xl font-semibold mb-4">データのエクスポート</h2>
@@ -179,6 +190,12 @@ function showSettingsPage() {
     // --- リスナー設定 ---
     setTimeout(() => {
         try {
+            // --- ★ 機能追加: 観察記録CSVエクスポートのリスナー ---
+            const exportCsvBtn = document.getElementById('export-csv-btn');
+            if (exportCsvBtn) {
+                exportCsvBtn.onclick = handleExportCsvData; // ★ 新しい関数を呼ぶ
+            }
+            
             // --- インポート/エクスポートのリスナー ---
             const exportBtn = document.getElementById('export-data-btn');
             const importFile = document.getElementById('import-data-file');
@@ -480,6 +497,96 @@ async function handleImportData(file) {
 
     reader.readAsText(file);
 }
+
+/**
+ * ★ 機能追加: 全イベントの観察記録をCSVとしてエクスポートする
+ * 形式: 1行 = 1観察記録
+ */
+async function handleExportCsvData() {
+    console.log('CSVエクスポート処理を開始します...');
+    
+    // 1. ヘッダー行を定義
+    const headers = [
+        // イベント情報
+        "EventID", "EventName", "EventDateTime", "EventWeather", "EventLocation", "EventCompanions", "EventMemo",
+        // 観察記録情報
+        "ObservedBirdName", "ObservedCount", "ObservedSeen", "ObservedHeard", "ObservedPhoto", "ObservedVideo"
+    ];
+    
+    const csvData = [headers];
+    
+    try {
+        // 2. 全イベントをループ
+        // birdEvents は app.js でグローバルに定義されている
+        if (!birdEvents || birdEvents.length === 0) {
+            await showCustomConfirm("エクスポートするイベントがありません。", "OK", true);
+            return;
+        }
+
+        for (const event of birdEvents) {
+            const eventBase = [
+                event.id || '',
+                event.name || '',
+                event.dateTime || '',
+                event.weather || '',
+                event.location || '',
+                event.companions || '',
+                (event.memo || '').replace(/\n/g, ' '), // メモの改行はスペースに置換
+            ];
+            
+            if (event.observedBirds && event.observedBirds.length > 0) {
+                // 3. イベント内の全観察記録をループ
+                for (const bird of event.observedBirds) {
+                    const birdData = [
+                        bird.name || '',
+                        bird.count || 1,
+                        bird.seen || false,
+                        bird.heard || false,
+                        bird.photo || false,
+                        bird.video || false
+                    ];
+                    csvData.push([...eventBase, ...birdData]);
+                }
+            } else {
+                // 観察記録がないイベントも、イベント情報だけは出力する
+                csvData.push([...eventBase, "", "", "", "", "", ""]);
+            }
+        }
+
+        // 4. CSV文字列に変換 (PapaParse を利用)
+        const csvString = Papa.unparse(csvData);
+        
+        // 5. Blobを作成 (UTF-8 with BOM を指定してExcelでの文字化けを防ぐ)
+        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]); // UTF-8 BOM
+        const blob = new Blob([bom, csvString], { type: 'text/csv;charset=utf-8;' });
+        
+        // 6. ダウンロードリンクを作成してクリック
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        
+        const dateStr = new Date().toISOString().split('T')[0];
+        a.download = `bird-observations-export-${dateStr}.csv`;
+        
+        document.body.appendChild(a);
+        a.click();
+        
+        // 後片付け
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        console.log('CSVエクスポートが完了しました。');
+
+    } catch (error) {
+        console.error('CSVエクスポートに失敗しました:', error);
+        await showCustomConfirm(
+            `CSVエクスポートに失敗しました。\nエラー: ${error.message}`,
+            'OK',
+            true // OKボタンのみ
+        );
+    }
+}
+
 
 // --- ★ 機能追加: ライフリスト再集計 ---
 async function handleRescanLiferList() {

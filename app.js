@@ -48,18 +48,18 @@ const searchPopup = document.getElementById('search-popup');
 const filterPopup = document.getElementById('filter-popup');
 const viewPopup = document.getElementById('view-popup');
 
-let birdDatabase = []; 
-let processedBirdList = []; 
-let currentBird = null; 
-let allOrders = []; 
-let birdEvents = []; 
-let currentEventIndex = -1; 
+let birdDatabase = [];
+let processedBirdList = [];
+let currentBird = null;
+let allOrders = [];
+let birdEvents = [];
+let currentEventIndex = -1;
 
 // --- 絞り込み項目の定義 ---
 const filterableSeasons = ['留鳥', '夏鳥', '冬鳥', '旅鳥', '迷鳥'];
 const filterableTypes = [
-    '海鳥', 'カモメ', 'ガンカモ', 'ツル', 'サギ', 'シギ', 'ハト', '猛禽', 
-    'トケン', 'キツツキ', 'セキレイ', 'ツバメ類', 'ヒタキ', 'ムシクイ', 
+    '海鳥', 'カモメ', 'ガンカモ', 'ツル', 'サギ', 'シギ', 'ハト', '猛禽',
+    'トケン', 'キツツキ', 'セキレイ', 'ツバメ類', 'ヒタキ', 'ムシクイ',
     'カラ類', 'その他'
 ];
 const habitatKeys = [
@@ -75,16 +75,16 @@ const sizeRanges = {
 
 // --- アプリケーションの状態管理 ---
 const appState = {
-    currentPage: 'list', 
-    currentBirdId: null, 
-    isEditing: false, 
+    currentPage: 'list',
+    currentBirdId: null,
+    isEditing: false,
     listControls: {
         filterText: '',
-        sort: 'name_asc', 
+        sort: 'name_asc',
         filters: {
-            season: [], type: [...filterableTypes], habitat: habitatKeys.map(h => h.key), 
-            size: Object.keys(sizeRanges), classification: { orders: [], family: null }, 
-            edited: 'all', 
+            season: [], type: [...filterableTypes], habitat: habitatKeys.map(h => h.key),
+            size: Object.keys(sizeRanges), classification: { orders: [], family: null },
+            edited: 'all',
             // ★ 修正: ライフリスト絞り込みを詳細化
             lifer: {
                 seen: 'any', // 'any', 'yes', 'no'
@@ -93,28 +93,28 @@ const appState = {
                 video: 'any'
             }
         },
-        viewMode: 'tile', activePopup: null, openFilterSection: null, 
-        currentPage: 1, itemsPerPage: 30, 
-    }, 
-    eventControls: { 
+        viewMode: 'tile', activePopup: null, openFilterSection: null,
+        currentPage: 1, itemsPerPage: 30,
+    },
+    eventControls: {
         listSort: 'dateTime_desc',
         detailSort: 'added_asc',
-        currentPage: 1, 
-        filterBirdName: '', 
-        filterObservedType: 'any' 
+        currentPage: 1,
+        filterBirdName: '',
+        filterObservedType: 'any'
     },
     settings: {
-        autoUpdateLiferList: true 
+        autoUpdateLiferList: true
     }
 };
 
 // --- CSV行を鳥オブジェクトに変換 ---
 function convertPapaRowToBirdObject(row) {
     const obj = {};
-    const requiredKeys = ['id', 'name', 'classification']; 
+    const requiredKeys = ['id', 'name', 'classification'];
     const allHeaders = [
-        'id', 'name', 'classification', 'size', 'special_notes', 
-        'habitat_hokkaido', 'habitat_honshu', 'habitat_shikoku', 'habitat_kyushu', 'habitat_islands', 
+        'id', 'name', 'classification', 'size', 'special_notes',
+        'habitat_hokkaido', 'habitat_honshu', 'habitat_shikoku', 'habitat_kyushu', 'habitat_islands',
         'type', 'season', 'rarity',
         'description', 'photo_url', 'observed_date', 'observed_location',
         'lastObservedEventId', 'voice_url',
@@ -122,7 +122,7 @@ function convertPapaRowToBirdObject(row) {
     ];
     let hasRequiredData = true;
     allHeaders.forEach(key => {
-        let val = row ? row[key] : ""; 
+        let val = row ? row[key] : "";
         val = val ? val.trim() : "";
         obj[key] = (val === '""' || val === '"') ? "" : val;
         if (requiredKeys.includes(key) && !obj[key]) hasRequiredData = false;
@@ -131,8 +131,8 @@ function convertPapaRowToBirdObject(row) {
     if (obj.photo_url === undefined) obj.photo_url = "";
     if (obj.observed_date === undefined) obj.observed_date = "";
     if (obj.observed_location === undefined) obj.observed_location = "";
-    if (obj.lastObservedEventId === undefined) obj.lastObservedEventId = ""; 
-    if (obj.voice_url === undefined) obj.voice_url = ""; 
+    if (obj.lastObservedEventId === undefined) obj.lastObservedEventId = "";
+    if (obj.voice_url === undefined) obj.voice_url = "";
     // ★ 修正: 'true'/'false' (文字列) を true/false (ブール値) に変換
     obj.lifer_seen = (obj.lifer_seen === 'true' || obj.lifer_seen === true);
     obj.lifer_heard = (obj.lifer_heard === 'true' || obj.lifer_heard === true);
@@ -142,12 +142,12 @@ function convertPapaRowToBirdObject(row) {
 }
 
 // --- DBカラム定義 ---
-const MASTER_COLUMNS = [ 
-    'name', 'classification', 'size', 'special_notes', 
-    'habitat_hokkaido', 'habitat_honshu', 'habitat_shikoku', 'habitat_kyushu', 'habitat_islands', 
-    'type' 
+const MASTER_COLUMNS = [
+    'name', 'classification', 'size', 'special_notes',
+    'habitat_hokkaido', 'habitat_honshu', 'habitat_shikoku', 'habitat_kyushu', 'habitat_islands',
+    'type'
 ];
-const LOCAL_COLUMNS = [ 
+const LOCAL_COLUMNS = [
     'season', 'rarity', 'description', 'photo_url', 'observed_date', 'observed_location',
     'lastObservedEventId', 'voice_url',
     'lifer_seen', 'lifer_heard', 'lifer_photo', 'lifer_video'
@@ -158,7 +158,7 @@ async function initializeDatabase() {
     let db;
     try {
         db = await openBirdDB();
-        
+
         // 1. イベントデータを IndexedDB から読み込む
         const storedEvents = await db.getAll(STORE_EVENTS);
         if (storedEvents && Array.isArray(storedEvents)) {
@@ -199,8 +199,8 @@ async function initializeDatabase() {
 // --- 「目」リスト更新 ---
 function updateAllOrdersList() {
      allOrders = [...new Set(birdDatabase.map(b => {
-        if (!b || !b.classification) return null; 
-        const match = b.classification.match(/^(.+?目)/); 
+        if (!b || !b.classification) return null;
+        const match = b.classification.match(/^(.+?目)/);
         return match ? match[1] : null;
     }).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'ja'));
 }
