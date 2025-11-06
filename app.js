@@ -4,7 +4,7 @@ const GITHUB_VERSION_URL = 'https://mjy-mo.github.io/bird-pokedex/version.txt';
 
 // --- ★ 機能追加: IndexedDB データベース設定 ---
 const DB_NAME = 'BirdPokedexDB';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_BIRDS = 'birdDatabase';
 const STORE_EVENTS = 'events';
 // ★★★ バーダーカード保存用のストアを追加 ★★★
