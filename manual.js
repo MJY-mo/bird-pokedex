@@ -221,3 +221,11 @@ function showManualPage() {
             
             const precautionsToggle = document.getElementById('accordion-toggle-precautions');
             if (precautionsToggle) {
+                precautionsToggle.onclick = () => toggleAccordion('accordion-content-precautions', 'accordion-arrow-precautions');
+            }
+
+        } catch (error) {
+            console.error("Error setting up manual page listeners:", error);
+        }
+    }, 0);
+}
