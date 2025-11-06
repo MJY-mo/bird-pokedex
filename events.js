@@ -855,6 +855,10 @@ async function handleRemoveBirdFromEvent(birdIndex) {
         event.observedBirds.splice(birdIndex, 1); 
         await saveEventsData(); // ★ await
 
+        // ★★★ 修正: データ不整合を解消するため、お掃除関数を呼び出す ★★★
+        // (app.js で定義されたグローバル関数)
+        await rescanLatestEventForBirds([birdName]);
+
         const tableBody = document.getElementById('observed-birds-table');
         if (tableBody) {
             tableBody.innerHTML = renderObservedBirdsTable();
@@ -881,7 +885,12 @@ async function handleSaveEventDetails(e) {
     
     // ★ 機能追加: このイベントに登録されている鳥の情報を、図鑑側でも更新
     let birdDataNeedsSave = false;
+    // ★★★ 修正: お掃除関数を呼ぶために、影響を受ける鳥のリストを収集 ★★★
+    const birdNamesToRescan = []; 
+    
     for (const observedBird of event.observedBirds) {
+        birdNamesToRescan.push(observedBird.name); // このイベントの鳥は全員再スキャン
+        
         const birdInDB = birdDatabase.find(b => b.name === observedBird.name);
         if (birdInDB && birdInDB.lastObservedEventId === event.id) {
             // このイベントが最新の観察記録である鳥だけ、情報を更新
@@ -897,6 +906,10 @@ async function handleSaveEventDetails(e) {
         await saveDatabase();
         console.log("イベント情報変更に伴い、図鑑データを更新しました。");
     }
+    
+    // ★★★ 修正: 変更したイベントの日付/場所が最新の場合に備え、再スキャン ★★★
+    // (saveDatabaseの *後* で呼び出す)
+    await rescanLatestEventForBirds(birdNamesToRescan);
 
     setEventEditMode(false);
 
@@ -952,11 +965,14 @@ async function handleDeleteEvent(eventIndex) {
     if (confirmed) {
         console.log(`イベント「${escapeHTML(eventName)}」を削除します。`);
         
-        // TODO: このイベントを 'lastObservedEventId' として持つ鳥のデータをどうするか？
-        // ひとまず、鳥側の 'lastObservedEventId' は残したままにする（削除が複雑なため）
+        // ★★★ 修正: 削除する前に、影響を受ける鳥のリストを取得 ★★★
+        const birdNamesToRescan = event.observedBirds.map(b => b.name);
         
         birdEvents.splice(eventIndex, 1); // 配列から削除
         await saveEventsData(); // DBに保存
+
+        // ★★★ 修正: データ不整合を解消するため、お掃除関数を呼び出す ★★★
+        await rescanLatestEventForBirds(birdNamesToRescan);
 
         // ページ番号がリストの範囲外になったかチェック
         const totalItems = birdEvents.length;

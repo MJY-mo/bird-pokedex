@@ -447,7 +447,7 @@ async function saveEventsData() {
         const tx = db.transaction(STORE_EVENTS, 'readwrite');
         
         await tx.store.clear();
-        await Promise.all(birdEvents.map(event => eventTx.store.put(event)));
+        await Promise.all(birdEvents.map(event => tx.store.put(event)));
         await tx.done;
 
         console.log(`Successfully saved ${birdEvents.length} events to IndexedDB.`);
@@ -619,22 +619,34 @@ function updateHeader(mode, title = "鳥類図鑑") {
         backButton.classList.add('hidden');
         headerActions.classList.add('hidden'); 
         searchPopup.classList.add('hidden'); filterPopup.classList.add('hidden'); viewPopup.classList.add('hidden');
-        app.classList.remove('pt-popup');
+        
+        // ★★★ 修正点: remove('pt-popup') を削除し、デフォルトで 'pt-popup' を追加する ★★★
+        app.classList.add('pt-popup');
+        
         searchToggleButton.classList.remove('active'); filterToggleButton.classList.remove('active'); viewToggleButton.classList.remove('active');
         filterActiveDot.classList.add('hidden');
 
         if (mode === 'list') {
-            headerActions.classList.remove('hidden'); app.classList.add('pt-popup'); 
+            headerActions.classList.remove('hidden'); 
+            // app.classList.add('pt-popup'); // ← デフォルトで追加済
             if (getFilterStatus().isFiltered) filterActiveDot.classList.remove('hidden');
             const { activePopup } = appState.listControls;
             if (activePopup === 'search') { searchToggleButton.classList.add('active'); searchPopup.classList.remove('hidden'); renderSearchPopup(); } 
             else if (activePopup === 'filter') { filterToggleButton.classList.add('active'); filterPopup.classList.remove('hidden'); renderFilterPopup(); } 
             else if (activePopup === 'view') { viewToggleButton.classList.add('active'); viewPopup.classList.remove('hidden'); renderViewPopup(); }
+        
+        } else if (mode === 'events' || mode === 'manual' || mode === 'settings') {
+             // ★★★ 修正点: 'events', 'manual', 'settings' は 'pt-popup' が必要 ★★★
+             // (デフォルトで追加済なので、ここでは何もしない)
+        
         } else if (mode === 'detail' || mode === 'edit') {
+            app.classList.remove('pt-popup'); // ← padding を削除
             backButton.classList.remove('hidden');
             backButton.textContent = mode === 'edit' ? "< 中止" : "< 戻る";
             backButton.onclick = mode === 'edit' ? () => showDetailPage(appState.currentBirdId) : () => showListPage(); 
+        
         } else if (mode === 'newEvent' || mode === 'eventDetail') { 
+             app.classList.remove('pt-popup'); // ← padding を削除
              backButton.classList.remove('hidden');
              backButton.textContent = "< 戻る";
              backButton.onclick = () => {
@@ -643,7 +655,9 @@ function updateHeader(mode, title = "鳥類図鑑") {
                  }
                  showEventsPage(); 
              };
-        } else if (mode === 'error' || mode === 'loading' || mode === 'manual') { // ★ 修正: manual を追加
+        
+        } else if (mode === 'error' || mode === 'loading') {
+            app.classList.remove('pt-popup'); // ← padding を削除
             // アクションなし
         }
     } catch (error) {
@@ -853,6 +867,70 @@ function applyBackgroundSettings() {
         overlay.style.opacity = 0;
     }
 }
+
+// --- ★★★ 新設: データ不整合を解消するお掃除関数 ★★★ ---
+/**
+ * * 指定された鳥の名前リストに基づき、全イベントを再スキャンし、
+ * 各鳥の「最新の観察イベントID (lastObservedEventId)」を更新する。
+ * イベント削除時や、イベントから鳥を削除した時に呼び出す。
+ * * @param {string[]} birdNames - 再スキャン対象の鳥の名前の配列
+ */
+async function rescanLatestEventForBirds(birdNames) {
+    let birdDataNeedsSave = false;
+    const birdNameSet = new Set(birdNames); // 重複を削除
+
+    console.log(`[Rescan] ${birdNameSet.size}羽の鳥の最新イベントを再スキャンします...`);
+
+    for (const birdName of birdNameSet) {
+        const birdInDB = birdDatabase.find(b => b.name === birdName);
+        if (!birdInDB) continue;
+
+        // --- この鳥が含まれる全イベントから、日付が最新のものを探す ---
+        let newLatestEvent = null;
+        let latestDate = ''; // '2025-01-01T12:00' のような文字列比較
+
+        for (const event of birdEvents) { // (削除済みのイベントは含まれていない birdEvents)
+            // このイベントに、スキャン対象の鳥が含まれているか
+            const isBirdInEvent = event.observedBirds.some(b => b.name === birdName);
+            
+            if (isBirdInEvent) {
+                // 日付が設定されており、それが今までの最新日付よりも新しいか
+                if (event.dateTime && event.dateTime > latestDate) {
+                    latestDate = event.dateTime;
+                    newLatestEvent = event;
+                }
+            }
+        }
+        // --- スキャン完了 ---
+
+        // --- birdDatabase を更新 ---
+        if (newLatestEvent) {
+            // 新しい最新イベントが見つかった
+            if (birdInDB.lastObservedEventId !== newLatestEvent.id) {
+                birdInDB.lastObservedEventId = newLatestEvent.id;
+                birdInDB.observed_date = newLatestEvent.dateTime;
+                birdInDB.observed_location = newLatestEvent.location;
+                birdDataNeedsSave = true;
+                console.log(`[Rescan] ${birdName}: 最新イベントを ${newLatestEvent.name} に更新`);
+            }
+        } else {
+            // この鳥のイベントが一つも見つからなかった
+            if (birdInDB.lastObservedEventId !== null && birdInDB.lastObservedEventId !== '') {
+                birdInDB.lastObservedEventId = ''; // or null
+                birdInDB.observed_date = '';
+                birdInDB.observed_location = '';
+                birdDataNeedsSave = true;
+                console.log(`[Rescan] ${birdName}: 観察記録が見つからないためリセット`);
+            }
+        }
+    }
+
+    if (birdDataNeedsSave) {
+        await saveDatabase(); // app.js の関数
+        console.log('[Rescan] 図鑑DBの更新が完了しました。');
+    }
+}
+
 
 // --- ★★★ アプリケーション初期化 (修正) ★★★ ---
 // ページのすべてのリソース（他のJSファイルを含む）が読み込まれてから起動する
