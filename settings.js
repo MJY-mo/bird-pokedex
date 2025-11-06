@@ -24,7 +24,6 @@ function showSettingsPage() {
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-xl font-semibold mb-4">マイ・バーダーカード</h2>
             
-            <!-- カードプレビュー -->
             <div class="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg mb-4">
                 <img id="birder-photo-preview" src="${myPhotoUrl}" 
                      onerror="this.onerror=null; this.src='https://placehold.co/150x150/e0e0e0/b0b0b0?text=Error';"
@@ -35,7 +34,6 @@ function showSettingsPage() {
                 </div>
             </div>
             
-            <!-- 写真編集 -->
             <div>
                 <label for="birder-photo-input" class="block text-sm font-medium text-gray-700">カードの写真 (5MBまで)</label>
                 <input type="file" id="birder-photo-input" accept="image/*" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
@@ -47,7 +45,6 @@ function showSettingsPage() {
             
             <hr class="my-6 border-gray-100">
             
-            <!-- カード交換ボタン -->
             <div class="space-y-3">
                 <button id="share-card-btn" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-emerald-700 transition-colors">
                     カードを送る (共有)
@@ -65,18 +62,16 @@ function showSettingsPage() {
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-xl font-semibold mb-4">もらったカード</h2>
             
-            <!-- カード読み込み -->
             <div>
                 <label for="import-card-file" class="w-full text-center block bg-gray-50 text-gray-700 font-bold py-3 px-4 rounded-lg shadow-inner hover:bg-gray-100 transition-colors cursor-pointer">
                     カードを読み込む (.bcard)
                 </label>
                 <input type="file" id="import-card-file" accept=".bcard, application/json" class="hidden">
-                <p class="text-xs text-gray-500 mt-2">受信した `.bcard` ファイルを選択してください。</p>
+                <p class="text-xs text-gray-500 mt-2">受信した '.bcard' ファイルを選択してください。</p>
             </div>
             
             <hr class="my-6 border-gray-100">
 
-            <!-- もらったカード一覧 -->
             <h3 class="text-lg font-medium text-gray-800 mb-3">受信箱</h3>
             <div id="received-cards-list" class="space-y-3 max-h-60 overflow-y-auto pr-2">
                 ${(receivedCards && receivedCards.length > 0) ? 
@@ -109,7 +104,6 @@ function showSettingsPage() {
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-xl font-semibold mb-4">ライフリスト設定</h2>
             <div class="space-y-4">
-                <!-- 自動更新トグル -->
                 <div class="flex items-center justify-between">
                     <label for="auto-update-lifer" class="flex flex-col flex-1 mr-4">
                         <span class="font-medium text-gray-700">イベントから自動更新</span>
@@ -124,7 +118,6 @@ function showSettingsPage() {
                 
                 <hr class="border-gray-100">
 
-                <!-- 履歴から再集計 -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">ライフリスト再集計</label>
                     <p class="text-sm text-gray-500 mb-3">
@@ -152,13 +145,11 @@ function showSettingsPage() {
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-xl font-semibold mb-4">背景設定</h2>
             <div class="space-y-4">
-                <!-- 背景色 -->
                 <div>
                     <label for="bg-color-picker" class="block text-sm font-medium text-gray-700">背景色</label>
                     <input type="color" id="bg-color-picker" value="${escapeHTML(currentBgSettings.bgColor)}" class="mt-1 block w-full h-10 border border-gray-300 rounded-md cursor-pointer">
                 </div>
                 
-                <!-- 背景画像 -->
                 <div>
                     <label for="bg-image-input" class="block text-sm font-medium text-gray-700">背景画像 (5MBまで)</label>
                     <input type="file" id="bg-image-input" accept="image/*" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
@@ -167,7 +158,6 @@ function showSettingsPage() {
                     </button>
                 </div>
                 
-                <!-- 画像の透明度 -->
                 <div>
                     <label for="bg-opacity-slider" class="block text-sm font-medium text-gray-700">画像の透明度: <span id="bg-opacity-value">${currentBgSettings.bgOpacity}</span></label>
                     <input type="range" id="bg-opacity-slider" min="0.05" max="1" step="0.05" value="${currentBgSettings.bgOpacity}" class="mt-1 block w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
@@ -178,7 +168,6 @@ function showSettingsPage() {
 
     // --- 6. 既存の機能 (インポート/エクスポート) ---
     const importExportHtml = `
-        <!-- 観察記録CSVのエクスポート -->
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-xl font-semibold mb-4">観察記録のエクスポート (CSV)</h2>
             <p class="text-gray-600 mb-4">
@@ -189,7 +178,6 @@ function showSettingsPage() {
             </button>
         </div>
 
-        <!-- データのエクスポート -->
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-xl font-semibold mb-4">データのエクスポート</h2>
             <p class="text-gray-600 mb-4">
@@ -200,7 +188,6 @@ function showSettingsPage() {
             </button>
         </div>
 
-        <!-- データのインポート -->
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-xl font-semibold mb-4 text-red-700">データのインポート</h2>
             <p class="text-gray-600 mb-4">
