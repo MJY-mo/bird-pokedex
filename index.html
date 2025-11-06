@@ -3,33 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <title>鳥類図鑑 PWA</title>
-    <!-- PWA, Tailwind, Inter Font -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="鳥類図鑑">
     <link rel="apple-touch-icon" href="https://placehold.co/180x180/34d399/ffffff?text=鳥">
-    <!-- <link rel="manifest" href="manifest.webmanifest"> -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- PapaParseライブラリの読み込み -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     
-    <!-- ★ 機能追加: IndexedDB ライブラリ -->
     <script src="https://cdn.jsdelivr.net/npm/idb@7/build/umd.js"></script>
 
-    <!-- ★変更点1: CSSファイルを読み込む -->
     <link rel="stylesheet" href="style.css">
 
 </head>
-<!-- ★ 修正: 背景色をJSで制御するため "bg-gray-100" を削除 -->
 <body class="">
 
-    <!-- ★ 機能追加: 背景画像表示用のオーバーレイ -->
     <div id="background-overlay"></div>
 
-    <!-- ▼▼▼ HEADER (変更なし) ▼▼▼ -->
     <header id="header" class="bg-white shadow-md fixed top-0 z-20 w-full max-w-lg mx-auto">
         <div class="container mx-auto px-4 py-3 flex items-center justify-between h-16">
             <button id="backButton" class="text-emerald-600 hidden w-20 text-left">&lt; 戻る</button>
@@ -54,13 +49,9 @@
         <div id="filter-popup" class="popup-panel bg-gray-50 border-t border-b border-gray-200 hidden overflow-y-auto" style="max-height: calc(100vh - 4rem);"></div>
         <div id="view-popup" class="popup-panel bg-gray-50 border-t border-b border-gray-200 hidden overflow-y-auto" style="max-height: calc(100vh - 4rem);"></div>
     </header>
-    <!-- ▲▲▲ HEADER (変更なし) ▲▲▲ -->
-
-
     <main id="app" class="container mx-auto max-w-lg p-4"></main>
 
 
-    <!-- ▼▼▼ NAV (変更なし) ▼▼▼ -->
     <nav class="bg-white border-t border-gray-200 fixed bottom-0 left-0 right-0 max-w-lg mx-auto h-16 flex justify-around items-center z-30">
         <button id="tab-pokedex" class="tab-button flex-1 flex flex-col items-center justify-center h-full text-sm font-medium tab-active">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
@@ -75,9 +66,6 @@
             設定
         </button>
     </nav>
-    <!-- ▲▲▲ NAV (変更なし) ▲▲▲ -->
-
-    <!-- ★ 機能追加: カスタム確認モーダル -->
     <div id="custom-confirm-modal" class="hidden">
         <div class="confirm-modal-content">
             <h3 id="confirm-modal-title" class="confirm-modal-title">確認</h3>
@@ -89,7 +77,6 @@
         </div>
     </div>
     
-    <!-- ★変更点2: JSファイルを4つに分割して読み込む (順番が重要) -->
     <script src="app.js"></script>
     <script src="pokedex.js"></script>
     <script src="events.js"></script>
@@ -97,4 +84,3 @@
 
 </body>
 </html>
-
