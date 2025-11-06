@@ -203,21 +203,102 @@ function showSettingsPage() {
         </div>
     `;
     
-    // --- 画面全体の描画 ---
+    // --- ★★★ 画面全体の描画 (アコーディオン形式に修正) ★★★ ---
     app.innerHTML = `
         <div class="space-y-6">
-            ${myBirderCardHtml}
-            ${receivedCardsHtml}
-            ${liferSettingsHtml}
-            ${backgroundSettingsHtml}
-            ${importExportHtml}
+            
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <button id="accordion-toggle-card" class="accordion-toggle w-full flex justify-between items-center p-4 text-left">
+                    <h2 class="text-xl font-semibold text-gray-800">バーダーカード</h2>
+                    <svg id="accordion-arrow-card" class="accordion-arrow h-5 w-5 text-gray-500 transition-transform transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div id="accordion-content-card" class="accordion-content" style="max-height: 0px;">
+                    <div class="border-t border-gray-100 space-y-6 p-4">
+                        ${myBirderCardHtml}
+                        ${receivedCardsHtml}
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <button id="accordion-toggle-bg" class="accordion-toggle w-full flex justify-between items-center p-4 text-left">
+                    <h2 class="text-xl font-semibold text-gray-800">背景設定</h2>
+                    <svg id="accordion-arrow-bg" class="accordion-arrow h-5 w-5 text-gray-500 transition-transform transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div id="accordion-content-bg" class="accordion-content" style="max-height: 0px;">
+                    <div class="border-t border-gray-100">
+                       ${backgroundSettingsHtml}
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <button id="accordion-toggle-data" class="accordion-toggle w-full flex justify-between items-center p-4 text-left">
+                    <h2 class="text-xl font-semibold text-gray-800">データ管理</h2>
+                    <svg id="accordion-arrow-data" class="accordion-arrow h-5 w-5 text-gray-500 transition-transform transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div id="accordion-content-data" class="accordion-content" style="max-height: 0px;">
+                    <div class="border-t border-gray-100 space-y-6 p-4">
+                        ${liferSettingsHtml}
+                        ${importExportHtml}
+                    </div>
+                </div>
+            </div>
+
         </div>`;
     updateHeader('settings', '設定');
     
     
-    // --- ★★★ リスナー設定 (バーダーカード機能を追加) ★★★ ---
+    // --- ★★★ リスナー設定 (アコーディオンロジックを追加) ★★★ ---
     setTimeout(() => {
         try {
+            // --- ★★★ アコーディオン開閉ロジック (修正版) ★★★ ---
+            
+            // 汎用アコーディオン開閉関数 (events.js から正しく拝借)
+            const toggleAccordion = (contentId, arrowId) => {
+                const content = document.getElementById(contentId);
+                const arrow = document.getElementById(arrowId);
+                if (!content || !arrow) {
+                    console.error("Accordion elements not found:", contentId, arrowId);
+                    return;
+                }
+                
+                const currentMaxHeight = content.style.maxHeight;
+
+                if (currentMaxHeight !== '0px' && currentMaxHeight !== '') {
+                    // 閉じる
+                    content.style.maxHeight = '0px';
+                    arrow.classList.remove('arrow-up');
+                } else {
+                    // 開く (scrollHeight が 0 の場合のフォールバック を追加)
+                    content.style.maxHeight = (content.scrollHeight > 0 ? content.scrollHeight : 500) + 'px';
+                    arrow.classList.add('arrow-up');
+                }
+            };
+
+            // アコーディオンのトグルボタンにリスナーを設定
+            const cardToggle = document.getElementById('accordion-toggle-card');
+            if (cardToggle) {
+                cardToggle.onclick = () => toggleAccordion('accordion-content-card', 'accordion-arrow-card');
+            }
+            const bgToggle = document.getElementById('accordion-toggle-bg');
+            if (bgToggle) {
+                bgToggle.onclick = () => toggleAccordion('accordion-content-bg', 'accordion-arrow-bg');
+            }
+            const dataToggle = document.getElementById('accordion-toggle-data');
+            if (dataToggle) {
+                dataToggle.onclick = () => toggleAccordion('accordion-content-data', 'accordion-arrow-data');
+            }
+
+            // --- ★★★ ここまで追加 ★★★ ---
+
+
             // --- マイ・バーダーカードのリスナー ---
             const nameInput = document.getElementById('birder-name-input');
             const photoInput = document.getElementById('birder-photo-input');
