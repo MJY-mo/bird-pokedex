@@ -101,17 +101,17 @@ function showManualPage() {
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
                     <h4 class="font-semibold text-blue-800">2. 解決策：必ずバックアップを！</h4>
                     <p class="text-sm text-blue-700">
-                        データを守るため、**定期的（例：月に一度）に「設定」タブ →「データ管理」にある「データのエクスポート」 を実行してください。**
+                        データを守るため、**定期的（例：月に一度）に「設定」タブ →「データ管理」にある「データのエクスポート」を実行してください。**
                     </p>
                     <p class="text-sm text-blue-700">
-                        `bird-pokedex-backup-xxxx.json` というファイル がダウンロードされます。これさえあれば、万が一データが消えても「データのインポート」 から復元できます。
+                        `bird-pokedex-backup-xxxx.json` というファイルがダウンロードされます。これさえあれば、万が一データが消えても「データのインポート」から復元できます。
                     </p>
                 </div>
                 
                  <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3">
                     <h4 class="font-semibold text-yellow-800">3. インポートは「上書き」です</h4>
                     <p class="text-sm text-yellow-700">
-                        「データのインポート」 を実行すると、現在のデータは**すべて消去**され、ファイルの内容で**完全に上書き**されます。ご注意ください。
+                        「データのインポート」を実行すると、現在のデータは**すべて消去**され、ファイルの内容で**完全に上書き**されます。ご注意ください。
                     </p>
                 </div>
             </section>
@@ -221,11 +221,3 @@ function showManualPage() {
             
             const precautionsToggle = document.getElementById('accordion-toggle-precautions');
             if (precautionsToggle) {
-                precautionsToggle.onclick = () => toggleAccordion('accordion-content-precautions', 'accordion-arrow-precautions');
-            }
-
-        } catch (error) {
-            console.error("Error setting up manual page listeners:", error);
-        }
-    }, 0);
-}
