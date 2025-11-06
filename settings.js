@@ -395,6 +395,7 @@ function saveBackgroundSettings(newSettings) {
     }
 }
 
+
 // --- データのエクスポート処理 ---
 async function handleExportData() {
     console.log('データのエクスポートを開始します...');
