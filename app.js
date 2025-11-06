@@ -4,7 +4,7 @@ const GITHUB_VERSION_URL = 'https://mjy-mo.github.io/bird-pokedex/version.txt';
 
 // --- ★ 機能追加: IndexedDB データベース設定 ---
 const DB_NAME = 'BirdPokedexDB';
-const DB_VERSION = 3;
+const DB_VERSION = 1; // (もし前回のデバッグで 2 や 3 にしていたら、その番号のままにしてください)
 const STORE_BIRDS = 'birdDatabase';
 const STORE_EVENTS = 'events';
 // ★★★ バーダーカード保存用のストアを追加 ★★★
@@ -165,6 +165,56 @@ const LOCAL_COLUMNS = [
     'lifer_seen', 'lifer_heard', 'lifer_photo', 'lifer_video'
 ];
 
+// --- ★ 修正: データ移行（マイグレーション）関数 ---
+/**
+ * DBから読み込んだ「イベント」データを現在のアプリ構造に合わせる
+ * (古いデータに存在しないプロパティを追加し、undefinedエラーを防ぐ)
+ */
+function migrateEventData(event) {
+    const defaults = {
+        id: `event_${Date.now()}`,
+        name: '無題のイベント',
+        dateTime: '',
+        weather: '',
+        location: '',
+        companions: '',
+        observedBirds: [], // observedBirds が undefined になるのを防ぐ
+        memo: ''
+    };
+    return { ...defaults, ...event };
+}
+
+/**
+ * DBから読み込んだ「鳥」データを現在のアプリ構造に合わせる
+ */
+function migrateBirdData(bird) {
+    const defaults = {
+        id: '',
+        name: '',
+        classification: '',
+        size: '',
+        special_notes: '',
+        habitat_hokkaido: '',
+        habitat_honshu: '',
+        habitat_shikoku: '',
+        habitat_kyushu: '',
+        habitat_islands: '',
+        type: '',
+        season: '',
+        rarity: '',
+        description: '',
+        photo_url: '',
+        observed_date: '',
+        observed_location: '',
+        lastObservedEventId: '',
+        voice_url: '',
+        lifer_seen: false,
+        lifer_heard: false,
+        lifer_photo: false,
+        lifer_video: false
+    };
+    return { ...defaults, ...bird };
+}
 
 // --- データベース初期化 ---
 async function initializeDatabase() {
@@ -175,7 +225,8 @@ async function initializeDatabase() {
         // 1. イベントデータを IndexedDB から読み込む
         const storedEvents = await db.getAll(STORE_EVENTS);
         if (storedEvents && Array.isArray(storedEvents)) {
-            birdEvents = storedEvents;
+            // ★ 修正: 移行関数を通してからグローバル変数に代入
+            birdEvents = storedEvents.map(migrateEventData);
         } else {
             birdEvents = [];
         }
@@ -183,6 +234,7 @@ async function initializeDatabase() {
         // ★★★ 2. もらったカードデータを IndexedDB から読み込む ★★★
         const storedCards = await db.getAll(STORE_CARDS);
         if (storedCards && Array.isArray(storedCards)) {
+            // (注: カードの移行は settings.js の handleImportReceivedCard で行うため、ここでは移行不要)
             receivedCards = storedCards;
         } else {
             receivedCards = [];
@@ -191,7 +243,8 @@ async function initializeDatabase() {
         // 3. 鳥データを IndexedDB から読み込む
         const storedData = await db.getAll(STORE_BIRDS);
         if (storedData && Array.isArray(storedData) && storedData.length > 0) {
-            birdDatabase = storedData;
+            // ★ 修正: 移行関数を通してからグローバル変数に代入
+            birdDatabase = storedData.map(migrateBirdData);
             console.log(`Loaded ${birdDatabase.length} birds from IndexedDB`);
             await checkAndUpdateData(); 
         } else {
@@ -336,11 +389,15 @@ async function checkAndUpdateData() {
         const newDatabase = masterDataList.map(masterBird => {
             const localBird = localDataMap.get(masterBird.id);
             if (localBird) {
-                const mergedBird = { ...masterBird }; 
+                // ★ 修正: マージ処理でローカルデータを移行
+                // (もし将来 bird.userMemo を追加した場合、LOCAL_COLUMNS に 'userMemo' を追加する必要がある)
+                const mergedBird = { ...migrateBirdData(masterBird) }; // デフォルト構造を適用
                 LOCAL_COLUMNS.forEach(key => { if (localBird[key] !== undefined) mergedBird[key] = localBird[key]; });
                 localDataMap.delete(masterBird.id); 
                 return mergedBird;
-            } else { return masterBird; }
+            } else { 
+                return masterBird; 
+            }
         });
         localDataMap.forEach(remainingLocalBird => newDatabase.push(remainingLocalBird));
         
@@ -468,7 +525,7 @@ function loadListControlsState() {
         filterObservedType: 'any'
     };
     
-    // ★★★ デフォルトにカード設定を追加 ★★★
+    // ★★★ 修正: デフォルトにカード設定を追加 ★★★
     const defaultSettings = {
         autoUpdateLiferList: true,
         birderName: '',
@@ -513,7 +570,8 @@ function loadListControlsState() {
         
         appState.listControls = { ...appState.listControls, ...loadedState };
         appState.eventControls = { ...defaultEventControls, ...(loadedState.eventControls || {}) };
-        // ★★★ settings もマージする ★★★
+        
+        // ★★★ 修正: settings もマージする (デフォルトを先に指定) ★★★
         appState.settings = { ...defaultSettings, ...(loadedState.settings || {}) }; 
         
         delete appState.listControls.eventControls; 

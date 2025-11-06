@@ -817,8 +817,11 @@ function handleBirderPhotoChange(event, previewElement, removeBtn, isRemove = fa
 
 // --- ★★★ カードを共有（またはエクスポート）するハンドラ ★★★ ---
 async function handleShareMyCard(liferTotals) {
+    
+    // ★ 修正: バージョン情報を追加
     const myCardData = {
         type: 'BirdPokedexCard', // データの種類を識別
+        version: 1, // ★ バージョンを追加
         name: appState.settings.birderName || '名無しのバーダー',
         photo: appState.settings.birderPhoto || '', // Base64
         totals: liferTotals,
@@ -868,6 +871,41 @@ function handleExportMyCardFallback(file) {
     console.log('カードをファイルとしてダウンロードしました。');
 }
 
+// --- ★★★ 新設: もらったカードの移行（マイグレーション）関数 ★★★ ---
+/**
+ * インポートしたカードデータを、現在のアプリが期待する構造に変換する
+ */
+function migrateReceivedCardData(cardData) {
+    const version = cardData.version || 1; // バージョンがなければV1とみなす
+    
+    // V1のデフォルト構造
+    const defaultV1Card = {
+        name: '（名前なし）',
+        photo: '',
+        totals: { seen: 0, heard: 0, photo: 0, video: 0, any: 0 },
+        // (V2で追加されるであろう項目)
+        // favoriteBird: null 
+    };
+
+    let migratedData = {};
+
+    if (version === 1) {
+        migratedData = {
+            name: cardData.name || defaultV1Card.name,
+            photo: cardData.photo || defaultV1Card.photo,
+            totals: cardData.totals || defaultV1Card.totals,
+            // favoriteBird: defaultV1Card.favoriteBird
+        };
+    }
+    // else if (version === 2) {
+    //   // V2の移行ロジック
+    // }
+    
+    // 不足している可能性のあるキーを、デフォルトで上書きマージする
+    return { ...defaultV1Card, ...migratedData };
+}
+
+
 // --- ★★★ もらったカードを読み込むハンドラ ★★★ ---
 async function handleImportReceivedCard(event) {
     const file = event.target.files[0];
@@ -879,14 +917,17 @@ async function handleImportReceivedCard(event) {
             const jsonString = e.target.result;
             const cardData = JSON.parse(jsonString);
 
-            // データのバリデーション
-            if (!cardData || cardData.type !== 'BirdPokedexCard' || !cardData.totals) {
+            // データのバリデーション (totalsのチェックは緩める)
+            if (!cardData || cardData.type !== 'BirdPokedexCard') {
                 throw new Error('これは有効なバーダーカードファイルではありません。');
             }
             
+            // ★ 修正: 移行関数を通す
+            const migratedCard = migrateReceivedCardData(cardData);
+
             // スナップショットとして保存（ユニークIDと受信日を追加）
             const newCard = {
-                ...cardData,
+                ...migratedCard, // ★ 移行後のデータを使用
                 id: `card_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`, // ユニークID
                 receivedDate: new Date().toISOString()
             };
