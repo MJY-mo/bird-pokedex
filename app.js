@@ -447,7 +447,7 @@ async function saveEventsData() {
         const tx = db.transaction(STORE_EVENTS, 'readwrite');
         
         await tx.store.clear();
-        await Promise.all(birdEvents.map(event => tx.store.put(event)));
+        await Promise.all(birdEvents.map(event => eventTx.store.put(event)));
         await tx.done;
 
         console.log(`Successfully saved ${birdEvents.length} events to IndexedDB.`);
@@ -643,7 +643,7 @@ function updateHeader(mode, title = "鳥類図鑑") {
                  }
                  showEventsPage(); 
              };
-        } else if (mode === 'error' || mode === 'loading') {
+        } else if (mode === 'error' || mode === 'loading' || mode === 'manual') { // ★ 修正: manual を追加
             // アクションなし
         }
     } catch (error) {
@@ -734,7 +734,13 @@ function getSearchSuggestions(text) {
 
 // --- タブ切り替え ---
 function setupTabs() { 
-    const tabs = [ { id: 'tab-pokedex', page: showListPage }, { id: 'tab-events', page: showEventsPage }, { id: 'tab-settings', page: showSettingsPage } ];
+    // ★★★ 修正: 'tab-manual' を追加 ★★★
+    const tabs = [ 
+        { id: 'tab-pokedex', page: showListPage }, 
+        { id: 'tab-events', page: showEventsPage }, 
+        { id: 'tab-manual', page: showManualPage },
+        { id: 'tab-settings', page: showSettingsPage } 
+    ];
     tabs.forEach(tab => {
         const button = document.getElementById(tab.id);
         if (button) { 

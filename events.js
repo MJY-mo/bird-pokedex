@@ -23,7 +23,7 @@ function showEventsPage() {
         <div class="bg-white rounded-lg shadow p-4 space-y-3">
             <h3 class="text-lg font-semibold text-gray-800">イベント検索</h3>
             <div>
-                <label for="event-filter-name" class="block text-sm font-medium text-gray-700">鳥の名前</label>
+                <label for="event-filter-name" class="block text-sm font-medium text-gray-700">観察した鳥</label>
                 <input type="search" id="event-filter-name" value="${escapeHTML(currentFilterName)}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="例: スズメ">
             </div>
             <div>
@@ -129,11 +129,9 @@ function showEventsPage() {
             if (originalIndex === -1) return ''; 
             // ★ 修正: イベント削除ボタンを追加
             return `<div class="p-4 border-b border-gray-200 flex justify-between items-center">
-                        <div class="flex-1 cursor-pointer hover:bg-gray-50 -ml-4 -my-4 pl-4 py-4" data-index="${originalIndex}" data-action="view"> <!-- ★ View trigger -->
-                            <h3 class="font-semibold text-gray-800">${escapeHTML(ev.name || '無題のイベント')}</h3>
+                        <div class="flex-1 cursor-pointer hover:bg-gray-50 -ml-4 -my-4 pl-4 py-4" data-index="${originalIndex}" data-action="view"> <h3 class="font-semibold text-gray-800">${escapeHTML(ev.name || '無題のイベント')}</h3>
                             <p class="text-sm text-gray-500">${escapeHTML(formatDate(ev.dateTime))}</p>
                         </div>
-                        <!-- ★ Delete Button -->
                         <button type="button" data-index="${originalIndex}" data-action="delete" class="event-delete-btn text-red-400 hover:text-red-600 p-2 rounded-lg -mr-2 flex-shrink-0">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                         </button>
@@ -144,13 +142,11 @@ function showEventsPage() {
      app.innerHTML = `
         <div class="space-y-4">
              <button id="newEventButton" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-emerald-700 transition-colors">新規イベント作成</button>
-             ${searchHtml} <!-- ★ 検索UIを追加 -->
-             ${sortSelectHtml}
+             ${searchHtml} ${sortSelectHtml}
              <div class="bg-white rounded-lg shadow overflow-hidden">
                 <h2 class="text-xl font-semibold p-4 border-b border-gray-200">イベント履歴</h2>
                 <div id="event-list">${listHtml}</div>
              </div>
-             <!-- ★ ページネーションUIのコンテナを追加 -->
              <div id="event-pagination-controls" class="mt-6 flex justify-between items-center"></div>
         </div>`;
     updateHeader('events', 'イベント');
@@ -347,6 +343,15 @@ function renderObservedBirdsTable() {
     const sortKey = appState.eventControls.detailSort;
     let sortedBirds = [...event.observedBirds]; 
     
+    // ★★★ 修正点: レア度ソートのためのヘルパー関数 ★★★
+    // (pokedex.js からロジックを拝借)
+    const getRarityNum = (rarity) => { const r = parseInt(rarity, 10); return isNaN(r) ? 99 : r; };
+    const getBirdRarity = (birdName) => {
+        // birdDatabase は app.js で定義されたグローバル変数
+        const birdInDB = birdDatabase.find(b => b.name === birdName);
+        return birdInDB ? birdInDB.rarity : '';
+    };
+    
     switch(sortKey) {
         case 'name_asc':
             sortedBirds.sort((a, b) => jaCollator.compare(a.name || '', b.name || ''));
@@ -362,6 +367,13 @@ function renderObservedBirdsTable() {
             break;
         case 'type_video':
             sortedBirds.sort((a, b) => (b.video ? 1 : 0) - (a.video ? 1 : 0));
+            break;
+        // ★★★ 修正点: レア度ソートを追加 ★★★
+        case 'rarity_asc':
+            sortedBirds.sort((a, b) => getRarityNum(getBirdRarity(a.name)) - getRarityNum(getBirdRarity(b.name)));
+            break;
+        case 'rarity_desc':
+            sortedBirds.sort((a, b) => getRarityNum(getBirdRarity(b.name)) - getRarityNum(getBirdRarity(a.name)));
             break;
         case 'added_asc':
         default:
@@ -516,6 +528,9 @@ function showEventDetail(originalIndex) {
      const birdSortOptions = [
         { value: 'added_asc', label: '追加順' },
         { value: 'name_asc', label: '名前順' },
+        // ★★★ 修正点: レア度ソートを追加 ★★★
+        { value: 'rarity_desc', label: 'レア度 (高い順)' },
+        { value: 'rarity_asc', label: 'レア度 (低い順)' },
         { value: 'type_seen', label: '目視' },
         { value: 'type_heard', label: '声' },
         { value: 'type_photo', label: '写真' },
@@ -614,6 +629,7 @@ function toggleAccordion(contentId, arrowId, forceOpen = false) {
             arrow.classList.remove('arrow-up');
         } else {
             content.style.maxHeight = (content.scrollHeight > 0 ? content.scrollHeight : 500) + 'px'; 
+            arrow.classList.add('arrow-up');
         }
     }
 }
