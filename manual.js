@@ -72,8 +72,8 @@ function showManualPage() {
                     <li><strong>バーダーカード:</strong>
                         <ul class="list-inside list-disc ml-4 mt-1 text-sm">
                             <li>あなたの名前と写真、ライフリストの集計結果が載った「名刺」を作成できます。</li>
-                            <li>「カードを送る」で `.bcard` ファイルを生成し、他のユーザーと交換できます。</li>
-                            <li>「カードを読み込む」で、もらった `.bcard` ファイルをインポートし、「受信箱」に保存できます。</li>
+                            <li>「カードを送る」で '.bcard' ファイルを生成し、他のユーザーと交換できます。</li>
+                            <li>「カードを読み込む」で、もらった '.bcard' ファイルをインポートし、「受信箱」に保存できます。</li>
                         </ul>
                     </li>
                     <li><strong>ライフリスト設定:</strong>
