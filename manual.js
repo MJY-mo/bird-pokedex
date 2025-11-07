@@ -64,7 +64,7 @@ function showManualPage() {
             </section>
             
             <section class="space-y-3">
-                <h3 class="text-lg font-semibold pt-4 border-t border-gray-100">⚙️ 設定 (Settings) タブ</h3>
+                <h3 class="text-lg font-semibold pt-4 border-t border-gray-100"⚙️ 設定 (Settings) タブ</h3>
                 <p class="text-sm text-gray-600">
                     アプリの各種設定、データの管理、そして「バーダーカード」機能が含まれます。
                 </p>
