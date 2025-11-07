@@ -20,17 +20,18 @@ function showSettingsPage() {
     const myCard = appState.settings; // birderName, birderPhoto を含む
     const myPhotoUrl = myCard.birderPhoto || 'https://placehold.co/150x150/e0e0e0/b0b0b0?text=No+Image';
 
+    // ★★★ 修正点: p-6->p-4, mb-4->mb-3, p-4->p-3, space-x-4->space-x-3, text-lg->text-base, text-sm->text-xs ★★★
     const myBirderCardHtml = `
-        <div class="bg-white rounded-lg shadow p-6">
-            <h2 class="text-xl font-semibold mb-4">マイ・バーダーカード</h2>
+        <div class="bg-white rounded-lg shadow p-4">
+            <h2 class="text-xl font-semibold mb-3">マイ・バーダーカード</h2>
             
-            <div class="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg mb-4">
+            <div class="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg mb-4">
                 <img id="birder-photo-preview" src="${myPhotoUrl}" 
                      onerror="this.onerror=null; this.src='https://placehold.co/150x150/e0e0e0/b0b0b0?text=Error';"
                      class="w-20 h-20 object-cover rounded-full border-2 border-emerald-500">
                 <div>
-                    <input type="text" id="birder-name-input" value="${escapeHTML(myCard.birderName || '')}" placeholder="あなたの名前" class="text-lg font-bold text-gray-800 border-b border-gray-300 focus:border-emerald-500 focus:outline-none">
-                    <p class="text-sm text-gray-600 mt-1">ライフリスト: ${liferTotals.any} 種</p>
+                    <input type="text" id="birder-name-input" value="${escapeHTML(myCard.birderName || '')}" placeholder="あなたの名前" class="text-base font-bold text-gray-800 border-b border-gray-300 focus:border-emerald-500 focus:outline-none">
+                    <p class="text-xs text-gray-600 mt-1">ライフリスト: ${liferTotals.any} 種</p>
                 </div>
             </div>
             
@@ -58,8 +59,9 @@ function showSettingsPage() {
 
 
     // --- 3. ★★★ もらったカード ★★★ ---
+    // ★★★ 修正点: p-6->p-4 ★★★
     const receivedCardsHtml = `
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow p-4">
             <h2 class="text-xl font-semibold mb-4">もらったカード</h2>
             
             <div>
@@ -99,9 +101,10 @@ function showSettingsPage() {
 
 
     // --- 4. 既存の機能 (ライフリスト設定など) ---
+    // ★★★ 修正点: p-6->p-4 ★★★
     const autoUpdateChecked = appState.settings.autoUpdateLiferList ? 'checked' : '';
     const liferSettingsHtml = `
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow p-4">
             <h2 class="text-xl font-semibold mb-4">ライフリスト設定</h2>
             <div class="space-y-4">
                 <div class="flex items-center justify-between">
@@ -133,6 +136,7 @@ function showSettingsPage() {
     `;
 
     // --- 5. 既存の機能 (背景設定) ---
+    // ★★★ 修正点: p-6->p-4 ★★★
     const defaultBgSettings = { bgColor: '#f3f4f6', bgImage: '', bgOpacity: 0.1 };
     let currentBgSettings;
     try {
@@ -142,7 +146,7 @@ function showSettingsPage() {
         currentBgSettings = defaultBgSettings;
     }
     const backgroundSettingsHtml = `
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow p-4">
             <h2 class="text-xl font-semibold mb-4">背景設定</h2>
             <div class="space-y-4">
                 <div>
@@ -167,8 +171,9 @@ function showSettingsPage() {
     `;
 
     // --- 6. 既存の機能 (インポート/エクスポート) ---
+    // ★★★ 修正点: p-6->p-4 ★★★
     const importExportHtml = `
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow p-4">
             <h2 class="text-xl font-semibold mb-4">観察記録のエクスポート (CSV)</h2>
             <p class="text-gray-600 mb-4">
                 すべてのイベントと、それに紐づく観察記録（鳥の名前、数、確認方法など）をCSVファイルとしてダウンロードします。(1行 = 1観察記録)
@@ -178,7 +183,7 @@ function showSettingsPage() {
             </button>
         </div>
 
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow p-4">
             <h2 class="text-xl font-semibold mb-4">データのエクスポート</h2>
             <p class="text-gray-600 mb-4">
                 現在のすべての図鑑データ（写真・音声含む）とイベント履歴、設定を、一つのバックアップファイル（.json）としてダウンロードします。
@@ -188,7 +193,7 @@ function showSettingsPage() {
             </button>
         </div>
 
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow p-4">
             <h2 class="text-xl font-semibold mb-4 text-red-700">データのインポート</h2>
             <p class="text-gray-600 mb-4">
                 エクスポートしたバックアップファイル（.json）を選択してください。<br>
@@ -203,7 +208,7 @@ function showSettingsPage() {
         </div>
     `;
     
-    // --- ★★★ 画面全体の描画 (アコーディオン形式に修正) ★★★ ---
+    // --- ★★★ 画面全体の描画 (アコーディオン形式に修正) ★★★
     app.innerHTML = `
         <div class="space-y-6">
             
@@ -215,7 +220,7 @@ function showSettingsPage() {
                     </svg>
                 </button>
                 <div id="accordion-content-card" class="accordion-content" style="max-height: 0px;">
-                    <div class="border-t border-gray-100 space-y-6 p-4">
+                    <div class="border-t border-gray-100 space-y-6">
                         ${myBirderCardHtml}
                         ${receivedCardsHtml}
                     </div>
@@ -244,7 +249,7 @@ function showSettingsPage() {
                     </svg>
                 </button>
                 <div id="accordion-content-data" class="accordion-content" style="max-height: 0px;">
-                    <div class="border-t border-gray-100 space-y-6 p-4">
+                    <div class="border-t border-gray-100 space-y-6">
                         ${liferSettingsHtml}
                         ${importExportHtml}
                     </div>
