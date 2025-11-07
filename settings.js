@@ -28,9 +28,10 @@ function showSettingsPage() {
             <div class="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg mb-4">
                 <img id="birder-photo-preview" src="${myPhotoUrl}" 
                      onerror="this.onerror=null; this.src='https://placehold.co/150x150/e0e0e0/b0b0b0?text=Error';"
-                     class="w-20 h-20 object-cover rounded-full border-2 border-emerald-500">
-                <div>
-                    <input type="text" id="birder-name-input" value="${escapeHTML(myCard.birderName || '')}" placeholder="あなたの名前" class="text-base font-bold text-gray-800 border-b border-gray-300 focus:border-emerald-500 focus:outline-none">
+                     class="w-20 h-20 object-cover rounded-full border-2 border-emerald-500 flex-shrink-0">
+                
+                <div class="flex-1 min-w-0">
+                    <input type="text" id="birder-name-input" value="${escapeHTML(myCard.birderName || '')}" placeholder="あなたの名前" class="w-full text-base font-bold text-gray-800 border-b border-gray-300 focus:border-emerald-500 focus:outline-none">
                     <p class="text-xs text-gray-600 mt-1">ライフリスト: ${liferTotals.any} 種</p>
                 </div>
             </div>
@@ -72,7 +73,7 @@ function showSettingsPage() {
                 <p class="text-xs text-gray-500 mt-2">受信した '.bcard' ファイルを選択してください。</p>
             </div>
             
-            <hr class="my-6 border-gray-100">
+            <hr class="my-6 border-gray-100 px-4">
 
             <h3 class="text-lg font-medium text-gray-800 mb-3">受信箱</h3>
             <div id="received-cards-list" class="space-y-3 max-h-60 overflow-y-auto pr-2">
