@@ -209,8 +209,9 @@ function showSettingsPage() {
     `;
     
     // --- ★★★ 画面全体の描画 (アコーディオン形式に修正) ★★★
+    // ★★★ 修正点: space-y-6 -> space-y-2 ★★★
     app.innerHTML = `
-        <div class="space-y-6">
+        <div class="space-y-2">
             
             <div class="bg-white rounded-lg shadow overflow-hidden">
                 <button id="accordion-toggle-card" class="accordion-toggle w-full flex justify-between items-center p-4 text-left">
@@ -220,7 +221,7 @@ function showSettingsPage() {
                     </svg>
                 </button>
                 <div id="accordion-content-card" class="accordion-content" style="max-height: 0px;">
-                    <div class="border-t border-gray-100 space-y-6">
+                    <div class="border-t border-gray-100 space-y-2 p-2">
                         ${myBirderCardHtml}
                         ${receivedCardsHtml}
                     </div>
@@ -249,7 +250,7 @@ function showSettingsPage() {
                     </svg>
                 </button>
                 <div id="accordion-content-data" class="accordion-content" style="max-height: 0px;">
-                    <div class="border-t border-gray-100 space-y-6">
+                    <div class="border-t border-gray-100 space-y-2 p-2">
                         ${liferSettingsHtml}
                         ${importExportHtml}
                     </div>
