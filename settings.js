@@ -44,7 +44,7 @@ function showSettingsPage() {
                 <p class="text-xs text-gray-500 mt-1">名前と写真は自動保存されます。</p>
             </div>
             
-            <hr class="my-6 border-gray-100">
+            <hr class="my-6 border-gray-100 px-4">
             
             <div class="space-y-3">
                 <button id="share-card-btn" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-emerald-700 transition-colors">
