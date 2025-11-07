@@ -6,12 +6,11 @@ function showManualPage() {
     appState.isEditing = false;
     
     // --- 1. アプリの使い方 ---
-    // ★★★ 修正点: pタグの文字サイズを text-sm に、色を text-gray-600 に変更 ★★★
     const usageHtml = `
         <div class="bg-white rounded-lg shadow p-6 space-y-6">
             <h2 class="text-xl font-semibold mb-4">ようこそ！</h2>
             <p class="text-sm text-gray-600">
-                これは、あなたの野鳥観察を記録・管理するために作られた「鳥類図鑑PWA（プログレッシブ・ウェブアプリ）」です。
+                これは、あなたの野鳥観察を記録・管理するために作られた「鳥類図鑑PWA（プログレッSシブ・ウェブアプリ）」です。
                 見た鳥を「図鑑」で管理し、「イベント」で日々の観察を記録しましょう。
             </p>
 
@@ -120,7 +119,6 @@ function showManualPage() {
     `;
 
     // --- 2. 観察時の注意 (素案) ---
-    // ★★★ 修正点: pタグの文字サイズを text-sm に、色を text-gray-600 に変更 ★★★
     const precautionsHtml = `
         <div class="bg-white rounded-lg shadow p-6 space-y-4">
             <h2 class="text-xl font-semibold mb-4">野鳥観察の基本</h2>
