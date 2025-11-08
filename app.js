@@ -608,7 +608,8 @@ function getFilterStatus() {
 
 
 // --- ヘッダー更新 ---
-function updateHeader(mode, title = "鳥類図鑑") { 
+// ★★★ 修正点: デフォルトタイトルを "BLNCR鳥図鑑" に変更 ★★★
+function updateHeader(mode, title = "BLNCR鳥図鑑") { 
     try { 
         if (!headerTitle || !backButton || !headerActions || !searchPopup || !filterPopup || !viewPopup || !app || !searchToggleButton || !filterToggleButton || !viewToggleButton || !filterActiveDot) {
             console.error("Header elements not found, skipping update.");
