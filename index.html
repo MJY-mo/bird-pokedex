@@ -2,29 +2,18 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    
-    <title>BLNCR鳥図鑑</title> 
-
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>鳥類図鑑 PWA</title> <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <meta name="mobile-web-app-capable" content="yes">
-
     <meta name="apple-mobile-web-app-capable" content="yes">
     
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     
     <meta name="apple-mobile-web-app-title" content="BLNCR鳥図鑑">
     
-    <link rel="apple-touch-icon" href="favicon2.png"> 
-
-    <link rel="icon" type="image/png" sizes="192x192" href="favicon3.png"> 
-
-    <link rel="icon" href="favicon.ico"> 
+    <link rel="apple-touch-icon" href="favicon2.png"> <link rel="icon" type="image/png" sizes="192x192" href="favicon3.png"> <link rel="icon" href="favicon.ico"> 
     
-    <link rel="manifest" href="manifest.json">
-
     <script src="https://cdn.tailwindcss.com"></script>
-
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
@@ -33,97 +22,83 @@
 
     <link rel="stylesheet" href="style.css">
 
-    </head>
-<body class="bg-gray-100">
+</head>
+<body class="">
 
-    
-    <header id="header" class="bg-white shadow-md fixed top-0 left-0 right-0 z-10 h-16 flex items-center justify-between px-4">
+    <div id="background-overlay"></div>
+
+    <header id="header" class="bg-white shadow-md fixed top-0 z-20 w-full max-w-lg mx-auto">
+        <div class="container mx-auto px-4 py-3 flex items-center justify-between h-16">
+            <button id="backButton" class="text-emerald-600 hidden w-20 text-left">&lt; 戻る</button>
+            
+            <h1 id="headerTitle" class="text-xl font-bold text-gray-800 text-center flex-grow">鳥類図鑑</h1>
+            
+            <div id="headerActions" class="flex items-center space-x-1 w-20 justify-end">
+                 <button id="search-toggle-button" class="header-action-button p-2 text-gray-600 hover:text-emerald-600 rounded-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                </button>
+                <button id="filter-toggle-button" class="header-action-button p-2 text-gray-600 hover:text-emerald-600 rounded-lg relative">
+                    <span id="filter-active-dot" class="hidden absolute top-1 right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white"></span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                </button>
+                 <button id="view-toggle-button" class="header-action-button p-2 text-gray-600 hover:text-emerald-600 rounded-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" /></svg>
+                </button>
+            </div>
+        </div>
         
-        <button id="back-button" class="text-emerald-500 hidden">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+        <div id="search-popup" class="popup-panel bg-white border-t border-gray-200 p-4 hidden"></div>
+        <div id="filter-popup" class="popup-panel bg-gray-50 border-t border-b border-gray-200 hidden overflow-y-auto" style="max-height: calc(100vh - 4rem);"></div>
+        <div id="view-popup" class="popup-panel bg-gray-50 border-t border-b border-gray-200 hidden overflow-y-auto" style="max-height: calc(100vh - 4rem);"></div>
+    </header>
+    <main id="app" class="container mx-auto max-w-lg p-2"></main>
+
+
+    <nav class="bg-white border-t border-gray-200 fixed bottom-0 left-0 right-0 max-w-lg mx-auto h-16 flex justify-around items-center z-30">
+        
+        <button id="tab-pokedex" class="tab-button flex-1 flex flex-col items-center justify-center h-full text-sm font-medium tab-active">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mb-1">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
             </svg>
+            図鑑
         </button>
         
-        <h1 id="header-title" class="text-lg font-bold text-gray-800 text-center flex-grow"></h1>
+        <button id="tab-events" class="tab-button flex-1 flex flex-col items-center justify-center h-full text-sm font-medium tab-inactive">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+            イベント
+        </button>
         
-        <div class="w-6"></div> 
-    
-    </header>
-    <main id="app" class="pt-20 pb-20 px-3 max-w-4xl mx-auto">
-        </main>
-    
-    
-    <div id="loading-overlay" class="fixed inset-0 bg-white bg-opacity-80 flex items-center justify-center z-50 hidden">
-        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-emerald-500"></div>
-    </div>
-
-    
-    <div id="confirm-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 hidden">
-        <div id="confirm-modal" class="confirm-modal-content">
-            <h2 id="confirm-title" class="confirm-modal-title"></h2>
-            <p id="confirm-text" class="confirm-modal-text"></p>
+        <button id="tab-manual" class="tab-button flex-1 flex flex-col items-center justify-center h-full text-sm font-medium tab-inactive">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18c-2.305 0-4.408.867-6 2.292m0-14.25v14.25" />
+            </svg>
+            説明書
+        </button>
+        
+        <button id="tab-settings" class="tab-button flex-1 flex flex-col items-center justify-center h-full text-sm font-medium tab-inactive">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mb-1">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75a4.5 4.5 0 0 1-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 1 1-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 0 1 6.336-4.486l-3.276 3.276a3.004 3.004 0 0 0 2.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852Z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4.867 19.125h.008v.008h-.008v-.008Z" />
+            </svg>
+            設定
+        </button>
+    </nav>
+    <div id="custom-confirm-modal" class="hidden">
+        <div class="confirm-modal-content">
+            <h3 id="confirm-modal-title" class="confirm-modal-title">確認</h3>
+            <p id="confirm-modal-text" class="confirm-modal-text">本当に実行しますか？</p>
             <div class="confirm-modal-buttons">
-                <button id="confirm-cancel" class="confirm-btn confirm-btn-cancel"></button>
-                <button id="confirm-ok" class="confirm-btn confirm-btn-ok"></button>
+                <button id="confirm-btn-cancel" class="confirm-btn confirm-btn-cancel">キャンセル</button>
+                <button id="confirm-btn-ok" class="confirm-btn confirm-btn-ok">OK</button>
             </div>
         </div>
     </div>
-
-    
-    <div id="image-modal-overlay" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 hidden p-4">
-        <img id="image-modal-content" src="" alt="拡大画像" class="max-w-full max-h-full object-contain">
-        <button id="image-modal-close" classs="absolute top-4 right-4 text-white text-4xl font-bold">&times;</button>
-    </div>
-
-    
-    <div id="background-overlay"></div>
-
-    
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-10 max-w-4xl mx-auto">
-        <div class="flex justify-around h-16">
-            
-            <button id="tab-pokedex" class="tab-button flex-1 flex flex-col items-center justify-center h-full text-sm font-medium tab-active">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mb-1">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                </svg>
-                図鑑
-            </button>
-            
-            
-            <button id="tab-events" class="tab-button flex-1 flex flex-col items-center justify-center h-full text-sm font-medium tab-inactive">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mb-1">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-18 0h18" />
-                </svg>
-                イベント
-            </button>
-            
-            
-            <button id="tab-settings" class="tab-button flex-1 flex flex-col items-center justify-center h-full text-sm font-medium tab-inactive">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mb-1">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75a4.5 4.5 0 0 1-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 1 1-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 0 1 6.336-4.486l-3.276 3.276a3.004 3.004 0 0 0 2.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852Z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15" />
-                </svg>
-                設定
-            </button>
-
-            
-            <button id="tab-manual" class="tab-button flex-1 flex flex-col items-center justify-center h-full text-sm font-medium tab-inactive">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mb-1">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18c-2.305 0-4.408.867-6 2.292m0-14.25v14.25" />
-                </svg>
-                説明書
-            </button>
-        </div>
-    </nav>
-
-    
     
     <script src="pokedex.js"></script>
     <script src="events.js"></script>
     <script src="settings.js"></script>
-    <script src="manual.js"></script>
-
+    <script src="manual.js"></script> 
+    
     <script src="app.js"></script>
 
 </body>
