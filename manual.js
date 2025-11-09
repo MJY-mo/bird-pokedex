@@ -6,7 +6,6 @@ function showManualPage() {
     appState.isEditing = false;
     
     // --- 1. アプリの使い方 ---
-    // ★★★ 修正点: p-6->p-4, pタグ/liタグの文字サイズを text-sm に、色を text-gray-600 に変更 ★★★
     const usageHtml = `
         <div class="bg-white rounded-lg shadow p-4 space-y-4">
             <h2 class="text-xl font-semibold mb-4">ようこそ！</h2>
@@ -120,7 +119,6 @@ function showManualPage() {
     `;
 
     // --- 2. 観察時の注意 (素案) ---
-    // ★★★ 修正点: p-6->p-4, pタグ/liタグの文字サイズを text-sm に、色を text-gray-600 に変更 ★★★
     const precautionsHtml = `
         <div class="bg-white rounded-lg shadow p-4 space-y-4">
             <h2 class="text-xl font-semibold mb-4">野鳥観察の基本</h2>
@@ -132,7 +130,7 @@ function showManualPage() {
             <ul class="list-disc list-inside space-y-2 text-sm text-gray-600">
                 <li><strong>距離を保つ:</strong> 鳥が警戒したり、逃げたりしないよう、十分な距離を保ちましょう。特に巣やヒナには絶対に近づかないでください。巣立ち雛は親から餌をもらっている時期なので、見つけてもそっとしておきましょう。持ち去ると誘拐にあたり、法にも違反します。</li>
                 <li><strong>ストレスを与えない:</strong> しつこく追いかけ回したり、大声を出したりしないでください。</li>
-                <li><strong>餌を与えない:</strong> 人間の食べ物は鳥にとって有害であり、生態系のバランスを崩す原因となります。人や鳥の感染症が広がる、行動の変化により生存が難しくなる（本来の食物を得る事ができなくなる）、農作物の食害や人への攻撃行動を増加させ駆除される恐れがある、人への警戒心が薄れ密猟や事故を助長する、等の影響も考えられます。</li>
+                <li><strong>餌を与えない:</strong> 人間の食べ物は鳥にとって有害であり、生態系のバランスを崩す原因となります。人や鳥の感染症が広がる、行動の変化により生存が難しくなる（本来の食物を得る事ができなくなる）、農作物の食害や人への攻撃行動を増加させ駆D除される恐れがある、人への警戒心が薄れ密猟や事故を助長する、等の影響も考えられます。</li>
                 <li><strong>録音音声の再生:</strong> 鳥の鳴き声（録音）を再生すると、鳥を混乱させたり、過度な警戒や縄張り防衛行動（体力の消耗）を強いたりする可能性があります。特に繁殖期は控えましょう。</li>
             </ul>
 
@@ -153,7 +151,6 @@ function showManualPage() {
     `;
     
     // --- 画面全体の描画 (アコーディオン化) ---
-    // ★★★ 修正点: space-y-6 -> space-y-2 ★★★
     app.innerHTML = `
         <div class="space-y-2">
             
