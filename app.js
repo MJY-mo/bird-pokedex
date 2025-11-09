@@ -932,6 +932,100 @@ async function rescanLatestEventForBirds(birdNames) {
 }
 
 
+// --- ★★★ 新設: Cropper.js のモーダル制御 ★★★ ---
+// (settings.js から app.js に移動)
+let cropperInstance = null; // Cropperのインスタンスを保持する変数
+
+/**
+ * 画像切り抜きモーダルを表示する
+ * @param {string | null} imageSrc - 編集する画像(Base64) or null(削除の場合)
+ * @param {function(string):void} callback - 完了時にBase64を返すコールバック
+ */
+function showCropperModal(imageSrc, callback) {
+    // 既存のモーダルがあれば削除
+    const existingModal = document.getElementById('cropper-modal-container');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    if (cropperInstance) {
+        cropperInstance.destroy();
+        cropperInstance = null;
+    }
+    
+    // モーダルのHTMLを動的に作成
+    const modalHtml = `
+        <div id="cropper-modal-container" class="cropper-modal-backdrop">
+            <div class="cropper-modal-content">
+                <div class="cropper-image-container">
+                    <img id="cropper-image" src="${imageSrc}">
+                </div>
+                <div class="cropper-modal-actions">
+                    <button id="cropper-cancel-btn" class="confirm-btn confirm-btn-cancel">キャンセル</button>
+                    <button id="cropper-done-btn" class="confirm-btn confirm-btn-ok">切り抜いて決定</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // body にモーダルを挿入
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    const image = document.getElementById('cropper-image');
+    const doneBtn = document.getElementById('cropper-done-btn');
+    const cancelBtn = document.getElementById('cropper-cancel-btn');
+
+    if (!image || !doneBtn || !cancelBtn) {
+        console.error("Cropper modal elements failed to create.");
+        return;
+    }
+
+    // Cropper.js を初期化
+    // (index.html で Cropper の CSS/JS が読み込まれている必要があります)
+    cropperInstance = new Cropper(image, {
+        aspectRatio: 1 / 1, // バーダーカードは 1:1 (正方形)
+        viewMode: 1, // 0: 制限なし, 1: 枠内に制限
+        dragMode: 'move',
+        autoCropArea: 0.9,
+        responsive: true,
+        modal: true,
+        guides: true,
+        center: true,
+        highlight: false,
+        cropBoxMovable: false,
+        cropBoxResizable: false,
+        toggleDragModeOnDblclick: false,
+    });
+
+    // 「キャンセル」ボタン
+    cancelBtn.onclick = () => {
+        cropperInstance.destroy();
+        cropperInstance = null;
+        document.getElementById('cropper-modal-container').remove();
+    };
+
+    // 「決定」ボタン
+    doneBtn.onclick = () => {
+        // Cropper.js で切り抜いた結果を取得 (1:1 の 300x300px にする)
+        const croppedCanvas = cropperInstance.getCroppedCanvas({
+            width: 300,
+            height: 300,
+            imageSmoothingQuality: 'high',
+        });
+        
+        // Base64データとして取得
+        const base64Image = croppedCanvas.toDataURL('image/jpeg', 0.9); // JPEGの90%品質
+        
+        // コールバック関数で結果を返す
+        callback(base64Image);
+        
+        // モーダルを閉じる
+        cropperInstance.destroy();
+        cropperInstance = null;
+        document.getElementById('cropper-modal-container').remove();
+    };
+}
+
+
 // --- ★★★ アプリケーション初期化 (修正) ★★★ ---
 // ページのすべてのリソース（他のJSファイルを含む）が読み込まれてから起動する
 window.addEventListener('load', async () => { 

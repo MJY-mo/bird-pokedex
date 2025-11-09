@@ -593,6 +593,9 @@ function showDetailPage(birdId) {
         if (bird.lastObservedEventId) {
             const latestEventLink = document.getElementById('latest-event-link');
             if (latestEventLink) {
+                // ★★★ 循環参照エラーの修正: handleGoToEvent は events.js に依存するため、
+                // この関数は events.js が読み込まれた後に呼び出す必要がある。
+                // (index.html の読み込み順で制御)
                 latestEventLink.onclick = () => handleGoToEvent(bird.lastObservedEventId);
             }
         }
@@ -727,8 +730,7 @@ function renderDetailEditPage(birdId) {
     `;
     updateHeader('edit', `編集: ${bird.name}`);
     
-    // ★★★ ここからが修正のメインです ★★★
-    // (renderDetailEditPage 内の setTimeout)
+    // ★★★ 修正 (renderDetailEditPage 内の setTimeout) ★★★
     setTimeout(() => {
         const editForm = document.getElementById('editForm');
         
@@ -744,13 +746,12 @@ function renderDetailEditPage(birdId) {
         const removeVoiceBtn = document.getElementById('remove_voice_btn');
         const voiceMessage = document.getElementById('voice_message');
         
-        // (音声リスナーは変更なし)
         if (!voiceInput || !voicePreview || !removeVoiceBtn || !voiceMessage) {
              console.error("Voice edit form elements not found.");
         }
 
 
-        // ★★★ ここから修正 (写真のリスナーを settings.js と同じロジックに変更) ★★★
+        // ★★★ 修正 (写真のリスナーを app.js/settings.js と同じロジックに変更) ★★★
         if (photoInput && photoPreview && removePhotoBtn && photoMessage) {
             
             // 1. 写真ファイル選択時の処理 (Cropper起動)
@@ -767,7 +768,7 @@ function renderDetailEditPage(birdId) {
 
                 const reader = new FileReader();
                 reader.onload = (event) => {
-                    // showCropperModal は settings.js で定義されている (読み込み順修正で呼び出し可能)
+                    // showCropperModal は app.js で定義されている (読み込み順修正で呼び出し可能)
                     showCropperModal(event.target.result, (base64Image) => {
                         // クロップ完了時のコールバック
                         newBase64Image = base64Image; // ★ 編集フォームの closure 変数に保存
@@ -806,7 +807,6 @@ function renderDetailEditPage(birdId) {
         } else {
              console.error("Photo edit form elements not found.");
         }
-        // ★★★ ここまで修正 ★★★
 
 
         
@@ -877,7 +877,6 @@ function renderDetailEditPage(birdId) {
 
     }, 0);
 }
-// ★★★ 修正はここまでです ★★★
 
 // --- 編集保存 ---
 // ★ 修正: newBase64Voice を受け取る
@@ -954,6 +953,8 @@ function handleGoToEvent(eventId) {
         }
         
         // 3. イベント詳細ページを表示 (events.js の関数)
+        // ★★★ 循環参照エラーの修正: この関数は events.js が読み込まれた後に呼び出す必要がある。
+        // (index.html の読み込み順で制御)
         showEventDetail(eventIndex);
 
         // 4. ページトップにスクロール

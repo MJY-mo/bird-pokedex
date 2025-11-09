@@ -1,965 +1,1012 @@
-// --- 画面描画: 図鑑リスト ---
-function showListPage() { 
-    appState.currentPage = 'list'; appState.isEditing = false;
-    console.log(`showListPage called. birdDatabase length: ${birdDatabase ? birdDatabase.length : 'null'}, loadError: ${localStorage.getItem('birdDatabaseLoadError')}`); 
+// --- 設定画面 ---
+function showSettingsPage() { 
+    appState.currentPage = 'settings'; appState.isEditing = false;
     
-    if (localStorage.getItem('birdDatabaseLoadError')) {
-        app.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow" role="alert"><strong class="font-bold">データ読み込みエラー</strong><span class="block sm:inline">図鑑データの読み込みに失敗しました。データが破損している可能性があります。</span><p class="mt-2">「設定」タブから「全データ消去」を実行し、再度「今すぐ同期する」ボタンを押してください。</p></div>`;
-        updateHeader('list', 'エラー'); 
-        return;
-    } else if (!birdDatabase || birdDatabase.length === 0) {
-         if (GITHUB_CSV_URL.includes('[YOUR_USERNAME]')) {
-            app.innerHTML = `<div class="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded-lg shadow" role="alert"><strong class="font-bold">初期設定が必要です</strong><span class="block sm:inline">アプリのURL設定が完了していません。「設定」タブでURLを確認してください。</span></div>`;
-        } else {
-             app.innerHTML = `<div class="bg-white rounded-lg shadow p-6 text-center"><h2 class="text-xl font-semibold mb-4">ようこそ</h2><p class="text-gray-600">図鑑データが空です。「設定」タブから「今すぐ同期する」ボタンを押してください。</p></div>`;
-        }
-        updateHeader('list'); 
-        return;
-    }
-
-    // ★★★ 修正点: p-4 を追加し、リストの外側に余白を戻す ★★★
-    app.innerHTML = `<div id="pokedex-list-container" class="p-4"><div id="pokedex-list"></div><div id="pagination-controls" class="mt-6 flex justify-between items-center"></div></div>`;
-    updateHeader('list'); 
-    
-    setTimeout(() => {
-        try { 
-            applyFiltersAndRenderList();
-        } catch(e) {
-            console.error("Error rendering list:", e);
-            app.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow" role="alert"><strong class="font-bold">表示エラー</strong><span class="block sm:inline">リストの表示中にエラーが発生しました。</span></div>`;
-        }
-        
-        if (searchToggleButton) searchToggleButton.onclick = () => togglePopup('search');
-        else console.error("Search toggle button not found");
-        if (filterToggleButton) filterToggleButton.onclick = () => togglePopup('filter');
-        else console.error("Filter toggle button not found");
-        if (viewToggleButton) viewToggleButton.onclick = () => togglePopup('view');
-        else console.error("View toggle button not found");
-    }, 0);
-}
-
-// --- ★★★ 修正点: 検索ポップアップにクリアボタンを追加 ★★★ ---
-function renderSearchPopup() { 
-    const { filterText } = appState.listControls; 
-    const filterStatus = getFilterStatus(); 
-    
-    searchPopup.innerHTML = `
-        <div class="relative w-full">
-            <input type="search" id="searchBox" placeholder="鳥を検索..." value="${escapeHTML(filterText)}" class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent" autocomplete="off">
-            <button id="clear-search-btn" class="absolute inset-y-0 right-0 flex items-center justify-center w-10 text-gray-500 hover:text-red-600 ${filterText ? '' : 'hidden'}">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
-        </div>
-        <p id="search-status-text" class="text-xs text-green-600 mt-1">${filterStatus.isTextFiltered ? '検索中...' : ''}</p>
-        <div id="search-suggestions" class="mt-2 border border-gray-200 rounded-lg bg-white overflow-hidden shadow-lg max-h-48 overflow-y-auto"></div>`;
-    
-    setTimeout(() => {
-        const searchBox = searchPopup.querySelector('#searchBox');
-        const clearBtn = searchPopup.querySelector('#clear-search-btn');
-        
-        if (searchBox && clearBtn) {
-            // 検索入力時のリスナー
-            searchBox.addEventListener('input', (e) => {
-                const newText = e.target.value;
-                appState.listControls.filterText = newText; 
-                appState.listControls.currentPage = 1; 
-                
-                applyFiltersAndRenderList(); 
-                renderSearchSuggestions(getSearchSuggestions(newText)); 
-                saveListControlsState();
-                
-                clearBtn.classList.toggle('hidden', !newText); // テキストがあればボタン表示
-                
-                const currentStatus = getFilterStatus(); 
-                filterActiveDot.classList.toggle('hidden', !currentStatus.isFiltered);
-                const statusElem = searchPopup.querySelector('#search-status-text'); 
-                if(statusElem) statusElem.textContent = currentStatus.isTextFiltered ? '検索中...' : '';
-            });
-            
-            // クリアボタンのリスナー
-            clearBtn.addEventListener('click', () => {
-                appState.listControls.filterText = '';
-                appState.listControls.currentPage = 1;
-                searchBox.value = ''; // 入力欄をクリア
-                
-                applyFiltersAndRenderList();
-                renderSearchSuggestions([]); // 候補をクリア
-                saveListControlsState();
-                
-                clearBtn.classList.add('hidden'); // 自分を隠す
-                
-                updateHeader('list'); // ヘッダーの●を更新
-                
-                const statusElem = searchPopup.querySelector('#search-status-text'); 
-                if(statusElem) statusElem.textContent = '';
-                
-                searchBox.focus(); // 入力欄にフォーカスを戻す
-            });
-
-            if (filterText) renderSearchSuggestions(getSearchSuggestions(filterText));
-            searchBox.focus();
-        } else {
-            console.error("Search box or clear button not found in popup.");
-        }
-    }, 0);
-}
-
-// (getSearchSuggestions は app.js に移動済み)
-
-function renderSearchSuggestions(suggestions) { 
-    const box = searchPopup.querySelector('#search-suggestions'); if (!box) return; 
-    if (suggestions.length === 0) { box.innerHTML = ''; box.classList.add('hidden'); return; }
-    box.classList.remove('hidden');
-    box.innerHTML = suggestions.map(n => `<div class="p-3 text-sm text-gray-700 cursor-pointer hover:bg-gray-100 search-suggestion-item" data-name="${escapeHTML(n)}">${escapeHTML(n)}</div>`).join(''); 
-    
-    setTimeout(() => {
-        box.querySelectorAll('.search-suggestion-item').forEach(item => item.addEventListener('click', () => selectSearchSuggestion(item.dataset.name)));
-    }, 0);
-} 
-
-function selectSearchSuggestion(name) { 
-    const box = searchPopup.querySelector('#searchBox'); if (box) box.value = name;
-    appState.listControls.filterText = name; appState.listControls.currentPage = 1; 
-    applyFiltersAndRenderList(); renderSearchSuggestions([]); saveListControlsState();
-    const currentStatus = getFilterStatus(); filterActiveDot.classList.toggle('hidden', !currentStatus.isFiltered);
-    const statusElem = searchPopup.querySelector('#search-status-text'); if(statusElem) statusElem.textContent = currentStatus.isTextFiltered ? '検索中...' : '';
-} 
-
-// --- ポップアップ描画 (図鑑: 絞り込み) ---
-function renderFilterPopup() { 
-    const { filters, openFilterSection } = appState.listControls; const filterStatus = getFilterStatus(); 
-    
-    // ★ 修正: 文言変更
-    const filterSections = [
-        { id: 'classification', title: '分類 (目)' }, { id: 'type', title: '種類' }, 
-        { id: 'season', title: '観察時期' }, // 「区分」 -> 「観察時期」
-        { id: 'habitat', title: '生息地' }, { id: 'size', title: '体サイズ' }, 
-        { id: 'edited', title: '図鑑の編集履歴' } // 「編集あり」 -> 「図鑑の編集履歴」
-    ];
-    
-    const createSelectButtons = (id) => `<div class="mt-3 pt-3 border-t border-gray-200 flex justify-end space-x-2"><button class="select-all-btn text-xs font-medium text-emerald-600 hover:text-emerald-800" data-section="${id}">全選択</button><button class="select-none-btn text-xs font-medium text-gray-500 hover:text-gray-700" data-section="${id}">全解除</button></div>`;
-    
-    filterPopup.innerHTML = filterSections.map(section => {
-        const isOpen = openFilterSection === section.id; let isFiltered = false;
-        switch(section.id) {
-            case 'classification': isFiltered = filterStatus.isClassificationFiltered; break; case 'type': isFiltered = filterStatus.isTypeFiltered; break;
-            case 'season': isFiltered = filterStatus.isSeasonFiltered; break; case 'habitat': isFiltered = filterStatus.isHabitatFiltered; break;
-            case 'size': isFiltered = filterStatus.isSizeFiltered; break; 
-            case 'edited': isFiltered = filterStatus.isEditedFiltered || filterStatus.isLiferStatusFiltered; break; // ★ 修正: ライフリストも含む
-        }
-        const filteredClass = isFiltered ? 'filtered' : ''; let contentHtml = '';
-        switch (section.id) {
-            case 'classification': contentHtml = `<div class="p-4"><div class="grid grid-cols-2 gap-2">` + allOrders.map(o => `<label class="flex items-center space-x-2"><input type="checkbox" name="classification_order" value="${o}" ${filters.classification.orders.includes(o)?'checked':''} class="form-checkbox text-emerald-600 rounded"><span>${o}</span></label>`).join('') + `</div>${createSelectButtons(section.id)}</div>`; break;
-            case 'type': contentHtml = `<div class="p-4"><div class="grid grid-cols-2 gap-2">` + filterableTypes.map(t => `<label class="flex items-center space-x-2"><input type="checkbox" name="type" value="${t}" ${filters.type.includes(t)?'checked':''} class="form-checkbox text-emerald-600 rounded"><span>${t}</span></label>`).join('') + `</div>${createSelectButtons(section.id)}</div>`; break;
-            case 'season': contentHtml = `<div class="p-4"><div class="grid grid-cols-2 gap-2">` + filterableSeasons.map(s => `<label class="flex items-center space-x-2"><input type="checkbox" name="season" value="${s}" ${filters.season.includes(s)?'checked':''} class="form-checkbox text-emerald-600 rounded"><span>${s}</span></label>`).join('') + `</div>${createSelectButtons(section.id)}</div>`; break;
-            case 'habitat': contentHtml = `<div class="p-4"><div class="grid grid-cols-2 gap-2">` + habitatKeys.map(h => `<label class="flex items-center space-x-2"><input type="checkbox" name="habitat" value="${h.key}" ${filters.habitat.includes(h.key)?'checked':''} class="form-checkbox text-emerald-600 rounded"><span>${h.label}</span></label>`).join('') + `</div>${createSelectButtons(section.id)}</div>`; break;
-            case 'size': contentHtml = `<div class="p-4"><div class="grid grid-cols-2 gap-2">` + Object.entries(sizeRanges).map(([k,r]) => `<label class="flex items-center space-x-2"><input type="checkbox" name="size" value="${k}" ${filters.size.includes(k)?'checked':''} class="form-checkbox text-emerald-600 rounded"><span>${r.label}</span></label>`).join('') + `</div>${createSelectButtons(section.id)}</div>`; break;
-            
-            // ★ 修正: 「図鑑の編集履歴」セクションのUI
-            case 'edited': 
-                const liferFilters = [
-                    { key: 'seen', label: '目視' },
-                    { key: 'heard', label: '声' },
-                    { key: 'photo', label: '写真' },
-                    { key: 'video', label: '動画' }
-                ];
-                contentHtml = `
-                <div class="p-4 space-y-4">
-                    <div>
-                        <h4 class="text-sm font-semibold text-gray-500 mb-2">ライフリストの有無</h4>
-                        <div class="grid grid-cols-3 gap-x-3 gap-y-3">
-                            ${liferFilters.map(f => `
-                                <label class="block text-xs font-medium text-gray-700">${f.label}</label>
-                                <select name="lifer_${f.key}" class="col-span-2 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-1 text-sm focus:ring-emerald-500 focus:border-emerald-500">
-                                    <option value="any" ${filters.lifer[f.key] === 'any' ? 'selected' : ''}>すべて</option>
-                                    <option value="yes" ${filters.lifer[f.key] === 'yes' ? 'selected' : ''}>あり</option>
-                                    <option value="no" ${filters.lifer[f.key] === 'no' ? 'selected' : ''}>なし</option>
-                                </select>
-                            `).join('')}
-                        </div>
-                    </div>
-                    <div class="pt-4 border-t border-gray-200">
-                        <h4 class="text-sm font-semibold text-gray-500 mb-2">編集あり/なし</h4>
-                        <div class="space-y-2">
-                            <label class="flex items-center space-x-2"><input type="radio" name="edited" value="all" ${filters.edited === 'all' ? 'checked' : ''} class="form-radio text-emerald-600"><span>すべて</span></label>
-                            <label class="flex items-center space-x-2"><input type="radio" name="edited" value="yes" ${filters.edited === 'yes' ? 'checked' : ''} class="form-radio text-emerald-600"><span>編集あり (写真/音声/説明文)</span></label>
-                            <label class="flex items-center space-x-2"><input type="radio" name="edited" value="no" ${filters.edited === 'no' ? 'checked' : ''} class="form-radio text-emerald-600"><span>編集なし</span></label>
-                        </div>
-                    </div>
-                </div>`; 
-                break;
-        }
-        return `<div class="border-b border-gray-200"><button class="accordion-header w-full flex justify-between items-center p-4 text-left font-semibold text-gray-700 ${filteredClass}" data-section="${section.id}"><span>${section.title}</span><svg class="h-5 w-5 ${isOpen?'arrow-up':'arrow-down'}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg></button><div class="accordion-content bg-white" style="${isOpen?'max-height: 500px;':''}">${contentHtml}</div></div>`;
-    }).join('');
-
-    // ★ 修正: DOMの描画が完了するのを待つ
-    setTimeout(() => {
-        filterPopup.querySelectorAll('.accordion-header').forEach(btn => btn.addEventListener('click', () => {
-            const id = btn.dataset.section; appState.listControls.openFilterSection = (appState.listControls.openFilterSection === id) ? null : id; renderFilterPopup(); 
-        }));
-        
-        const updateCheckboxFilter = (name, values, isOrder = false) => { 
-            if (isOrder) appState.listControls.filters.classification.orders = values; else appState.listControls.filters[name] = values;
-            appState.listControls.currentPage = 1; applyFiltersAndRenderList(); saveListControlsState(); updateHeader('list');
-        };
-        
-        ['type', 'season', 'habitat', 'size', 'classification_order'].forEach(name => { 
-            filterPopup.querySelectorAll(`input[name="${name}"]`).forEach(cb => cb.addEventListener('change', () => {
-                const isOrder = name === 'classification_order'; const actualName = isOrder ? 'classification.orders' : name; 
-                const values = Array.from(filterPopup.querySelectorAll(`input[name="${name}"]:checked`)).map(c => c.value);
-                updateCheckboxFilter(actualName.split('.')[0], values, isOrder); 
-            }));
-        });
-        
-        // ★ 修正: 'edited' のラジオボタンリスナー
-        ['edited'].forEach(name => { 
-            filterPopup.querySelectorAll(`input[name="${name}"]`).forEach(radio => radio.addEventListener('change', (e) => {
-                appState.listControls.filters[name] = e.target.value; appState.listControls.currentPage = 1;
-                applyFiltersAndRenderList(); saveListControlsState(); updateHeader('list');
-            }));
-        });
-        
-        // ★ 機能追加: ライフリストのセレクトボックスリスナー
-        ['lifer_seen', 'lifer_heard', 'lifer_photo', 'lifer_video'].forEach(name => {
-            const select = filterPopup.querySelector(`select[name="${name}"]`);
-            if (select) {
-                select.addEventListener('change', (e) => {
-                    const key = name.split('_')[1]; // 'seen', 'heard', ...
-                    appState.listControls.filters.lifer[key] = e.target.value;
-                    appState.listControls.currentPage = 1;
-                    applyFiltersAndRenderList(); saveListControlsState(); updateHeader('list');
-                });
-            }
-        });
-        
-        const handleSelectAll = (id, selectAll) => {
-            let name, allValues, isOrder = false; 
-            if (id === 'type') { name = 'type'; allValues = [...filterableTypes]; }
-            else if (id === 'season') { name = 'season'; allValues = [...filterableSeasons]; }
-            else if (id === 'habitat') { name = 'habitat'; allValues = habitatKeys.map(h => h.key); }
-            else if (id === 'size') { name = 'size'; allValues = Object.keys(sizeRanges); }
-            else if (id === 'classification') { name = 'classification_order'; allValues = [...allOrders]; isOrder = true; } 
-            else return;
-            const values = selectAll ? allValues : [];
-            filterPopup.querySelectorAll(`input[name="${name}"]`).forEach(cb => cb.checked = selectAll);
-            updateCheckboxFilter(isOrder ? 'classification' : name, values, isOrder);
-        };
-        
-        filterPopup.querySelectorAll('.select-all-btn').forEach(btn => btn.addEventListener('click', (e) => handleSelectAll(e.target.dataset.section, true)));
-        filterPopup.querySelectorAll('.select-none-btn').forEach(btn => btn.addEventListener('click', (e) => handleSelectAll(e.target.dataset.section, false)));
-    }, 0);
-} 
-
-// --- ポップアップ描画 (図鑑: 表示切替) ---
-// (変更なし)
-function renderViewPopup() { 
-    const { sort, viewMode } = appState.listControls;
-    const sortOptions = [
-        { value: 'name_asc', label: '名前 (昇順)' }, { value: 'name_desc', label: '名前 (降順)' },
-        { value: 'size_asc', label: 'サイズ (小さい順)' }, { value: 'size_desc', label: 'サイズ (大きい順)' },
-        { value: 'rarity_asc', label: 'レア度 (昇順)' }, { value: 'rarity_desc', label: 'レア度 (降順)' }
-    ];
-    const viewOptions = [ { value: 'tile', label: 'タイル表示 (写真あり)' }, { value: 'list', label: 'リスト表示 (名前のみ)' } ];
-    viewPopup.innerHTML = `<div class="p-4 space-y-4"><div><h3 class="text-sm font-semibold text-gray-500 mb-2">並び替え</h3><div class="space-y-2">${sortOptions.map(o => `<label class="flex items-center space-x-2"><input type="radio" name="sort" value="${o.value}" ${sort===o.value?'checked':''} class="form-radio text-emerald-600"><span>${o.label}</span></label>`).join('')}</div></div><div class="pt-4 border-t border-gray-200"><h3 class="text-sm font-semibold text-gray-500 mb-2">表示形式</h3><div class="space-y-2">${viewOptions.map(o => `<label class="flex items-center space-x-2"><input type="radio" name="viewMode" value="${o.value}" ${viewMode===o.value?'checked':''} class="form-radio text-emerald-600"><span>${o.label}</span></label>`).join('')}</div></div></div>`;
-    
-    setTimeout(() => {
-        viewPopup.querySelectorAll('input[name="sort"]').forEach(r => r.addEventListener('change', (e) => { appState.listControls.sort = e.target.value; appState.listControls.currentPage = 1; applyFiltersAndRenderList(); saveListControlsState(); }));
-        viewPopup.querySelectorAll('input[name="viewMode"]').forEach(r => r.addEventListener('change', (e) => { appState.listControls.viewMode = e.target.value; appState.listControls.currentPage = 1; applyFiltersAndRenderList(); saveListControlsState(); }));
-    }, 0);
-}
-
-// --- 図鑑リスト描画 ---
-function applyFiltersAndRenderList() {
-    const listContainer = document.getElementById('pokedex-list-container'); if (!listContainer) return; 
-    const listElement = listContainer.querySelector('#pokedex-list');
-    if (!listElement) return; 
-    
-    const { sort, filters, filterText, viewMode, itemsPerPage } = appState.listControls;
-    const hiraganaFilter = toHiragana(filterText);
-
-    processedBirdList = birdDatabase.filter(bird => {
-        const matchesSearch = toHiragana(bird.name || '').includes(hiraganaFilter);
-        const matchesSeason = filters.season.length === 0 ? false : filters.season.length === filterableSeasons.length ? true : filters.season.includes(bird.season);
-        const matchesType = filters.type.length === 0 ? false : filters.type.length === filterableTypes.length ? true : filters.type.includes(bird.type);
-        let matchesOrder = true;
-        if (filters.classification.orders.length === 0) {
-            matchesOrder = false;
-        } else if (filters.classification.orders.length !== allOrders.length) { 
-             if (!bird.classification) {
-                matchesOrder = false; 
-            } else {
-                const match = bird.classification.match(/^(.+?目)/);
-                matchesOrder = match && filters.classification.orders.includes(match[1]);
-            }
-        } 
-        const matchesFamily = true; 
-        const matchesClassification = matchesOrder && matchesFamily;
-        const matchesHabitat = filters.habitat.length === 0 ? false : filters.habitat.length === habitatKeys.length ? true : filters.habitat.some(h_key => bird[h_key] === '1'); 
-        const birdSizeRange = getSizeRange(bird.size);
-        let matchesSize = true; 
-        if (birdSizeRange !== null) { 
-            matchesSize = filters.size.length === 0 ? false : 
-                          filters.size.length === Object.keys(sizeRanges).length ? true : 
-                          filters.size.includes(birdSizeRange); 
-        }
-        
-        // ★ 修正: 「編集あり/なし」のロジック
-        const isEdited = (typeof bird.photo_url === 'string' && bird.photo_url.startsWith('data:image')) ||
-                         (typeof bird.voice_url === 'string' && bird.voice_url.startsWith('data:audio')) ||
-                         (bird.description && bird.description.length > 0);
-        const matchesEdited = filters.edited === 'all' ||
-                              (filters.edited === 'yes' && isEdited) ||
-                              (filters.edited === 'no' && !isEdited);
-        
-        // ★ 機能追加: 「ライフリスト」のロジック (詳細版)
-        const matchesLiferSeen = filters.lifer.seen === 'any' ||
-                                 (filters.lifer.seen === 'yes' && bird.lifer_seen) ||
-                                 (filters.lifer.seen === 'no' && !bird.lifer_seen);
-        const matchesLiferHeard = filters.lifer.heard === 'any' ||
-                                  (filters.lifer.heard === 'yes' && bird.lifer_heard) ||
-                                  (filters.lifer.heard === 'no' && !bird.lifer_heard);
-        const matchesLiferPhoto = filters.lifer.photo === 'any' ||
-                                  (filters.lifer.photo === 'yes' && bird.lifer_photo) ||
-                                  (filters.lifer.photo === 'no' && !bird.lifer_photo);
-        const matchesLiferVideo = filters.lifer.video === 'any' ||
-                                  (filters.lifer.video === 'yes' && bird.lifer_video) ||
-                                  (filters.lifer.video === 'no' && !bird.lifer_video);
-        
-        return matchesSearch && matchesSeason && matchesType && matchesClassification && 
-               matchesHabitat && matchesSize && matchesEdited && 
-               matchesLiferSeen && matchesLiferHeard && matchesLiferPhoto && matchesLiferVideo; 
-    });
-    
-    // (並び替えロジックは変更なし)
-    const jaCollator = new Intl.Collator('ja'); 
-    const getSizeNum = (sizeCm) => { const sizeString = String(sizeCm || ''); if (sizeString.includes('-')) { const numbers = sizeString.match(/(\d+(\.\d+)?)/g); if (numbers && numbers.length >= 2) { const num1 = parseFloat(numbers[0]); const num2 = parseFloat(numbers[1]); if (!isNaN(num1) && !isNaN(num2)) { return (num1 + num2) / 2; } } } const match = sizeString.match(/(\d+(\.\d+)?)/); const size = match ? parseFloat(match[1]) : NaN; return isNaN(size) ? Infinity : size; };
-    const getRarityNum = (rarity) => { const r = parseInt(rarity, 10); return isNaN(r) ? 99 : r; };
-    processedBirdList.sort((a, b) => {
-        switch (sort) {
-            case 'name_asc': return jaCollator.compare(a.name, b.name);
-            case 'name_desc': return jaCollator.compare(b.name, a.name);
-            case 'size_asc': { const sizeA = getSizeNum(a.size), sizeB = getSizeNum(b.size); if (sizeA === Infinity && sizeB === Infinity) return 0; if (sizeA === Infinity) return 1; if (sizeB === Infinity) return -1; return sizeA - sizeB; }
-            case 'size_desc': { const sizeA = getSizeNum(a.size), sizeB = getSizeNum(b.size); if (sizeA === Infinity && sizeB === Infinity) return 0; if (sizeA === Infinity) return 1; if (sizeB === Infinity) return -1; return sizeB - sizeA; }
-            case 'rarity_asc': { const rarityA = getRarityNum(a.rarity), rarityB = getRarityNum(b.rarity); if (rarityA === 99 && rarityB === 99) return 0; if (rarityA === 99) return 1; if (rarityB === 99) return -1; return rarityA - rarityB; }
-            case 'rarity_desc': { const rarityA = getRarityNum(a.rarity), rarityB = getRarityNum(b.rarity); if (rarityA === 99 && rarityB === 99) return 0; if (rarityA === 99) return 1; if (rarityB === 99) return -1; return rarityB - rarityA; }
-            default: return 0;
-        }
-    });
-    
-    const totalItems = processedBirdList.length; const totalPages = Math.ceil(totalItems / itemsPerPage);
-    let currentPage = appState.listControls.currentPage || 1;
-    if (currentPage < 1) currentPage = 1; else if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
-    appState.listControls.currentPage = currentPage; 
-    
-    const startIndex = (currentPage - 1) * itemsPerPage; const endIndex = startIndex + itemsPerPage;
-    const paginatedList = processedBirdList.slice(startIndex, endIndex);
-
-    if (paginatedList.length === 0) { listElement.className = ''; listElement.innerHTML = `<p class="text-gray-500 text-center col-span-2">鳥が見つかりません。</p>`; } 
-    else {
-        if (viewMode === 'tile') {
-            listElement.className = 'grid grid-cols-2 gap-4';
-            listElement.innerHTML = paginatedList.map(bird => {
-                // ★ 機能追加: ライフリスト勲章
-                const isLifer = bird.lifer_seen || bird.lifer_heard || bird.lifer_photo || bird.lifer_video;
-                const liferMedal = isLifer ? '<span class="lifer-medal" title="ライフリスト登録済み"></span>' : '';
-            
-                const placeholderUrl = `https://placehold.co/150x150/e0e0e0/b0b0b0?text=${escapeHTML(bird.name.charAt(0))}`;
-                const imageUrl = bird.photo_url || placeholderUrl;
-                const seasonTag = getSeasonTag(bird.season);
-                const habitatLabels = getHabitatLabels(bird); 
-                const habitatText = habitatLabels.join(', '); 
-                const habitatHtml = habitatText ? `<span class="text-xs text-gray-500 leading-tight">${escapeHTML(habitatText)}</span>` : ''; 
-                
-                return `
-                    <div class="bg-white rounded-lg shadow overflow-hidden cursor-pointer" onclick="showDetailPage('${bird.id}')">
-                        <img src="${imageUrl}" alt="${escapeHTML(bird.name)}" 
-                             onerror="this.onerror=null; this.src='${placeholderUrl}';"
-                             class="w-full h-32 object-cover">
-                        <div class="p-3">
-                            <h3 class="font-semibold text-gray-800 mb-1 truncate">${liferMedal}${escapeHTML(bird.name)}</h3>
-                            <div class="flex flex-col items-start space-y-1"> 
-                                ${seasonTag}
-                                ${habitatHtml}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        } else {
-            listElement.className = 'bg-white rounded-lg shadow overflow-hidden divide-y divide-gray-200';
-            listElement.innerHTML = paginatedList.map(bird => {
-                // ★ 機能追加: ライフリスト勲章
-                const isLifer = bird.lifer_seen || bird.lifer_heard || bird.lifer_photo || bird.lifer_video;
-                const liferMedal = isLifer ? '<span class="lifer-medal" title="ライフリスト登録済み"></span>' : '';
-
-                return `
-                    <div class="p-4 cursor-pointer hover:bg-gray-50 flex justify-between items-center" onclick="showDetailPage('${bird.id}')">
-                        <h3 class="font-semibold text-gray-800">${liferMedal}${escapeHTML(bird.name)}</h3>
-                        <span class="text-xs text-gray-400">&gt;</span>
-                    </div>
-                `;
-            }).join('');
-        }
-    }
-    
-    renderPaginationControls(listContainer, totalItems, totalPages);
-}
-
-// --- ページネーション描画 ---
-// (変更なし)
-function renderPaginationControls(listContainer, totalItems, totalPages) { 
-    const controlsElement = listContainer.querySelector('#pagination-controls');
-    if (!controlsElement) {
-        console.error("Pagination controls element not found.");
-        return;
-    }
-    const currentPg = appState.listControls.currentPage; 
-
-    if (totalPages <= 1) {
-        controlsElement.innerHTML = '';
-        return;
-    }
-
-    const pageInfo = `
-        <span class="text-sm text-gray-600">
-            ${totalItems} 件中 ${Math.min( (currentPg - 1) * appState.listControls.itemsPerPage + 1, totalItems )}
-            - ${Math.min( currentPg * appState.listControls.itemsPerPage, totalItems )} 件
-        </span>`;
-    
-    const prevButton = `
-        <button id="prev-page" class="pagination-button px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-                ${currentPg === 1 ? 'disabled' : ''}>
-            前へ
-        </button>`;
-    
-    const nextButton = `
-        <button id="next-page" class="pagination-button px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-                ${currentPg === totalPages ? 'disabled' : ''}>
-            次へ
-        </button>`;
-
-    controlsElement.innerHTML = `${prevButton} ${pageInfo} ${nextButton}`;
-    
-    setTimeout(() => {
-        const prevBtn = controlsElement.querySelector('#prev-page');
-        const nextBtn = controlsElement.querySelector('#next-page');
-        
-        if (prevBtn) {
-            prevBtn.addEventListener('click', () => {
-                if (appState.listControls.currentPage > 1) {
-                    appState.listControls.currentPage--;
-                    applyFiltersAndRenderList();
-                    window.scrollTo(0, 0); 
-                }
-            });
-        }
-        if (nextBtn) {
-            nextBtn.addEventListener('click', () => {
-                if (appState.listControls.currentPage < totalPages) {
-                    appState.listControls.currentPage++;
-                    applyFiltersAndRenderList();
-                    window.scrollTo(0, 0); 
-                }
-            });
-        }
-    }, 0);
-}
-
-// --- 詳細画面 (閲覧) ---
-// (変更なし)
-function showDetailPage(birdId) { 
-    appState.currentPage = 'detail'; appState.currentBirdId = birdId; appState.isEditing = false;
-    const bird = birdDatabase.find(b => b.id === birdId); if (!bird) { showListPage(); return; } currentBird = bird; 
-    const seasonTag = getSeasonTag(bird.season);
-    const rarity = parseInt(bird.rarity, 10);
-    const rarityTag = !isNaN(rarity) && rarity > 0 ? `<span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700">${'★'.repeat(rarity)}${'☆'.repeat(5 - rarity)}</span>` : '';
-    const specialTags = (bird.special_notes || '').split(';').filter(Boolean).map(note => `<span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-100 text-red-700">${escapeHTML(note)}</span>`).join(' ');
-    const placeholderUrl = `https://placehold.co/600x400/e0e0e0/b0b0b0?text=${escapeHTML(bird.name.charAt(0))}`;
-    
-    const imageUrl = bird.photo_url || placeholderUrl;
-    
-    const habitatLabels = getHabitatLabels(bird);
-    const habitatText = habitatLabels.length > 0 ? habitatLabels.join(', ') : '(情報なし)';
-    
-    let latestEventHtml = '';
-    if (bird.lastObservedEventId) {
-        const latestEvent = birdEvents.find(e => e.id === bird.lastObservedEventId);
-        if (latestEvent) {
-            const eventDate = latestEvent.dateTime ? latestEvent.dateTime.replace('T', ' ') : '日付不明';
-            const eventLocation = latestEvent.location || '(場所未設定)';
-            
-            latestEventHtml = `
-            <div id="latest-event-link" class="bg-emerald-50 rounded-lg shadow overflow-hidden border border-emerald-200 cursor-pointer hover:bg-emerald-100 transition-colors">
-                <div class="p-4">
-                    <h3 class="font-semibold text-gray-800 mb-2">最新の観察イベント</h3>
-                    <div class="text-sm text-emerald-700 space-y-1">
-                        <p><strong>イベント:</strong> ${escapeHTML(latestEvent.name || '無題のイベント')}</p>
-                        <p><strong>日時:</strong> ${escapeHTML(eventDate)}</p>
-                        <p><strong>場所:</strong> ${escapeHTML(eventLocation)}</p>
-                    </div>
-                    <p class="text-xs text-emerald-600 mt-2 text-right">タップしてイベント詳細へ &gt;</p>
-                </div>
-            </div>
-            `;
-        }
-    }
-    
-    const descriptionHtml = bird.description ? `<p class="text-gray-700 leading-relaxed">${escapeHTML(bird.description).replace(/\n/g, '<br>')}</p>` : `<p class="text-gray-400 italic">(説明未記入)</p>`;
-
-    let voiceButtonHtml = '';
-    if (bird.voice_url) {
-        // ★★★ 修正: アイコンを events.js と同じものに変更 ★★★
-        voiceButtonHtml = `
-            <button id="play-voice-btn" class="text-emerald-600 hover:text-emerald-800 p-2 rounded-full hover:bg-emerald-100">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z"></path>
-                </svg>
-            </button>
-        `;
-    }
-
-    const liferIcon = (checked, label) => {
-        const icon = checked 
-            ? `<svg class="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>`
-            : `<svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>`;
-        return `<span class="flex items-center space-x-2">${icon}<span>${label}</span></span>`;
+    // --- 1. ライフリスト集計 ---
+    const totalSpecies = birdDatabase.length;
+    const liferTotals = {
+        seen: 0, heard: 0, photo: 0, video: 0, any: 0 
     };
-    const liferHtml = `
-        <div class="bg-white rounded-lg shadow overflow-hidden">
-            <div class="p-4">
-                <h3 class="font-semibold text-gray-800 mb-3">ライフリスト</h3>
-                <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-gray-700">
-                    ${liferIcon(bird.lifer_seen, '目視')}
-                    ${liferIcon(bird.lifer_heard, '声')}
-                    ${liferIcon(bird.lifer_photo, '写真')}
-                    ${liferIcon(bird.lifer_video, '動画')}
-                </div>
-            </div>
-        </div>
-    `;
+    birdDatabase.forEach(bird => {
+        let isLifer = false;
+        if (bird.lifer_seen) { liferTotals.seen++; isLifer = true; }
+        if (bird.lifer_heard) { liferTotals.heard++; isLifer = true; }
+        if (bird.lifer_photo) { liferTotals.photo++; isLifer = true; }
+        if (bird.lifer_video) { liferTotals.video++; isLifer = true; }
+        if (isLifer) { liferTotals.any++; }
+    });
 
+    // --- 2. ★★★ 自分のバーダーカード（編集機能付き） ★★★ ---
+    const myCard = appState.settings; // birderName, birderPhoto を含む
+    const myPhotoUrl = myCard.birderPhoto || 'https://placehold.co/150x150/e0e0e0/b0b0b0?text=No+Image';
 
-    app.innerHTML = `
-        <div class="space-y-4 p-2"> <div class="bg-gray-200 rounded-lg shadow overflow-hidden">
-                <img src="${imageUrl}" alt="${escapeHTML(bird.name)}" 
-                     onerror="this.onerror=null; this.src='${placeholderUrl}';" 
-                     class="w-full h-56 object-cover">
-            </div>
-            <div class="bg-white rounded-lg shadow overflow-hidden">
-                <div class="p-4">
-                    <div class="flex flex-wrap gap-2 mb-3">${seasonTag}${rarityTag}${specialTags}</div>
-                    
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <h2 class="text-2xl font-bold text-gray-900">${escapeHTML(bird.name)}</h2>
-                            <p class="text-sm text-gray-600 mt-1"><strong>分類:</strong> ${escapeHTML(bird.classification) || 'N/A'}</p>
-                        </div>
-                        ${voiceButtonHtml} 
-                    </div>
-
-                    <div class="text-sm text-gray-600 space-y-1">
-                        <p><strong>サイズ:</strong> ${escapeHTML(bird.size) || 'N/A'}</p>
-                        <p><strong>生息地:</strong> ${escapeHTML(habitatText)}</p>
-                    </div>
+    // (余白・はみ出し修正済みのHTML)
+    const myBirderCardHtml = `
+        <div class="bg-white rounded-lg shadow p-4">
+            <h2 class="text-xl font-semibold mb-3">マイ・バーダーカード</h2>
+            
+            <div class="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg mb-4">
+                <img id="birder-photo-preview" src="${myPhotoUrl}" 
+                     onerror="this.onerror=null; this.src='https://placehold.co/150x150/e0e0e0/b0b0b0?text=Error';"
+                     class="w-20 h-20 object-cover rounded-full border-2 border-emerald-500 flex-shrink-0">
+                
+                <div class="flex-1 min-w-0">
+                    <input type="text" id="birder-name-input" value="${escapeHTML(myCard.birderName || '')}" placeholder="あなたの名前" class="w-full text-base font-bold text-gray-800 border-b border-gray-300 focus:border-emerald-500 focus:outline-none">
+                    <p class="text-xs text-gray-600 mt-1">ライフリスト: ${liferTotals.any} 種</p>
                 </div>
             </div>
             
-            ${liferHtml} 
-            ${latestEventHtml} 
-
-            <div class="bg-white rounded-lg shadow overflow-hidden">
-                <div class="p-4">
-                    <h3 class="font-semibold text-gray-800 mb-2">説明文</h3>
-                    ${descriptionHtml}
-                </div>
+            <div>
+                <label for="birder-photo-input" class="block text-sm font-medium text-gray-700">カードの写真 (5MBまで)</label>
+                <input type="file" id="birder-photo-input" accept="image/*" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
+                <button type="button" id="birder-remove-photo-btn" class="mt-2 text-sm font-medium text-red-600 hover:text-red-800 ${!myCard.birderPhoto ? 'hidden' : ''}">
+                    写真を削除
+                </button>
+                <p class="text-xs text-gray-500 mt-1">名前と写真は自動保存されます。</p>
             </div>
-            <button id="editButton" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-emerald-700 transition-colors">
-                情報を編集する
-            </button>
-
-            <audio id="bird-voice-player" class="hidden" src="${bird.voice_url || ''}"></audio>
+            
+            <hr class="my-6 border-gray-100 px-4">
+            
+            <div class="space-y-3">
+                <button id="share-card-btn" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-emerald-700 transition-colors">
+                    カードを送る (共有)
+                </button>
+                <p class="text-xs text-gray-500 text-center">
+                    ${(navigator.share) ? 'LINEやAirDropでカードを送れます。' : '(お使いのブラウザは共有機能非対応です。ファイルとしてダウンロードします)'}
+                </p>
+            </div>
         </div>
     `;
-    updateHeader('detail', bird.name);
 
+
+    // --- 3. ★★★ もらったカード ★★★ ---
+    const receivedCardsHtml = `
+        <div class="bg-white rounded-lg shadow p-4">
+            <h2 class="text-xl font-semibold mb-4">もらったカード</h2>
+            
+            <div>
+                <label for="import-card-file" class="w-full text-center block bg-gray-50 text-gray-700 font-bold py-3 px-4 rounded-lg shadow-inner hover:bg-gray-100 transition-colors cursor-pointer">
+                    カードを読み込む (.bcard)
+                </label>
+                <input type="file" id="import-card-file" accept=".bcard, application/json" class="hidden">
+                <p class="text-xs text-gray-500 mt-2">受信した '.bcard' ファイルを選択してください。</p>
+            </div>
+            
+            <hr class="my-6 border-gray-100 px-4">
+
+            <h3 class="text-lg font-medium text-gray-800 mb-3">受信箱</h3>
+            <div id="received-cards-list" class="space-y-3 max-h-60 overflow-y-auto pr-2">
+                ${(receivedCards && receivedCards.length > 0) ? 
+                    receivedCards.map(card => `
+                        <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg" data-card-id="${card.id}">
+                            <div class="flex items-center space-x-3">
+                                <img src="${card.photo || 'https://placehold.co/100x100/e0e0e0/b0b0b0?text=No+Image'}" 
+                                     onerror="this.onerror=null; this.src='https://placehold.co/100x100/e0e0e0/b0b0b0?text=Error';"
+                                     class="w-12 h-12 object-cover rounded-full">
+                                <div>
+                                    <p class="font-semibold text-gray-700">${escapeHTML(card.name || '（名前なし）')}</p>
+                                    <p class="text-xs text-gray-500">Lifer: ${card.totals.any} 種 (受信日: ${new Date(card.receivedDate).toLocaleDateString()})</p>
+                                </div>
+                            </div>
+                            <button type="button" data-action="delete" class="text-red-400 hover:text-red-600 p-1 rounded-lg flex-shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        </div>
+                    `).join('') :
+                    '<p class="text-gray-400 text-sm">まだカードをもらっていません。</p>'
+                }
+            </div>
+        </div>
+    `;
+
+
+    // --- 4. 既存の機能 (ライフリスト設定など) ---
+    const autoUpdateChecked = appState.settings.autoUpdateLiferList ? 'checked' : '';
+    const liferSettingsHtml = `
+        <div class="bg-white rounded-lg shadow p-4">
+            <h2 class="text-xl font-semibold mb-4">ライフリスト設定</h2>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <label for="auto-update-lifer" class="flex flex-col flex-1 mr-4">
+                        <span class="font-medium text-gray-700">イベントから自動更新</span>
+                        <span class="text-sm text-gray-500">イベントで鳥を登録時、自動でライフリストをONにします。</span>
+                    </label>
+                    <button type="button" id="auto-update-lifer-toggle" class="relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${autoUpdateChecked ? 'bg-emerald-600' : 'bg-gray-200'}">
+                        <span class="sr-only">自動更新を切り替え</span>
+                        <span class="inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${autoUpdateChecked ? 'translate-x-6' : 'translate-x-1'}"></span>
+                    </button>
+                    <input type="checkbox" id="auto-update-lifer" class="hidden" ${autoUpdateChecked}>
+                </div>
+                
+                <hr class="border-gray-100">
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">ライフリスト再集計</label>
+                    <p class="text-sm text-gray-500 mb-3">
+                        過去の全イベント履歴をスキャンし、ライフリスト（目視、声など）を更新します。
+                        （手動でOFFにした項目がONになることはあっても、ONの項目がOFFになることはありません）
+                    </p>
+                    <button id="rescan-lifer-btn" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-emerald-700 transition-colors">
+                        イベント履歴からライフリストを追加
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // --- 5. 既存の機能 (背景設定) ---
+    const defaultBgSettings = { bgColor: '#f3f4f6', bgImage: '', bgOpacity: 0.1 };
+    let currentBgSettings;
+    try {
+        const storedSettings = localStorage.getItem('birdAppBackground');
+        currentBgSettings = storedSettings ? { ...defaultBgSettings, ...JSON.parse(storedSettings) } : defaultBgSettings;
+    } catch (e) {
+        currentBgSettings = defaultBgSettings;
+    }
+    const backgroundSettingsHtml = `
+        <div class="bg-white rounded-lg shadow p-4">
+            <h2 class="text-xl font-semibold mb-4">背景設定</h2>
+            <div class="space-y-4">
+                <div>
+                    <label for="bg-color-picker" class="block text-sm font-medium text-gray-700">背景色</label>
+                    <input type="color" id="bg-color-picker" value="${escapeHTML(currentBgSettings.bgColor)}" class="mt-1 block w-full h-10 border border-gray-300 rounded-md cursor-pointer">
+                </div>
+                
+                <div>
+                    <label for="bg-image-input" class="block text-sm font-medium text-gray-700">背景画像 (5MBまで)</label>
+                    <input type="file" id="bg-image-input" accept="image/*" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
+                    <button type="button" id="bg-remove-image-btn" class="mt-2 text-sm font-medium text-red-600 hover:text-red-800 ${!currentBgSettings.bgImage ? 'hidden' : ''}">
+                        背景画像を削除
+                    </button>
+                </div>
+                
+                <div>
+                    <label for="bg-opacity-slider" class="block text-sm font-medium text-gray-700">画像の透明度: <span id="bg-opacity-value">${currentBgSettings.bgOpacity}</span></label>
+                    <input type="range" id="bg-opacity-slider" min="0.05" max="1" step="0.05" value="${currentBgSettings.bgOpacity}" class="mt-1 block w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                </div>
+            </div>
+        </div>
+    `;
+
+    // --- 6. 既存の機能 (インポート/エクスポート) ---
+    const importExportHtml = `
+        <div class="bg-white rounded-lg shadow p-4">
+            <h2 class="text-xl font-semibold mb-4">観察記録のエクスポート (CSV)</h2>
+            <p class="text-gray-600 mb-4">
+                すべてのイベントと、それに紐づく観察記録（鳥の名前、数、確認方法など）をCSVファイルとしてダウンロードします。(1行 = 1観察記録)
+            </p>
+            <button id="export-csv-btn" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-green-700 transition-colors">
+                観察記録CSVをダウンロード
+            </button>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-4">
+            <h2 class="text-xl font-semibold mb-4">データのエクスポート</h2>
+            <p class="text-gray-600 mb-4">
+                現在のすべての図鑑データ（写真・音声含む）とイベント履歴、設定を、一つのバックアップファイル（.json）としてダウンロードします。
+            </p>
+            <button id="export-data-btn" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-blue-700 transition-colors">
+                エクスポート実行
+            </button>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-4">
+            <h2 class="text-xl font-semibold mb-4 text-red-700">データのインポート</h2>
+            <p class="text-gray-600 mb-4">
+                エクスポートしたバックアップファイル（.json）を選択してください。<br>
+                <strong class="font-medium text-red-600">注意: 現在のすべてのデータ（設定含む）は、ファイルの内容で上書きされます。</strong>
+            </p>
+            
+            <input type="file" id="import-data-file" accept=".json, application/json" class="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100">
+            
+            <button id="import-data-btn" class="mt-4 w-full bg-red-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-red-700 transition-colors opacity-50 cursor-not-allowed" disabled>
+                インポート実行
+            </button>
+        </div>
+    `;
+    
+    // --- 画面全体の描画 (アコーディオン化) ---
+    app.innerHTML = `
+        <div class="space-y-2">
+            
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <button id="accordion-toggle-card" class="accordion-toggle w-full flex justify-between items-center p-4 text-left">
+                    <h2 class="text-xl font-semibold text-gray-800">バーダーカード</h2>
+                    <svg id="accordion-arrow-card" class="accordion-arrow h-5 w-5 text-gray-500 transition-transform transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div id="accordion-content-card" class="accordion-content" style="max-height: 0px;">
+                    <div class="border-t border-gray-100 space-y-2 p-2">
+                        ${myBirderCardHtml}
+                        ${receivedCardsHtml}
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <button id="accordion-toggle-bg" class="accordion-toggle w-full flex justify-between items-center p-4 text-left">
+                    <h2 class="text-xl font-semibold text-gray-800">背景設定</h2>
+                    <svg id="accordion-arrow-bg" class="accordion-arrow h-5 w-5 text-gray-500 transition-transform transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div id="accordion-content-bg" class="accordion-content" style="max-height: 0px;">
+                    <div class="border-t border-gray-100">
+                       ${backgroundSettingsHtml}
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <button id="accordion-toggle-data" class="accordion-toggle w-full flex justify-between items-center p-4 text-left">
+                    <h2 class="text-xl font-semibold text-gray-800">データ管理</h2>
+                    <svg id="accordion-arrow-data" class="accordion-arrow h-5 w-5 text-gray-500 transition-transform transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div id="accordion-content-data" class="accordion-content" style="max-height: 0px;">
+                    <div class="border-t border-gray-100 space-y-2 p-2">
+                        ${liferSettingsHtml}
+                        ${importExportHtml}
+                    </div>
+                </div>
+            </div>
+
+        </div>`;
+    updateHeader('settings', '設定');
+    
+    
+    // --- リスナー設定 ---
     setTimeout(() => {
-        const editButton = document.getElementById('editButton');
-        if (editButton) {
-            editButton.onclick = () => renderDetailEditPage(birdId);
-        } else {
-            console.error("Edit button not found on detail page.");
-        }
-        
-        if (bird.lastObservedEventId) {
-            const latestEventLink = document.getElementById('latest-event-link');
-            if (latestEventLink) {
-                latestEventLink.onclick = () => handleGoToEvent(bird.lastObservedEventId);
+        try {
+            // アコーディオン開閉ロジック
+            const toggleAccordion = (contentId, arrowId) => {
+                const content = document.getElementById(contentId);
+                const arrow = document.getElementById(arrowId);
+                if (!content || !arrow) {
+                    console.error("Accordion elements not found:", contentId, arrowId);
+                    return;
+                }
+                
+                const currentMaxHeight = content.style.maxHeight;
+
+                if (currentMaxHeight !== '0px' && currentMaxHeight !== '') {
+                    // 閉じる
+                    content.style.maxHeight = '0px';
+                    arrow.classList.remove('arrow-up');
+                } else {
+                    // 開く (scrollHeight が 0 の場合のフォールバック を追加)
+                    content.style.maxHeight = (content.scrollHeight > 0 ? content.scrollHeight : 500) + 'px';
+                    arrow.classList.add('arrow-up');
+                }
+            };
+
+            const cardToggle = document.getElementById('accordion-toggle-card');
+            if (cardToggle) {
+                cardToggle.onclick = () => toggleAccordion('accordion-content-card', 'accordion-arrow-card');
             }
-        }
-        
-        if (bird.voice_url) {
-            const playVoiceBtn = document.getElementById('play-voice-btn');
-            const audioPlayer = document.getElementById('bird-voice-player');
-            if (playVoiceBtn && audioPlayer) {
-                playVoiceBtn.onclick = () => {
-                    if (audioPlayer.paused) {
-                        audioPlayer.play();
-                    } else {
-                        audioPlayer.pause();
-                        audioPlayer.currentTime = 0; 
+            const bgToggle = document.getElementById('accordion-toggle-bg');
+            if (bgToggle) {
+                bgToggle.onclick = () => toggleAccordion('accordion-content-bg', 'accordion-arrow-bg');
+            }
+            const dataToggle = document.getElementById('accordion-toggle-data');
+            if (dataToggle) {
+                dataToggle.onclick = () => toggleAccordion('accordion-content-data', 'accordion-arrow-data');
+            }
+
+
+            // --- マイ・バーダーカードのリスナー ---
+            const nameInput = document.getElementById('birder-name-input');
+            const photoInput = document.getElementById('birder-photo-input');
+            const photoPreview = document.getElementById('birder-photo-preview');
+            const removePhotoBtn = document.getElementById('birder-remove-photo-btn');
+            const shareCardBtn = document.getElementById('share-card-btn');
+
+            if (nameInput) {
+                nameInput.onchange = (e) => { 
+                    appState.settings.birderName = e.target.value;
+                    saveListControlsState(); // app.js の関数
+                };
+            }
+            
+            // ★★★ 修正点: Cropper.js を呼び出すように変更 ★★★
+            if (photoInput && photoPreview && removePhotoBtn) {
+                photoInput.onchange = (e) => {
+                    handleBirderPhotoChange(e, photoPreview, removePhotoBtn);
+                };
+                removePhotoBtn.onclick = (e) => {
+                    // 削除ボタンが押されたら、isRemove=true で呼び出す
+                    handleBirderPhotoChange(e, photoPreview, removePhotoBtn, true);
+                };
+            }
+            if (shareCardBtn) {
+                shareCardBtn.onclick = () => handleShareMyCard(liferTotals);
+            }
+            
+            // --- もらったカードのリスナー ---
+            const importCardFile = document.getElementById('import-card-file');
+            const receivedList = document.getElementById('received-cards-list');
+
+            if (importCardFile) {
+                importCardFile.onchange = handleImportReceivedCard;
+            }
+            if (receivedList) {
+                receivedList.onclick = (e) => {
+                    const deleteBtn = e.target.closest('[data-action="delete"]');
+                    if (deleteBtn) {
+                        const cardElement = e.target.closest('[data-card-id]');
+                        if (cardElement) {
+                            handleDeleteReceivedCard(cardElement.dataset.cardId);
+                        }
                     }
                 };
             }
+
+            // --- 既存のリスナー ---
+            const exportCsvBtn = document.getElementById('export-csv-btn');
+            if (exportCsvBtn) {
+                exportCsvBtn.onclick = handleExportCsvData; 
+            }
+            
+            const exportBtn = document.getElementById('export-data-btn');
+            const importFile = document.getElementById('import-data-file');
+            const importBtn = document.getElementById('import-data-btn');
+
+            if (exportBtn) {
+                 exportBtn.onclick = handleExportData;
+            }
+            if (importFile && importBtn) {
+                importFile.onchange = () => {
+                    if (importFile.files.length > 0) {
+                        importBtn.disabled = false;
+                        importBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    } else {
+                        importBtn.disabled = true;
+                        importBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    }
+                };
+                importBtn.onclick = () => {
+                    if (importFile.files.length > 0) {
+                        handleImportData(importFile.files[0]);
+                    }
+                };
+            }
+
+            const autoUpdateToggle = document.getElementById('auto-update-lifer-toggle');
+            const rescanBtn = document.getElementById('rescan-lifer-btn');
+            
+            if (autoUpdateToggle) {
+                autoUpdateToggle.onclick = () => {
+                    appState.settings.autoUpdateLiferList = !appState.settings.autoUpdateLiferList;
+                    autoUpdateToggle.classList.toggle('bg-emerald-600', appState.settings.autoUpdateLiferList);
+                    autoUpdateToggle.classList.toggle('bg-gray-200', !appState.settings.autoUpdateLiferList);
+                    autoUpdateToggle.querySelector('span').classList.toggle('translate-x-6', appState.settings.autoUpdateLiferList);
+                    autoUpdateToggle.querySelector('span').classList.toggle('translate-x-1', !appState.settings.autoUpdateLiferList);
+                    saveListControlsState(); 
+                };
+            }
+            if (rescanBtn) {
+                rescanBtn.onclick = handleRescanLiferList;
+            }
+
+            const bgColorPicker = document.getElementById('bg-color-picker');
+            const bgImageInput = document.getElementById('bg-image-input');
+            const bgRemoveBtn = document.getElementById('bg-remove-image-btn');
+            const bgOpacitySlider = document.getElementById('bg-opacity-slider');
+            const bgOpacityValue = document.getElementById('bg-opacity-value');
+
+            if (bgColorPicker) {
+                bgColorPicker.onchange = (e) => saveBackgroundSettings({ bgColor: e.target.value });
+            }
+            if (bgOpacitySlider && bgOpacityValue) {
+                bgOpacitySlider.oninput = (e) => {
+                    bgOpacityValue.textContent = e.target.value;
+                    saveBackgroundSettings({ bgOpacity: parseFloat(e.target.value) });
+                };
+            }
+            if (bgRemoveBtn) {
+                bgRemoveBtn.onclick = async () => {
+                    const confirmed = await showCustomConfirm('背景画像を削除しますか？', '削除');
+                    if (confirmed) {
+                        saveBackgroundSettings({ bgImage: '' });
+                        bgRemoveBtn.classList.add('hidden');
+                        if (bgImageInput) bgImageInput.value = null; 
+                    }
+                };
+            }
+            if (bgImageInput) {
+                bgImageInput.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    if (file.size > 5 * 1024 * 1024) { 
+                        showCustomConfirm("画像サイズが5MBを超えています。5MB以下のファイルを選択してください。", "OK", true);
+                        e.target.value = null;
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        saveBackgroundSettings({ bgImage: event.target.result }); 
+                        bgRemoveBtn.classList.remove('hidden');
+                    };
+                    reader.onerror = (error) => {
+                        console.error("File reading error:", error);
+                        showCustomConfirm("画像の読み込みに失敗しました。", "OK", true);
+                    };
+                    reader.readAsDataURL(file);
+                };
+            }
+
+        } catch (error) {
+            console.error("Error setting up settings page listeners:", error);
         }
     }, 0);
 }
 
-// --- 詳細画面 (編集) ---
-// (変更なし)
-function renderDetailEditPage(birdId) { 
-    appState.currentPage = 'edit'; appState.isEditing = true;
-    const bird = birdDatabase.find(b => b.id === birdId); if (!bird) { showListPage(); return; } currentBird = bird;
-    
-    let newBase64Image = null; 
-    let newBase64Voice = null; 
-    
-    const rarityOptions = [ { value: '', label: '未設定' }, { value: '1', label: '★☆☆☆☆' }, { value: '2', label: '★★☆☆☆' }, { value: '3', label: '★★★☆☆' }, { value: '4', label: '★★★★☆' }, { value: '5', label: '★★★★★' } ];
-    
-    const placeholderUrl = `https://placehold.co/600x400/e0e0e0/b0b0b0?text=${escapeHTML(bird.name.charAt(0))}`;
-    const currentImageUrl = bird.photo_url || placeholderUrl;
-    const photoInputHtml = `
-        <div>
-            <label for="edit_photo" class="block text-sm font-medium text-gray-700">写真</label>
-            <img id="photo_preview" src="${currentImageUrl}" alt="プレビュー" 
-                 onerror="this.onerror=null; this.src='${placeholderUrl}';" 
-                 class="mt-2 w-full h-48 object-cover rounded-lg border border-gray-200 bg-gray-100">
-            
-            <input type="file" id="edit_photo" name="photo_file" accept="image/*" class="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
-            
-            <p id="photo_message" class="text-xs text-gray-500 mt-1">スマホから写真を選択できます (5MBまで)。</p>
-            
-            <button type="button" id="remove_photo_btn" class="mt-2 text-sm font-medium text-red-600 hover:text-red-800 ${!bird.photo_url ? 'hidden' : ''}">
-                画像を削除
-            </button>
-        </div>
-    `;
-
-    const voiceInputHtml = `
-        <div>
-            <label for="edit_voice" class="block text-sm font-medium text-gray-700">鳴き声 (音声)</label>
-            <div class="mt-2">
-                <audio id="voice_preview" controls class="w-full ${!bird.voice_url ? 'hidden' : ''}" src="${bird.voice_url || ''}"></audio>
-            </div>
-            <input type="file" id="edit_voice" name="voice_file" accept="audio/*" class="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-            <p id="voice_message" class="text-xs text-gray-500 mt-1">音声ファイルを選択できます (10MBまで)。</p>
-            <button type="button" id="remove_voice_btn" class="mt-2 text-sm font-medium text-red-600 hover:text-red-800 ${!bird.voice_url ? 'hidden' : ''}">
-                音声を削除
-            </button>
-        </div>
-    `;
-
-    const liferEditHtml = `
-        <div class="space-y-3">
-            <label class="block text-sm font-medium text-gray-700">ライフリスト（手動編集）</label>
-            <p class="text-xs text-gray-500 -mt-2">
-                （「イベントから自動更新」がONの場合、ここでOFFにしても、次回のイベント登録で自動的にONに戻る可能性があります）
-            </p>
-            <div class="grid grid-cols-2 gap-x-4 gap-y-3">
-                <label class="flex items-center space-x-2">
-                    <input type="checkbox" id="edit_lifer_seen" name="lifer_seen" value="true" ${bird.lifer_seen ? 'checked' : ''} class="form-checkbox text-emerald-600 rounded h-5 w-5">
-                    <span>目視</span>
-                </label>
-                <label class="flex items-center space-x-2">
-                    <input type="checkbox" id="edit_lifer_heard" name="lifer_heard" value="true" ${bird.lifer_heard ? 'checked' : ''} class="form-checkbox text-emerald-600 rounded h-5 w-5">
-                    <span>声</span>
-                </label>
-                <label class="flex items-center space-x-2">
-                    <input type="checkbox" id="edit_lifer_photo" name="lifer_photo" value="true" ${bird.lifer_photo ? 'checked' : ''} class="form-checkbox text-emerald-600 rounded h-5 w-5">
-                    <span>写真</span>
-                </label>
-                <label class="flex items-center space-x-2">
-                    <input type="checkbox" id="edit_lifer_video" name="lifer_video" value="true" ${bird.lifer_video ? 'checked' : ''} class="form-checkbox text-emerald-600 rounded h-5 w-5">
-                    <span>動画</span>
-                </label>
-            </div>
-        </div>
-    `;
-
-    app.innerHTML = `
-        <div class="bg-white rounded-lg shadow p-4 space-y-4">
-            <h2 class="text-xl font-bold text-gray-900 mb-2">情報の編集</h2>
-            <div class="space-y-2">
-                <div><label class="block text-sm font-medium text-gray-500">名前</label><p class="readonly-field">${escapeHTML(bird.name)}</p></div>
-                <div><label class="block text-sm font-medium text-gray-500">分類</label><p class="readonly-field">${escapeHTML(bird.classification)}</p></div>
-                 <div><label class="block text-sm font-medium text-gray-500">サイズ</label><p class="readonly-field">${escapeHTML(bird.size)}</p></div>
-                <div><label class="block text-sm font-medium text-gray-500">特記</label><p class="readonly-field">${escapeHTML(bird.special_notes) || '(なし)'}</p></div>
-            </div>
-            <hr class="my-4">
-            <form id="editForm" class="space-y-4">
-                
-                ${photoInputHtml}
-                <hr class="my-4">
-                ${voiceInputHtml}
-                <hr class="my-4">
-
-                 <div><label for="edit_season" class="block text-sm font-medium text-gray-700">区分</label><select id="edit_season" name="season" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500"><option value="" ${!bird.season ? 'selected' : ''}>未設定</option>${filterableSeasons.map(s => `<option value="${s}" ${bird.season === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
-                <div><label for="edit_rarity" class="block text-sm font-medium text-gray-700">レア度</label><select id="edit_rarity" name="rarity" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500">${rarityOptions.map(opt => `<option value="${opt.value}" ${bird.rarity === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}</select></div>
-                
-                <hr class="my-4">
-                ${liferEditHtml} 
-                <hr class="my-4">
-                
-                <div>
-                    <label for="edit_date" class="block text-sm font-medium text-gray-500">最新の観察日時 (イベント連携)</label>
-                    <p class="readonly-field">${escapeHTML(bird.observed_date ? bird.observed_date.replace('T', ' ') : '(記録なし)')}</p>
-                    <input type="hidden" id="edit_date" name="observed_date" value="${escapeHTML(bird.observed_date || '')}">
-                </div>
-                <div>
-                    <label for="edit_location" class="block text-sm font-medium text-gray-500">最新の観察場所 (イベント連携)</label>
-                    <p class="readonly-field">${escapeHTML(bird.observed_location || '(記録なし)')}</p>
-                    <input type="hidden" id="edit_location" name="observed_location" value="${escapeHTML(bird.observed_location || '')}">
-                </div>
-
-                <div><label for="edit_desc" class="block text-sm font-medium text-gray-700">説明文</label><textarea id="edit_desc" name="description" rows="5" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="特徴や鳴き声など...">${escapeHTML(bird.description || '')}</textarea></div>
-                <button type="submit" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-emerald-700 transition-colors">保存する</button>
-            </form>
-        </div>
-    `;
-    updateHeader('edit', `編集: ${bird.name}`);
-    
-    // ★★★ ここからが修正のメインです ★★★
-    // (renderDetailEditPage 内の setTimeout)
-    setTimeout(() => {
-        const editForm = document.getElementById('editForm');
+// --- 背景設定を保存する関数 ---
+function saveBackgroundSettings(newSettings) {
+    try {
+        const defaultSettings = { bgColor: '#f3f4f6', bgImage: '', bgOpacity: 0.1 };
+        let settings;
         
-        // --- 写真のリスナー ---
-        const photoInput = document.getElementById('edit_photo');
-        const photoPreview = document.getElementById('photo_preview');
-        const removePhotoBtn = document.getElementById('remove_photo_btn');
-        const photoMessage = document.getElementById('photo_message');
+        const storedSettings = localStorage.getItem('birdAppBackground');
+        settings = storedSettings ? { ...defaultSettings, ...JSON.parse(storedSettings) } : defaultSettings;
 
-        // ★ 機能追加: 音声のリスナー
-        const voiceInput = document.getElementById('edit_voice');
-        const voicePreview = document.getElementById('voice_preview');
-        const removeVoiceBtn = document.getElementById('remove_voice_btn');
-        const voiceMessage = document.getElementById('voice_message');
+        settings = { ...settings, ...newSettings };
         
-        // (音声リスナーは変更なし)
-        if (!voiceInput || !voicePreview || !removeVoiceBtn || !voiceMessage) {
-             console.error("Voice edit form elements not found.");
-        }
-
-
-        // ★★★ ここから修正 (写真のリスナーを settings.js と同じロジックに変更) ★★★
-        if (photoInput && photoPreview && removePhotoBtn && photoMessage) {
-            
-            // 1. 写真ファイル選択時の処理 (Cropper起動)
-            photoInput.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-
-                if (file.size > 5 * 1024 * 1024) { // 5MB 制限
-                    showCustomConfirm("画像サイズが5MBを超えています。5MB以下のファイルを選択してください。", "OK", true);
-                    e.target.value = null;
-                    return;
-                }
-
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    // showCropperModal は settings.js で定義されているグローバル関数
-                    // これを呼び出す
-                    showCropperModal(event.target.result, (base64Image) => {
-                        // クロップ完了時のコールバック
-                        newBase64Image = base64Image; // ★ 編集フォームの closure 変数に保存
-                        photoPreview.src = base64Image;
-                        removePhotoBtn.classList.remove('hidden');
-                        photoMessage.textContent = "画像が選択されました。（保存時に確定）";
-                        photoMessage.classList.remove('text-red-600');
-                    });
-                };
-                reader.onerror = (error) => {
-                    console.error("File reading error:", error);
-                    showCustomConfirm("画像の読み込みに失敗しました。", "OK", true);
-                };
-                reader.readAsDataURL(file);
-                
-                // 同じファイルを再度選択できるようにリセット
-                e.target.value = null;
-            });
-
-            // 2. 写真削除ボタンの処理
-            removePhotoBtn.onclick = async () => {
-                const confirmed = await showCustomConfirm(
-                    '本当にこの画像を削除しますか？\n（「保存する」ボタンを押すまで確定されません）',
-                    '画像を削除'
-                );
-                if (confirmed) {
-                    newBase64Image = ""; // ★ closure 変数に「削除」をマーク
-                    const placeholderUrl = `https://placehold.co/600x400/e0e0e0/b0b0b0?text=${escapeHTML(bird.name.charAt(0))}`;
-                    photoPreview.src = placeholderUrl;
-                    photoInput.value = null;
-                    removePhotoBtn.classList.add('hidden');
-                    photoMessage.textContent = "画像は削除されます（保存時に確定）。";
-                    photoMessage.classList.remove('text-red-600');
-                }
-            };
-        } else {
-             console.error("Photo edit form elements not found.");
-        }
-        // ★★★ ここまで修正 ★★★
-
-
+        localStorage.setItem('birdAppBackground', JSON.stringify(settings));
         
-        // --- ★ 機能追加: 音声ファイル選択時の処理 ---
-        if (voiceInput) {
-            voiceInput.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (!file) {
-                    newBase64Voice = null;
-                    return;
-                }
-                
-                if (file.size > 10 * 1024 * 1024) { // 10MB 制限
-                    console.warn("音声サイズが10MBを超えています。");
-                    e.target.value = null;
-                    newBase64Voice = null;
-                    voicePreview.src = bird.voice_url || '';
-                    voicePreview.classList.toggle('hidden', !bird.voice_url);
-                    voiceMessage.textContent = "10MB以下の音声を選択してください。";
-                    voiceMessage.classList.add('text-red-600');
-                    return;
-                }
-                
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    newBase64Voice = event.target.result; 
-                    voicePreview.src = newBase64Voice;
-                    voicePreview.classList.remove('hidden');
-                    removeVoiceBtn.classList.remove('hidden');
-                    voiceMessage.textContent = "音声が選択されました。";
-                    voiceMessage.classList.remove('text-red-600');
-                };
-                reader.onerror = (error) => {
-                    console.error("File reading error:", error);
-                    console.warn("音声の読み込みに失敗しました。");
-                    newBase64Voice = null;
-                };
-                reader.readAsDataURL(file);
-            });
-        }
-        
-        // --- ★ 機能追加: 音声削除ボタンの処理 ---
-        if (removeVoiceBtn) {
-            removeVoiceBtn.onclick = async () => {
-                const confirmed = await showCustomConfirm(
-                    '本当にこの音声を削除しますか？\n（「保存する」ボタンを押すまで確定されません）',
-                    '音声を削除'
-                );
-                if (confirmed) {
-                    newBase64Voice = ""; 
-                    voicePreview.src = '';
-                    voicePreview.classList.add('hidden');
-                    voiceInput.value = null;
-                    removeVoiceBtn.classList.add('hidden');
-                    voiceMessage.textContent = "音声は削除されます（保存時に確定）。";
-                    voiceMessage.classList.remove('text-red-600');
-                }
-            };
-        }
+        applyBackgroundSettings();
 
-        // --- フォーム送信（保存）時の処理 ---
-        if (editForm) {
-            editForm.onsubmit = async (event) => {
-                event.preventDefault();
-                await handleSave(event, newBase64Image, newBase64Voice); 
-            };
-        }
-
-    }, 0);
+    } catch (e) {
+        console.error("Failed to save background settings:", e);
+    }
 }
-// ★★★ 修正はここまでです ★★★
 
-// --- 編集保存 ---
-// ★ 修正: newBase64Voice を受け取る
-async function handleSave(event, newBase64Image, newBase64Voice) { 
+
+// --- データのエクスポート処理 ---
+async function handleExportData() {
+    console.log('データのエクスポートを開始します...');
     
-    const formData = new FormData(event.target); 
-    const form = event.target; // ★ フォーム要素自体
-    const birdId = appState.currentBirdId;
-    
-    const idx = birdDatabase.findIndex(b => b.id === birdId); 
-    if (idx === -1) {
-        console.error("Bird not found in memory DB.");
+    try {
+        const db = await openBirdDB();
+        
+        const birds = await db.getAll(STORE_BIRDS);
+        const events = await db.getAll(STORE_EVENTS);
+        // ★★★ もらったカードもエクスポートに含める ★★★
+        const receivedCardsData = await db.getAll(STORE_CARDS);
+        
+        const settings = JSON.parse(localStorage.getItem('birdListControls') || '{}');
+        const backgroundSettings = JSON.parse(localStorage.getItem('birdAppBackground') || '{}');
+        
+        const backupData = {
+            birds: birds,
+            events: events,
+            receivedCards: receivedCardsData, // ★ 追加
+            settings: settings, 
+            backgroundSettings: backgroundSettings, 
+            exportDate: new Date().toISOString()
+        };
+        
+        const jsonString = JSON.stringify(backupData); 
+        
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        
+        const dateStr = new Date().toISOString().split('T')[0];
+        a.download = `bird-pokedex-backup-${dateStr}.json`;
+        
+        document.body.appendChild(a);
+        a.click();
+        
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        console.log('エクスポートが完了しました。');
+
+    } catch (error) {
+        console.error('エクスポートに失敗しました:', error);
+        await showCustomConfirm(
+            `エクスポートに失敗しました。\nエラー: ${error.message}`,
+            'OK',
+            true 
+        );
+    }
+}
+
+
+// --- データのインポート処理 ---
+async function handleImportData(file) {
+    if (!file) return;
+
+    const confirmed = await showCustomConfirm(
+        '本当にインポートしますか？\n現在のすべてのデータ（設定含む）は、ファイルの内容で上書きされます。この操作は元に戻せません。',
+        'インポート実行'
+    );
+
+    const importFile = document.getElementById('import-data-file');
+    const importBtn = document.getElementById('import-data-btn');
+
+    if (!confirmed) {
+        console.log('インポートがキャンセルされました。');
+        if (importFile) importFile.value = null;
+        if (importBtn) {
+            importBtn.disabled = true;
+            importBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
         return;
     }
 
-    // 1. メモリ上の birdDatabase 配列を更新
-    LOCAL_COLUMNS.forEach(key => { 
-        if (formData.has(key)) {
-            // ★ 修正: observed_date, observed_location, photo_url, voice_url, lifer_... 以外を保存
-            if (key !== 'photo_url' && key !== 'voice_url' && 
-                key !== 'observed_date' && key !== 'observed_location' &&
-                !key.startsWith('lifer_')) {
-                birdDatabase[idx][key] = formData.get(key);
-            }
-        } 
-    });
-    
-    // 2. 画像データを処理
-    if (newBase64Image !== null) {
-        birdDatabase[idx]['photo_url'] = newBase64Image;
-    }
-    
-    // 3. ★ 機能追加: 音声データを処理
-    if (newBase64Voice !== null) {
-        birdDatabase[idx]['voice_url'] = newBase64Voice;
-    }
-    
-    // 4. ★ 機能追加: ライフリストのチェックボックスの値を保存
-    // (formData.get() はチェックなしの場合 null になるため、.checked で見る)
-    birdDatabase[idx]['lifer_seen'] = form.querySelector('#edit_lifer_seen').checked;
-    birdDatabase[idx]['lifer_heard'] = form.querySelector('#edit_lifer_heard').checked;
-    birdDatabase[idx]['lifer_photo'] = form.querySelector('#edit_lifer_photo').checked;
-    birdDatabase[idx]['lifer_video'] = form.querySelector('#edit_lifer_video').checked;
+    console.log('インポート処理を開始します...');
+    showLoadingMessage("データをインポート中...");
 
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+        try {
+            const jsonString = event.target.result;
+            const backupData = JSON.parse(jsonString);
+
+            if (!backupData || !Array.isArray(backupData.birds) || !Array.isArray(backupData.events)) {
+                throw new Error('バックアップファイルの形式が無効です。（鳥またはイベントのデータがありません）');
+            }
+
+            const db = await openBirdDB();
+            await db.clear(STORE_BIRDS);
+            await db.clear(STORE_EVENTS);
+            // ★★★ もらったカードもクリアする ★★★
+            await db.clear(STORE_CARDS);
+            
+            const birdTx = db.transaction(STORE_BIRDS, 'readwrite');
+            await Promise.all(backupData.birds.map(bird => birdTx.store.put(bird)));
+            await birdTx.done;
+            
+            const eventTx = db.transaction(STORE_EVENTS, 'readwrite');
+            await Promise.all(backupData.events.map(ev => eventTx.store.put(ev)));
+            await eventTx.done;
+            
+            // ★★★ もらったカードもインポート（古い形式のバックアップファイル対応） ★★★
+            if (backupData.receivedCards && Array.isArray(backupData.receivedCards)) {
+                 const cardTx = db.transaction(STORE_CARDS, 'readwrite');
+                 await Promise.all(backupData.receivedCards.map(card => cardTx.store.put(card)));
+                 await cardTx.done;
+            }
+
+            if (backupData.settings) {
+                localStorage.setItem('birdListControls', JSON.stringify(backupData.settings));
+            } else {
+                localStorage.removeItem('birdListControls'); 
+            }
+            
+            if (backupData.backgroundSettings) {
+                localStorage.setItem('birdAppBackground', JSON.stringify(backupData.backgroundSettings));
+            } else {
+                localStorage.removeItem('birdAppBackground'); 
+            }
+
+            console.log('インポートが完了しました。アプリを再読み込みします...');
+            
+            await initializeDatabase(); 
+            loadListControlsState();    
+            
+            applyBackgroundSettings(); 
+            
+            // ★★★ 循環参照エラーの修正: settings.js が pokedex.js に依存しているため、
+            // この関数は pokedex.js が読み込まれた後に呼び出す必要がある。
+            // (index.html の読み込み順で制御)
+            showListPage(); 
+            
+            if (importFile) importFile.value = null;
+            if (importBtn) {
+                 importBtn.disabled = true;
+                 importBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+            
+            await showCustomConfirm(
+                'データのインポートが完了しました。',
+                'OK',
+                true 
+            );
+
+        } catch (error) {
+            console.error('インポート処理中にエラーが発生しました:', error);
+            // ★★★ 循環参照エラーの修正
+            showListPage(); 
+            
+            await showCustomConfirm(
+                `インポートに失敗しました。\nエラー: ${error.message}\n\nファイルが破損していないか、正しいバックアップファイルか確認してください。`,
+                'OK',
+                true 
+            );
+        }
+    };
+    
+    reader.onerror = async (error) => {
+        console.error('ファイルの読み込みに失敗しました:', error);
+        await showCustomConfirm(
+            'ファイルの読み込みに失敗しました。',
+            'OK',
+            true 
+        );
+    };
+
+    reader.readAsText(file);
+}
+
+
+// --- 観察記録CSVのエクスポート ---
+async function handleExportCsvData() {
+    console.log('CSVエクスポート処理を開始します...');
+    
+    const headers = [
+        "EventID", "EventName", "EventDateTime", "EventWeather", "EventLocation", "EventCompanions", "EventMemo",
+        "ObservedBirdName", "ObservedCount", "ObservedSeen", "ObservedHeard", "ObservedPhoto", "ObservedVideo"
+    ];
+    
+    const csvData = [headers];
+    
+    try {
+        if (!birdEvents || birdEvents.length === 0) {
+            await showCustomConfirm("エクスポートするイベントがありません。", "OK", true);
+            return;
+        }
+
+        for (const event of birdEvents) {
+            const eventBase = [
+                event.id || '',
+                event.name || '',
+                event.dateTime || '',
+                event.weather || '',
+                event.location || '',
+                event.companions || '',
+                (event.memo || '').replace(/\n/g, ' '), 
+            ];
+            
+            if (event.observedBirds && event.observedBirds.length > 0) {
+                for (const bird of event.observedBirds) {
+                    const birdData = [
+                        bird.name || '',
+                        bird.count || 1,
+                        bird.seen || false,
+                        bird.heard || false,
+                        bird.photo || false,
+                        bird.video || false
+                    ];
+                    csvData.push([...eventBase, ...birdData]);
+                }
+            } else {
+                // 鳥の記録がないイベント
+                csvData.push([...eventBase, "", "", "", "", "", ""]);
+            }
+        }
+
+        const csvString = Papa.unparse(csvData);
+        
+        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]); 
+        const blob = new Blob([bom, csvString], { type: 'text/csv;charset=utf-8;' });
+        
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        
+        const dateStr = new Date().toISOString().split('T')[0];
+        a.download = `bird-observations-export-${dateStr}.csv`;
+        
+        document.body.appendChild(a);
+        a.click();
+        
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        console.log('CSVエクスポートが完了しました。');
+
+    } catch (error) {
+        console.error('CSVエクスポートに失敗しました:', error);
+        await showCustomConfirm(
+            `CSVエクスポートに失敗しました。\nエラー: ${error.message}`,
+            'OK',
+            true 
+        );
+    }
+}
+
+
+// --- ライフリスト再集計 ---
+async function handleRescanLiferList() {
+    const confirmed = await showCustomConfirm(
+        'イベント履歴全体からライフリストを再集計しますか？\n（手動でOFFにした項目も、履歴にあればONに更新されます）',
+        '再集計を実行'
+    );
+    if (!confirmed) return;
+
+    console.log('ライフリストの再集計を開始...');
+    showLoadingMessage("ライフリストを再集計中...");
+
+    let updatedCount = 0;
+    let birdDataNeedsSave = false;
 
     try {
-        // 5. IndexedDB に保存
-        await saveDatabase(); 
-        
-        // 6. 詳細ページに戻る
-        showDetailPage(birdId);
-        
-    } catch (error) {
-        console.error("Failed to save bird data:", error);
-        console.warn("データの保存に失敗しました。");
-    }
-}
+        for (const event of birdEvents) {
+            for (const observedBird of event.observedBirds) {
+                const birdInDB = birdDatabase.find(b => b.name === observedBird.name);
+                if (birdInDB) {
+                    let updated = false;
+                    if (observedBird.seen && !birdInDB.lifer_seen) {
+                        birdInDB.lifer_seen = true;
+                        updated = true;
+                    }
+                    if (observedBird.heard && !birdInDB.lifer_heard) {
+                        birdInDB.lifer_heard = true;
+                        updated = true;
+                    }
+                    if (observedBird.photo && !birdInDB.lifer_photo) {
+                        birdInDB.lifer_photo = true;
+                        updated = true;
+                    }
+                    if (observedBird.video && !birdInDB.lifer_video) {
+                        birdInDB.lifer_video = true;
+                        updated = true;
+                    }
+                    if(updated) {
+                        birdDataNeedsSave = true;
+                        updatedCount++;
+                    }
+                }
+            }
+        }
 
-/**
- * ★ 機能追加: IDからイベントを探して詳細ページに飛ぶ
- */
-function handleGoToEvent(eventId) {
-    if (!eventId) return;
-    
-    // 1. イベントIDから、birdEvents 配列内のインデックスを探す
-    const eventIndex = birdEvents.findIndex(e => e.id === eventId);
-    
-    if (eventIndex > -1) {
-        // 2. タブを「イベント」に切り替える
-        document.querySelectorAll('.tab-button').forEach(btn => btn.classList.replace('tab-active', 'tab-inactive'));
-        const eventsTab = document.getElementById('tab-events');
-        if (eventsTab) {
-            eventsTab.classList.replace('tab-inactive', 'tab-active');
+        if (birdDataNeedsSave) {
+            await saveDatabase();
+            console.log(`ライフリストの再集計が完了。${updatedCount}件の鳥データが更新されました。`);
+        } else {
+            console.log('ライフリストの再集計が完了。更新はありませんでした。');
         }
         
-        // 3. イベント詳細ページを表示 (events.js の関数)
-        showEventDetail(eventIndex);
+        showSettingsPage();
+        
+        await showCustomConfirm(
+            'ライフリストの再集計が完了しました。',
+            'OK',
+            true
+        );
 
-        // 4. ページトップにスクロール
-        window.scrollTo(0, 0); 
-    } else {
-        console.warn(`Event with ID ${eventId} not found.`);
-        console.warn("エラー: 該当のイベントが見つかりませんでした。");
+    } catch (error) {
+        console.error('ライフリストの再集計中にエラー:', error);
+        showSettingsPage(); 
+        await showCustomConfirm(
+            `再集計中にエラーが発生しました。\n${error.message}`,
+            'OK',
+            true
+        );
     }
 }
+
+
+// --- ★★★ 修正: カードの写真変更ハンドラ (Cropper.js を起動) ★★★ ---
+function handleBirderPhotoChange(event, previewElement, removeBtn, isRemove = false) {
+    const placeholder = 'https://placehold.co/150x150/e0e0e0/b0b0b0?text=No+Image';
+
+    if (isRemove) {
+        // 「削除」ボタンが押された時の処理
+        (async () => {
+            const confirmed = await showCustomConfirm('本当にこの画像を削除しますか？', '画像を削除');
+            if (confirmed) {
+                appState.settings.birderPhoto = ''; // 空の文字列を保存
+                previewElement.src = placeholder;
+                removeBtn.classList.add('hidden');
+                saveListControlsState();
+            }
+        })();
+        return;
+    }
+
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) { // 5MB 制限
+        showCustomConfirm("画像サイズが5MBを超えています。5MB以下のファイルを選択してください。", "OK", true);
+        event.target.value = null;
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        // ファイルが読み込めたら、Cropperモーダルを表示
+        // ★★★ 修正: showCropperModal は app.js で定義されたグローバル関数
+        showCropperModal(e.target.result, (base64Image) => {
+            // クロップが完了したら（コールバック）、結果を保存・表示
+            appState.settings.birderPhoto = base64Image;
+            previewElement.src = base64Image;
+            removeBtn.classList.remove('hidden');
+            saveListControlsState(); // 変更を即時保存
+        });
+    };
+    reader.onerror = (error) => {
+        console.error("File reading error:", error);
+        showCustomConfirm("画像の読み込みに失敗しました。", "OK", true);
+    };
+    reader.readAsDataURL(file);
+    
+    // 選択されたファイルをリセット（同じファイルを再度選択できるようにするため）
+    event.target.value = null;
+}
+
+// --- ★★★ カードを共有（またはエクスポート）するハンドラ ★★★ ---
+async function handleShareMyCard(liferTotals) {
+    
+    // ★ 修正: バージョン情報を追加
+    const myCardData = {
+        type: 'BirdPokedexCard', // データの種類を識別
+        version: 1, // ★ バージョンを追加
+        name: appState.settings.birderName || '名無しのバーダー',
+        photo: appState.settings.birderPhoto || '', // Base64
+        totals: liferTotals,
+        exportedDate: new Date().toISOString()
+    };
+    
+    const jsonString = JSON.stringify(myCardData);
+    // ファイル拡張子を .bcard にする (専用ファイルっぽく)
+    const fileName = `birder-card-${(appState.settings.birderName || 'user').replace(/[^a-zA-Z0-9]/g, '_')}.bcard`;
+    const file = new File([jsonString], fileName, { type: 'application/json' });
+
+    // 1. Web Share API (navigator.share) が使えるか試す
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+            await navigator.share({
+                title: '私のバーダーカード',
+                text: `${myCardData.name}さんのバーダーカードです。`,
+                files: [file]
+            });
+            console.log('カードが正常に共有されました。');
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                console.error('共有エラー:', error);
+                // 共有が失敗したら、フォールバックとしてダウンロードを実行
+                handleExportMyCardFallback(file);
+            } else {
+                console.log('共有がキャンセルされました。');
+            }
+        }
+    } else {
+        // 2. 共有機能が使えないブラウザ（PCなど）の場合は、ダウンロードにフォールバック
+        console.log('Web Share API (Files)非対応。ダウンロードにフォールバックします。');
+        handleExportMyCardFallback(file);
+    }
+}
+
+// --- ★★★ カード共有のフォールバック（ダウンロード） ★★★ ---
+function handleExportMyCardFallback(file) {
+    const url = URL.createObjectURL(file);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    console.log('カードをファイルとしてダウンロードしました。');
+}
+
+// --- ★★★ 新設: もらったカードの移行（マイグレーション）関数 ★★★ ---
+/**
+ * インポートしたカードデータを、現在のアプリが期待する構造に変換する
+ */
+function migrateReceivedCardData(cardData) {
+    const version = cardData.version || 1; // バージョンがなければV1とみなす
+    
+    // V1のデフォルト構造
+    const defaultV1Card = {
+        name: '（名前なし）',
+        photo: '',
+        totals: { seen: 0, heard: 0, photo: 0, video: 0, any: 0 },
+        // (V2で追加されるであろう項目)
+        // favoriteBird: null 
+    };
+
+    let migratedData = {};
+
+    if (version === 1) {
+        migratedData = {
+            name: cardData.name || defaultV1Card.name,
+            photo: cardData.photo || defaultV1Card.photo,
+            totals: cardData.totals || defaultV1Card.totals,
+            // favoriteBird: defaultV1Card.favoriteBird
+        };
+    }
+    // else if (version === 2) {
+    //   // V2の移行ロジック
+    // }
+    
+    // 不足している可能性のあるキーを、デフォルトで上書きマージする
+    return { ...defaultV1Card, ...migratedData };
+}
+
+
+// --- ★★★ もらったカードを読み込むハンドラ ★★★ ---
+async function handleImportReceivedCard(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const jsonString = e.target.result;
+            const cardData = JSON.parse(jsonString);
+
+            // データのバリデーション (totalsのチェックは緩める)
+            if (!cardData || cardData.type !== 'BirdPokedexCard') {
+                throw new Error('これは有効なバーダーカードファイルではありません。');
+            }
+            
+            // ★ 修正: 移行関数を通す
+            const migratedCard = migrateReceivedCardData(cardData);
+
+            // スナップショットとして保存（ユニークIDと受信日を追加）
+            const newCard = {
+                ...migratedCard, // ★ 移行後のデータを使用
+                id: `card_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`, // ユニークID
+                receivedDate: new Date().toISOString()
+            };
+
+            // グローバル変数とDBに追加
+            receivedCards.push(newCard);
+            await saveReceivedCards(); // app.js の関数
+            
+            console.log('カードを読み込みました:', newCard);
+            await showCustomConfirm(
+                `${escapeHTML(newCard.name)}さんのカードを読み込みました！`,
+                'OK',
+                true
+            );
+            
+            // 設定画面を再描画して一覧に反映
+            showSettingsPage();
+
+        } catch (error) {
+            console.error('カードの読み込みに失敗しました:', error);
+            await showCustomConfirm(
+                `カードの読み込みに失敗しました。\nエラー: ${error.message}`,
+                'OK',
+                true
+            );
+        } finally {
+            // ファイル選択をリセット
+            event.target.value = null;
+        }
+    };
+    reader.onerror = async () => {
+        await showCustomConfirm('ファイルの読み取りに失敗しました。', 'OK', true);
+        event.target.value = null;
+    };
+    reader.readAsText(file);
+}
+
+// --- ★★★ もらったカードを削除するハンドラ ★★★ ---
+async function handleDeleteReceivedCard(cardId) {
+    if (!cardId) return;
+    
+    const cardIndex = receivedCards.findIndex(c => c.id === cardId);
+    if (cardIndex === -1) {
+        console.error('削除対象のカードが見つかりません。');
+        return;
+    }
+    
+    const cardName = receivedCards[cardIndex].name || '（名前なし）';
+
+    const confirmed = await showCustomConfirm(
+        `${escapeHTML(cardName)}さんのカードを削除しますか？`,
+        '削除'
+    );
+    
+    if (confirmed) {
+        receivedCards.splice(cardIndex, 1); // 配列から削除
+        await saveReceivedCards(); // DBを更新
+        showSettingsPage(); // 画面を再描画
+    }
+}
+
+
+// --- ★★★ 修正: この関数 (showCropperModal) は app.js に移動しました ★★★ ---
+// (ここにあった 649〜716行目 を削除)
