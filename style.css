@@ -113,3 +113,25 @@ main#app {
     /* 勲章の形 (CSS clip-path) */
     clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
 }
+
+/* --- ★★★ 追加: Cropper.js モーダル用スタイル ★★★ --- */
+.cropper-modal-backdrop {
+    @apply fixed inset-0 w-full h-full flex items-center justify-center z-50;
+    background-color: rgba(0, 0, 0, 0.7); /* 半透明の黒背景 */
+    backdrop-filter: blur(5px); /* 背景ぼかし */
+    animation: modal-fade-in 0.2s ease-out; /* (custom-confirm-modal から拝借) */
+}
+
+.cropper-modal-content {
+    @apply bg-white rounded-lg shadow-2xl p-4 m-4 max-w-lg w-full;
+}
+
+.cropper-image-container {
+    @apply w-full h-64 md:h-80 lg:h-96 mb-4 bg-gray-100;
+    /* Cropper.js がこの div の中に img を作ります */
+}
+
+.cropper-modal-actions {
+    @apply flex justify-end space-x-3;
+}
+/* (ボタンの .confirm-btn スタイルは style.css に既に存在するので流用) */

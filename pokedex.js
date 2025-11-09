@@ -727,6 +727,8 @@ function renderDetailEditPage(birdId) {
     `;
     updateHeader('edit', `編集: ${bird.name}`);
     
+    // ★★★ ここからが修正のメインです ★★★
+    // (renderDetailEditPage 内の setTimeout)
     setTimeout(() => {
         const editForm = document.getElementById('editForm');
         
@@ -736,73 +738,77 @@ function renderDetailEditPage(birdId) {
         const removePhotoBtn = document.getElementById('remove_photo_btn');
         const photoMessage = document.getElementById('photo_message');
 
-        if (!editForm || !photoInput || !photoPreview || !removePhotoBtn || !photoMessage) {
-            console.error("Photo edit form elements not found.");
-        }
-
         // ★ 機能追加: 音声のリスナー
         const voiceInput = document.getElementById('edit_voice');
         const voicePreview = document.getElementById('voice_preview');
         const removeVoiceBtn = document.getElementById('remove_voice_btn');
         const voiceMessage = document.getElementById('voice_message');
         
+        // (音声リスナーは変更なし)
         if (!voiceInput || !voicePreview || !removeVoiceBtn || !voiceMessage) {
              console.error("Voice edit form elements not found.");
         }
 
-        // --- 写真ファイル選択時の処理 ---
-        if (photoInput) {
+
+        // ★★★ ここから修正 (写真のリスナーを settings.js と同じロジックに変更) ★★★
+        if (photoInput && photoPreview && removePhotoBtn && photoMessage) {
+            
+            // 1. 写真ファイル選択時の処理 (Cropper起動)
             photoInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
-                if (!file) {
-                    newBase64Image = null; 
-                    return;
-                }
+                if (!file) return;
 
-                if (file.size > 5 * 1024 * 1024) {
-                    console.warn("画像サイズが5MBを超えています。より小さな画像を選択してください。"); 
-                    e.target.value = null; 
-                    newBase64Image = null;
-                    photoPreview.src = bird.photo_url || placeholderUrl; 
-                    photoMessage.textContent = "5MB以下の画像を選択してください。";
-                    photoMessage.classList.add('text-red-600');
+                if (file.size > 5 * 1024 * 1024) { // 5MB 制限
+                    showCustomConfirm("画像サイズが5MBを超えています。5MB以下のファイルを選択してください。", "OK", true);
+                    e.target.value = null;
                     return;
                 }
 
                 const reader = new FileReader();
                 reader.onload = (event) => {
-                    newBase64Image = event.target.result; 
-                    photoPreview.src = newBase64Image; 
-                    removePhotoBtn.classList.remove('hidden'); 
-                    photoMessage.textContent = "画像が選択されました。";
-                    photoMessage.classList.remove('text-red-600');
+                    // showCropperModal は settings.js で定義されているグローバル関数
+                    // これを呼び出す
+                    showCropperModal(event.target.result, (base64Image) => {
+                        // クロップ完了時のコールバック
+                        newBase64Image = base64Image; // ★ 編集フォームの closure 変数に保存
+                        photoPreview.src = base64Image;
+                        removePhotoBtn.classList.remove('hidden');
+                        photoMessage.textContent = "画像が選択されました。（保存時に確定）";
+                        photoMessage.classList.remove('text-red-600');
+                    });
                 };
                 reader.onerror = (error) => {
                     console.error("File reading error:", error);
-                    console.warn("画像の読み込みに失敗しました。");
-                    newBase64Image = null;
+                    showCustomConfirm("画像の読み込みに失敗しました。", "OK", true);
                 };
-                reader.readAsDataURL(file); 
+                reader.readAsDataURL(file);
+                
+                // 同じファイルを再度選択できるようにリセット
+                e.target.value = null;
             });
-        }
 
-        // --- 写真削除ボタンの処理 ---
-        if (removePhotoBtn) {
-            removePhotoBtn.onclick = async () => { 
+            // 2. 写真削除ボタンの処理
+            removePhotoBtn.onclick = async () => {
                 const confirmed = await showCustomConfirm(
                     '本当にこの画像を削除しますか？\n（「保存する」ボタンを押すまで確定されません）',
                     '画像を削除'
                 );
-                if (confirmed) { 
-                    newBase64Image = ""; 
-                    photoPreview.src = placeholderUrl; 
-                    photoInput.value = null; 
-                    removePhotoBtn.classList.add('hidden'); 
+                if (confirmed) {
+                    newBase64Image = ""; // ★ closure 変数に「削除」をマーク
+                    const placeholderUrl = `https://placehold.co/600x400/e0e0e0/b0b0b0?text=${escapeHTML(bird.name.charAt(0))}`;
+                    photoPreview.src = placeholderUrl;
+                    photoInput.value = null;
+                    removePhotoBtn.classList.add('hidden');
                     photoMessage.textContent = "画像は削除されます（保存時に確定）。";
                     photoMessage.classList.remove('text-red-600');
                 }
             };
+        } else {
+             console.error("Photo edit form elements not found.");
         }
+        // ★★★ ここまで修正 ★★★
+
+
         
         // --- ★ 機能追加: 音声ファイル選択時の処理 ---
         if (voiceInput) {
@@ -813,7 +819,7 @@ function renderDetailEditPage(birdId) {
                     return;
                 }
                 
-                if (file.size > 10 * 1024 * 1024) {
+                if (file.size > 10 * 1024 * 1024) { // 10MB 制限
                     console.warn("音声サイズが10MBを超えています。");
                     e.target.value = null;
                     newBase64Voice = null;
@@ -871,6 +877,7 @@ function renderDetailEditPage(birdId) {
 
     }, 0);
 }
+// ★★★ 修正はここまでです ★★★
 
 // --- 編集保存 ---
 // ★ 修正: newBase64Voice を受け取る
