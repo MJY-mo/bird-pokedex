@@ -842,7 +842,7 @@ function renderDetailEditPage(birdId) {
                 reader.onerror = (error) => {
                     console.error("File reading error:", error);
                     console.warn("音声の読み込みに失敗しました。");
-                    newBase664Voice = null;
+                    newBase64Voice = null;
                 };
                 reader.readAsDataURL(file);
             });
