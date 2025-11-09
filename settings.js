@@ -319,6 +319,7 @@ function showSettingsPage() {
                     saveListControlsState(); // app.js の関数
                 };
             }
+            // ★★★ 修正点: Cropper.js を呼び出すように変更 ★★★
             if (photoInput && photoPreview && removePhotoBtn) {
                 photoInput.onchange = (e) => {
                     handleBirderPhotoChange(e, photoPreview, removePhotoBtn);
@@ -787,15 +788,18 @@ async function handleRescanLiferList() {
 }
 
 
-// --- ★★★ カードの写真変更ハンドラ ★★★ ---
+// --- ★★★ 修正: カードの写真変更ハンドラ (Cropper.js を起動) ★★★ ---
 function handleBirderPhotoChange(event, previewElement, removeBtn, isRemove = false) {
     const placeholder = 'https://placehold.co/150x150/e0e0e0/b0b0b0?text=No+Image';
 
     if (isRemove) {
-        appState.settings.birderPhoto = '';
-        previewElement.src = placeholder;
-        removeBtn.classList.add('hidden');
-        saveListControlsState();
+        // 「削除」ボタンが押された時の処理
+        showCropperModal(null, (base64Image) => {
+            appState.settings.birderPhoto = base64Image; // base64Image は '' (空文字) になる
+            previewElement.src = placeholder;
+            removeBtn.classList.add('hidden');
+            saveListControlsState();
+        }, true); //
         return;
     }
 
@@ -810,16 +814,23 @@ function handleBirderPhotoChange(event, previewElement, removeBtn, isRemove = fa
 
     const reader = new FileReader();
     reader.onload = (e) => {
-        appState.settings.birderPhoto = e.target.result; // Base64
-        previewElement.src = e.target.result;
-        removeBtn.classList.remove('hidden');
-        saveListControlsState(); // 変更を即時保存
+        // ファイルが読み込めたら、Cropperモーダルを表示
+        showCropperModal(e.target.result, (base64Image) => {
+            // クロップが完了したら（コールバック）、結果を保存・表示
+            appState.settings.birderPhoto = base64Image;
+            previewElement.src = base64Image;
+            removeBtn.classList.remove('hidden');
+            saveListControlsState(); // 変更を即時保存
+        });
     };
     reader.onerror = (error) => {
         console.error("File reading error:", error);
         showCustomConfirm("画像の読み込みに失敗しました。", "OK", true);
     };
     reader.readAsDataURL(file);
+    
+    // 選択されたファイルをリセット（同じファイルを再度選択できるようにするため）
+    event.target.value = null;
 }
 
 // --- ★★★ カードを共有（またはエクスポート）するハンドラ ★★★ ---
@@ -994,4 +1005,109 @@ async function handleDeleteReceivedCard(cardId) {
         await saveReceivedCards(); // DBを更新
         showSettingsPage(); // 画面を再描画
     }
+}
+
+
+// --- ★★★ 新設: Cropper.js のモーダル制御 ★★★ ---
+let cropperInstance = null; // Cropperのインスタンスを保持する変数
+
+/**
+ * 画像切り抜きモーダルを表示する
+ * @param {string | null} imageSrc - 編集する画像(Base64) or null(削除の場合)
+ * @param {function(string):void} callback - 完了時にBase64を返すコールバック
+ * @param {boolean} [isRemove=false] - 削除モードかどうか
+ */
+function showCropperModal(imageSrc, callback, isRemove = false) {
+    // 既存のモーダルがあれば削除
+    const existingModal = document.getElementById('cropper-modal-container');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    if (cropperInstance) {
+        cropperInstance.destroy();
+        cropperInstance = null;
+    }
+    
+    // 削除モードの場合 (確認ダイアログ)
+    if (isRemove) {
+        (async () => {
+            const confirmed = await showCustomConfirm('本当にこの画像を削除しますか？', '画像を削除');
+            if (confirmed) {
+                callback(''); // 空の文字列を返して「削除」を確定
+            }
+        })();
+        return;
+    }
+
+    // モーダルのHTMLを動的に作成
+    const modalHtml = `
+        <div id="cropper-modal-container" class="cropper-modal-backdrop">
+            <div class="cropper-modal-content">
+                <div class="cropper-image-container">
+                    <img id="cropper-image" src="${imageSrc}">
+                </div>
+                <div class="cropper-modal-actions">
+                    <button id="cropper-cancel-btn" class="confirm-btn confirm-btn-cancel">キャンセル</button>
+                    <button id="cropper-done-btn" class="confirm-btn confirm-btn-ok">切り抜いて決定</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // body にモーダルを挿入
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    const image = document.getElementById('cropper-image');
+    const doneBtn = document.getElementById('cropper-done-btn');
+    const cancelBtn = document.getElementById('cropper-cancel-btn');
+
+    if (!image || !doneBtn || !cancelBtn) {
+        console.error("Cropper modal elements failed to create.");
+        return;
+    }
+
+    // Cropper.js を初期化
+    // (index.html で Cropper の CSS/JS が読み込まれている必要があります)
+    cropperInstance = new Cropper(image, {
+        aspectRatio: 1 / 1, // バーダーカードは 1:1 (正方形)
+        viewMode: 1, // 0: 制限なし, 1: 枠内に制限
+        dragMode: 'move',
+        autoCropArea: 0.9,
+        responsive: true,
+        modal: true,
+        guides: true,
+        center: true,
+        highlight: false,
+        cropBoxMovable: false,
+        cropBoxResizable: false,
+        toggleDragModeOnDblclick: false,
+    });
+
+    // 「キャンセル」ボタン
+    cancelBtn.onclick = () => {
+        cropperInstance.destroy();
+        cropperInstance = null;
+        document.getElementById('cropper-modal-container').remove();
+    };
+
+    // 「決定」ボタン
+    doneBtn.onclick = () => {
+        // Cropper.js で切り抜いた結果を取得 (1:1 の 300x300px にする)
+        const croppedCanvas = cropperInstance.getCroppedCanvas({
+            width: 300,
+            height: 300,
+            imageSmoothingQuality: 'high',
+        });
+        
+        // Base64データとして取得
+        const base64Image = croppedCanvas.toDataURL('image/jpeg', 0.9); // JPEGの90%品質
+        
+        // コールバック関数で結果を返す
+        callback(base64Image);
+        
+        // モーダルを閉じる
+        cropperInstance.destroy();
+        cropperInstance = null;
+        document.getElementById('cropper-modal-container').remove();
+    };
 }
