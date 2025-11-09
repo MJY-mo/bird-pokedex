@@ -67,8 +67,8 @@ function showSettingsPage() {
             <div>
                 <label for="import-card-file" class="w-full text-center block bg-gray-50 text-gray-700 font-bold py-3 px-4 rounded-lg shadow-inner hover:bg-gray-100 transition-colors cursor-pointer">
                     カードを読み込む (.bcard)
+                    <input type="file" id="import-card-file" accept=".bcard, application/json" class="hidden">
                 </label>
-                <input type="file" id="import-card-file" accept=".bcard, application/json" class="hidden">
                 <p class="text-xs text-gray-500 mt-2">受信した '.bcard' ファイルを選択してください。</p>
             </div>
             
@@ -110,12 +110,13 @@ function showSettingsPage() {
                     <label for="auto-update-lifer" class="flex flex-col flex-1 mr-4">
                         <span class="font-medium text-gray-700">イベントから自動更新</span>
                         <span class="text-sm text-gray-500">イベントで鳥を登録時、自動でライフリストをONにします。</span>
+                        
+                        <input type="checkbox" id="auto-update-lifer" class="hidden" ${autoUpdateChecked}>
                     </label>
                     <button type="button" id="auto-update-lifer-toggle" class="relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${autoUpdateChecked ? 'bg-emerald-600' : 'bg-gray-200'}">
                         <span class="sr-only">自動更新を切り替え</span>
                         <span class="inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${autoUpdateChecked ? 'translate-x-6' : 'translate-x-1'}"></span>
                     </button>
-                    <input type="checkbox" id="auto-update-lifer" class="hidden" ${autoUpdateChecked}>
                 </div>
                 
                 <hr class="border-gray-100">

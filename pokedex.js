@@ -149,13 +149,23 @@ function renderFilterPopup() {
         }
         const filteredClass = isFiltered ? 'filtered' : ''; let contentHtml = '';
         switch (section.id) {
-            case 'classification': contentHtml = `<div class="p-4"><div class="grid grid-cols-2 gap-2">` + allOrders.map(o => `<label class="flex items-center space-x-2"><input type="checkbox" name="classification_order" value="${o}" ${filters.classification.orders.includes(o)?'checked':''} class="form-checkbox text-emerald-600 rounded"><span>${o}</span></label>`).join('') + `</div>${createSelectButtons(section.id)}</div>`; break;
-            case 'type': contentHtml = `<div class="p-4"><div class="grid grid-cols-2 gap-2">` + filterableTypes.map(t => `<label class="flex items-center space-x-2"><input type="checkbox" name="type" value="${t}" ${filters.type.includes(t)?'checked':''} class="form-checkbox text-emerald-600 rounded"><span>${t}</span></label>`).join('') + `</div>${createSelectButtons(section.id)}</div>`; break;
-            case 'season': contentHtml = `<div class="p-4"><div class="grid grid-cols-2 gap-2">` + filterableSeasons.map(s => `<label class="flex items-center space-x-2"><input type="checkbox" name="season" value="${s}" ${filters.season.includes(s)?'checked':''} class="form-checkbox text-emerald-600 rounded"><span>${s}</span></label>`).join('') + `</div>${createSelectButtons(section.id)}</div>`; break;
-            case 'habitat': contentHtml = `<div class="p-4"><div class="grid grid-cols-2 gap-2">` + habitatKeys.map(h => `<label class="flex items-center space-x-2"><input type="checkbox" name="habitat" value="${h.key}" ${filters.habitat.includes(h.key)?'checked':''} class="form-checkbox text-emerald-600 rounded"><span>${h.label}</span></label>`).join('') + `</div>${createSelectButtons(section.id)}</div>`; break;
-            case 'size': contentHtml = `<div class="p-4"><div class="grid grid-cols-2 gap-2">` + Object.entries(sizeRanges).map(([k,r]) => `<label class="flex items-center space-x-2"><input type="checkbox" name="size" value="${k}" ${filters.size.includes(k)?'checked':''} class="form-checkbox text-emerald-600 rounded"><span>${r.label}</span></label>`).join('') + `</div>${createSelectButtons(section.id)}</div>`; break;
+            // ★ 修正: id と for を追加 (分類)
+            case 'classification': contentHtml = `<div class="p-4"><div class="grid grid-cols-2 gap-2">` + allOrders.map(o => `<label for="filter_order_${o}" class="flex items-center space-x-2"><input type="checkbox" id="filter_order_${o}" name="classification_order" value="${o}" ${filters.classification.orders.includes(o)?'checked':''} class="form-checkbox text-emerald-600 rounded"><span>${o}</span></label>`).join('') + `</div>${createSelectButtons(section.id)}</div>`; break;
             
-            // ★ 修正: 「図鑑の編集履歴」セクションのUI
+            // ★ 修正: id と for を追加 (種類)
+            case 'type': contentHtml = `<div class="p-4"><div class="grid grid-cols-2 gap-2">` + filterableTypes.map(t => `<label for="filter_type_${t}" class="flex items-center space-x-2"><input type="checkbox" id="filter_type_${t}" name="type" value="${t}" ${filters.type.includes(t)?'checked':''} class="form-checkbox text-emerald-600 rounded"><span>${t}</span></label>`).join('') + `</div>${createSelectButtons(section.id)}</div>`; break;
+            
+            // ★ 修正: id と for を追加 (観察時期)
+            case 'season': contentHtml = `<div class="p-4"><div class="grid grid-cols-2 gap-2">` + filterableSeasons.map(s => `<label for="filter_season_${s}" class="flex items-center space-x-2"><input type="checkbox" id="filter_season_${s}" name="season" value="${s}" ${filters.season.includes(s)?'checked':''} class="form-checkbox text-emerald-600 rounded"><span>${s}</span></label>`).join('') + `</div>${createSelectButtons(section.id)}</div>`; break;
+            
+            // ★ 修正: id と for を追加 (生息地)
+            case 'habitat': contentHtml = `<div class="p-4"><div class="grid grid-cols-2 gap-2">` + habitatKeys.map(h => `<label for="filter_habitat_${h.key}" class="flex items-center space-x-2"><input type="checkbox" id="filter_habitat_${h.key}" name="habitat" value="${h.key}" ${filters.habitat.includes(h.key)?'checked':''} class="form-checkbox text-emerald-600 rounded"><span>${h.label}</span></label>`).join('') + `</div>${createSelectButtons(section.id)}</div>`; break;
+            
+            // ★ 修正: id と for を追加 (サイズ)
+            case 'size': contentHtml = `<div class="p-4"><div class="grid grid-cols-2 gap-2">` + Object.entries(sizeRanges).map(([k,r]) => `<label for="filter_size_${k}" class="flex items-center space-x-2"><input type="checkbox" id="filter_size_${k}" name="size" value="${k}" ${filters.size.includes(k)?'checked':''} class="form-checkbox text-emerald-600 rounded"><span>${r.label}</span></label>`).join('') + `</div>${createSelectButtons(section.id)}</div>`; break;
+            
+            
+            // ★ 修正: 「図鑑の編集履歴」セクションのUI (id と for を追加)
             case 'edited': 
                 const liferFilters = [
                     { key: 'seen', label: '目視' },
@@ -169,8 +179,8 @@ function renderFilterPopup() {
                         <h4 class="text-sm font-semibold text-gray-500 mb-2">ライフリストの有無</h4>
                         <div class="grid grid-cols-3 gap-x-3 gap-y-3">
                             ${liferFilters.map(f => `
-                                <label class="block text-xs font-medium text-gray-700">${f.label}</label>
-                                <select name="lifer_${f.key}" class="col-span-2 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-1 text-sm focus:ring-emerald-500 focus:border-emerald-500">
+                                <label for="filter_lifer_${f.key}" class="block text-xs font-medium text-gray-700">${f.label}</label>
+                                <select id="filter_lifer_${f.key}" name="lifer_${f.key}" class="col-span-2 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-1 text-sm focus:ring-emerald-500 focus:border-emerald-500">
                                     <option value="any" ${filters.lifer[f.key] === 'any' ? 'selected' : ''}>すべて</option>
                                     <option value="yes" ${filters.lifer[f.key] === 'yes' ? 'selected' : ''}>あり</option>
                                     <option value="no" ${filters.lifer[f.key] === 'no' ? 'selected' : ''}>なし</option>
@@ -181,9 +191,9 @@ function renderFilterPopup() {
                     <div class="pt-4 border-t border-gray-200">
                         <h4 class="text-sm font-semibold text-gray-500 mb-2">編集あり/なし</h4>
                         <div class="space-y-2">
-                            <label class="flex items-center space-x-2"><input type="radio" name="edited" value="all" ${filters.edited === 'all' ? 'checked' : ''} class="form-radio text-emerald-600"><span>すべて</span></label>
-                            <label class="flex items-center space-x-2"><input type="radio" name="edited" value="yes" ${filters.edited === 'yes' ? 'checked' : ''} class="form-radio text-emerald-600"><span>編集あり (写真/音声/説明文)</span></label>
-                            <label class="flex items-center space-x-2"><input type="radio" name="edited" value="no" ${filters.edited === 'no' ? 'checked' : ''} class="form-radio text-emerald-600"><span>編集なし</span></label>
+                            <label for="filter_edited_all" class="flex items-center space-x-2"><input type="radio" id="filter_edited_all" name="edited" value="all" ${filters.edited === 'all' ? 'checked' : ''} class="form-radio text-emerald-600"><span>すべて</span></label>
+                            <label for="filter_edited_yes" class="flex items-center space-x-2"><input type="radio" id="filter_edited_yes" name="edited" value="yes" ${filters.edited === 'yes' ? 'checked' : ''} class="form-radio text-emerald-600"><span>編集あり (写真/音声/説明文)</span></label>
+                            <label for="filter_edited_no" class="flex items-center space-x-2"><input type="radio" id="filter_edited_no" name="edited" value="no" ${filters.edited === 'no' ? 'checked' : ''} class="form-radio text-emerald-600"><span>編集なし</span></label>
                         </div>
                     </div>
                 </div>`; 
@@ -260,7 +270,9 @@ function renderViewPopup() {
         { value: 'rarity_asc', label: 'レア度 (昇順)' }, { value: 'rarity_desc', label: 'レア度 (降順)' }
     ];
     const viewOptions = [ { value: 'tile', label: 'タイル表示 (写真あり)' }, { value: 'list', label: 'リスト表示 (名前のみ)' } ];
-    viewPopup.innerHTML = `<div class="p-4 space-y-4"><div><h3 class="text-sm font-semibold text-gray-500 mb-2">並び替え</h3><div class="space-y-2">${sortOptions.map(o => `<label class="flex items-center space-x-2"><input type="radio" name="sort" value="${o.value}" ${sort===o.value?'checked':''} class="form-radio text-emerald-600"><span>${o.label}</span></label>`).join('')}</div></div><div class="pt-4 border-t border-gray-200"><h3 class="text-sm font-semibold text-gray-500 mb-2">表示形式</h3><div class="space-y-2">${viewOptions.map(o => `<label class="flex items-center space-x-2"><input type="radio" name="viewMode" value="${o.value}" ${viewMode===o.value?'checked':''} class="form-radio text-emerald-600"><span>${o.label}</span></label>`).join('')}</div></div></div>`;
+    
+    // ★ 修正: id と for を追加
+    viewPopup.innerHTML = `<div class="p-4 space-y-4"><div><h3 class="text-sm font-semibold text-gray-500 mb-2">並び替え</h3><div class="space-y-2">${sortOptions.map(o => `<label for="sort_${o.value}" class="flex items-center space-x-2"><input type="radio" id="sort_${o.value}" name="sort" value="${o.value}" ${sort===o.value?'checked':''} class="form-radio text-emerald-600"><span>${o.label}</span></label>`).join('')}</div></div><div class="pt-4 border-t border-gray-200"><h3 class="text-sm font-semibold text-gray-500 mb-2">表示形式</h3><div class="space-y-2">${viewOptions.map(o => `<label for="view_${o.value}" class="flex items-center space-x-2"><input type="radio" id="view_${o.value}" name="viewMode" value="${o.value}" ${viewMode===o.value?'checked':''} class="form-radio text-emerald-600"><span>${o.label}</span></label>`).join('')}</div></div></div>`;
     
     setTimeout(() => {
         viewPopup.querySelectorAll('input[name="sort"]').forEach(r => r.addEventListener('change', (e) => { appState.listControls.sort = e.target.value; appState.listControls.currentPage = 1; applyFiltersAndRenderList(); saveListControlsState(); }));
@@ -661,6 +673,7 @@ function renderDetailEditPage(birdId) {
         </div>
     `;
 
+    // ★ 修正: id と for を追加
     const liferEditHtml = `
         <div class="space-y-3">
             <label class="block text-sm font-medium text-gray-700">ライフリスト（手動編集）</label>
@@ -668,19 +681,19 @@ function renderDetailEditPage(birdId) {
                 （「イベントから自動更新」がONの場合、ここでOFFにしても、次回のイベント登録で自動的にONに戻る可能性があります）
             </p>
             <div class="grid grid-cols-2 gap-x-4 gap-y-3">
-                <label class="flex items-center space-x-2">
+                <label for="edit_lifer_seen" class="flex items-center space-x-2">
                     <input type="checkbox" id="edit_lifer_seen" name="lifer_seen" value="true" ${bird.lifer_seen ? 'checked' : ''} class="form-checkbox text-emerald-600 rounded h-5 w-5">
                     <span>目視</span>
                 </label>
-                <label class="flex items-center space-x-2">
+                <label for="edit_lifer_heard" class="flex items-center space-x-2">
                     <input type="checkbox" id="edit_lifer_heard" name="lifer_heard" value="true" ${bird.lifer_heard ? 'checked' : ''} class="form-checkbox text-emerald-600 rounded h-5 w-5">
                     <span>声</span>
                 </label>
-                <label class="flex items-center space-x-2">
+                <label for="edit_lifer_photo" class="flex items-center space-x-2">
                     <input type="checkbox" id="edit_lifer_photo" name="lifer_photo" value="true" ${bird.lifer_photo ? 'checked' : ''} class="form-checkbox text-emerald-600 rounded h-5 w-5">
                     <span>写真</span>
                 </label>
-                <label class="flex items-center space-x-2">
+                <label for="edit_lifer_video" class="flex items-center space-x-2">
                     <input type="checkbox" id="edit_lifer_video" name="lifer_video" value="true" ${bird.lifer_video ? 'checked' : ''} class="form-checkbox text-emerald-600 rounded h-5 w-5">
                     <span>動画</span>
                 </label>
