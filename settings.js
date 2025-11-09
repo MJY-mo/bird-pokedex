@@ -20,7 +20,7 @@ function showSettingsPage() {
     const myCard = appState.settings; // birderName, birderPhoto を含む
     const myPhotoUrl = myCard.birderPhoto || 'https://placehold.co/150x150/e0e0e0/b0b0b0?text=No+Image';
 
-    // ★★★ 修正点: p-6->p-4, mb-4->mb-3, p-4->p-3, space-x-4->space-x-3, text-lg->text-base, text-sm->text-xs ★★★
+    // (余白・はみ出し修正済みのHTML)
     const myBirderCardHtml = `
         <div class="bg-white rounded-lg shadow p-4">
             <h2 class="text-xl font-semibold mb-3">マイ・バーダーカード</h2>
@@ -60,7 +60,6 @@ function showSettingsPage() {
 
 
     // --- 3. ★★★ もらったカード ★★★ ---
-    // ★★★ 修正点: p-6->p-4 ★★★
     const receivedCardsHtml = `
         <div class="bg-white rounded-lg shadow p-4">
             <h2 class="text-xl font-semibold mb-4">もらったカード</h2>
@@ -102,7 +101,6 @@ function showSettingsPage() {
 
 
     // --- 4. 既存の機能 (ライフリスト設定など) ---
-    // ★★★ 修正点: p-6->p-4 ★★★
     const autoUpdateChecked = appState.settings.autoUpdateLiferList ? 'checked' : '';
     const liferSettingsHtml = `
         <div class="bg-white rounded-lg shadow p-4">
@@ -137,7 +135,6 @@ function showSettingsPage() {
     `;
 
     // --- 5. 既存の機能 (背景設定) ---
-    // ★★★ 修正点: p-6->p-4 ★★★
     const defaultBgSettings = { bgColor: '#f3f4f6', bgImage: '', bgOpacity: 0.1 };
     let currentBgSettings;
     try {
@@ -172,7 +169,6 @@ function showSettingsPage() {
     `;
 
     // --- 6. 既存の機能 (インポート/エクスポート) ---
-    // ★★★ 修正点: p-6->p-4 ★★★
     const importExportHtml = `
         <div class="bg-white rounded-lg shadow p-4">
             <h2 class="text-xl font-semibold mb-4">観察記録のエクスポート (CSV)</h2>
@@ -209,8 +205,7 @@ function showSettingsPage() {
         </div>
     `;
     
-    // --- ★★★ 画面全体の描画 (アコーディオン形式に修正) ★★★
-    // ★★★ 修正点: space-y-6 -> space-y-2 ★★★
+    // --- 画面全体の描画 (アコーディオン化) ---
     app.innerHTML = `
         <div class="space-y-2">
             
@@ -262,12 +257,10 @@ function showSettingsPage() {
     updateHeader('settings', '設定');
     
     
-    // --- ★★★ リスナー設定 (アコーディオンロジックを追加) ★★★ ---
+    // --- リスナー設定 ---
     setTimeout(() => {
         try {
-            // --- ★★★ アコーディオン開閉ロジック (修正版) ★★★ ---
-            
-            // 汎用アコーディオン開閉関数 (events.js から正しく拝借)
+            // アコーディオン開閉ロジック
             const toggleAccordion = (contentId, arrowId) => {
                 const content = document.getElementById(contentId);
                 const arrow = document.getElementById(arrowId);
@@ -289,7 +282,6 @@ function showSettingsPage() {
                 }
             };
 
-            // アコーディオンのトグルボタンにリスナーを設定
             const cardToggle = document.getElementById('accordion-toggle-card');
             if (cardToggle) {
                 cardToggle.onclick = () => toggleAccordion('accordion-content-card', 'accordion-arrow-card');
@@ -303,8 +295,6 @@ function showSettingsPage() {
                 dataToggle.onclick = () => toggleAccordion('accordion-content-data', 'accordion-arrow-data');
             }
 
-            // --- ★★★ ここまで追加 ★★★ ---
-
 
             // --- マイ・バーダーカードのリスナー ---
             const nameInput = document.getElementById('birder-name-input');
@@ -314,17 +304,19 @@ function showSettingsPage() {
             const shareCardBtn = document.getElementById('share-card-btn');
 
             if (nameInput) {
-                nameInput.onchange = (e) => { // oninput だと保存が頻発しすぎるため onchange
+                nameInput.onchange = (e) => { 
                     appState.settings.birderName = e.target.value;
                     saveListControlsState(); // app.js の関数
                 };
             }
+            
             // ★★★ 修正点: Cropper.js を呼び出すように変更 ★★★
             if (photoInput && photoPreview && removePhotoBtn) {
                 photoInput.onchange = (e) => {
                     handleBirderPhotoChange(e, photoPreview, removePhotoBtn);
                 };
                 removePhotoBtn.onclick = (e) => {
+                    // 削除ボタンが押されたら、isRemove=true で呼び出す
                     handleBirderPhotoChange(e, photoPreview, removePhotoBtn, true);
                 };
             }
@@ -794,12 +786,15 @@ function handleBirderPhotoChange(event, previewElement, removeBtn, isRemove = fa
 
     if (isRemove) {
         // 「削除」ボタンが押された時の処理
-        showCropperModal(null, (base64Image) => {
-            appState.settings.birderPhoto = base64Image; // base64Image は '' (空文字) になる
-            previewElement.src = placeholder;
-            removeBtn.classList.add('hidden');
-            saveListControlsState();
-        }, true); //
+        (async () => {
+            const confirmed = await showCustomConfirm('本当にこの画像を削除しますか？', '画像を削除');
+            if (confirmed) {
+                appState.settings.birderPhoto = ''; // 空の文字列を保存
+                previewElement.src = placeholder;
+                removeBtn.classList.add('hidden');
+                saveListControlsState();
+            }
+        })();
         return;
     }
 
@@ -1015,9 +1010,8 @@ let cropperInstance = null; // Cropperのインスタンスを保持する変数
  * 画像切り抜きモーダルを表示する
  * @param {string | null} imageSrc - 編集する画像(Base64) or null(削除の場合)
  * @param {function(string):void} callback - 完了時にBase64を返すコールバック
- * @param {boolean} [isRemove=false] - 削除モードかどうか
  */
-function showCropperModal(imageSrc, callback, isRemove = false) {
+function showCropperModal(imageSrc, callback) {
     // 既存のモーダルがあれば削除
     const existingModal = document.getElementById('cropper-modal-container');
     if (existingModal) {
@@ -1028,17 +1022,6 @@ function showCropperModal(imageSrc, callback, isRemove = false) {
         cropperInstance = null;
     }
     
-    // 削除モードの場合 (確認ダイアログ)
-    if (isRemove) {
-        (async () => {
-            const confirmed = await showCustomConfirm('本当にこの画像を削除しますか？', '画像を削除');
-            if (confirmed) {
-                callback(''); // 空の文字列を返して「削除」を確定
-            }
-        })();
-        return;
-    }
-
     // モーダルのHTMLを動的に作成
     const modalHtml = `
         <div id="cropper-modal-container" class="cropper-modal-backdrop">
