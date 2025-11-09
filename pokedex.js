@@ -759,6 +759,7 @@ function renderDetailEditPage(birdId) {
                 if (!file) return;
 
                 if (file.size > 5 * 1024 * 1024) { // 5MB 制限
+                    // showCustomConfirm は app.js で定義されている (読み込み順修正で呼び出し可能)
                     showCustomConfirm("画像サイズが5MBを超えています。5MB以下のファイルを選択してください。", "OK", true);
                     e.target.value = null;
                     return;
@@ -766,8 +767,7 @@ function renderDetailEditPage(birdId) {
 
                 const reader = new FileReader();
                 reader.onload = (event) => {
-                    // showCropperModal は settings.js で定義されているグローバル関数
-                    // これを呼び出す
+                    // showCropperModal は settings.js で定義されている (読み込み順修正で呼び出し可能)
                     showCropperModal(event.target.result, (base64Image) => {
                         // クロップ完了時のコールバック
                         newBase64Image = base64Image; // ★ 編集フォームの closure 変数に保存
@@ -842,7 +842,7 @@ function renderDetailEditPage(birdId) {
                 reader.onerror = (error) => {
                     console.error("File reading error:", error);
                     console.warn("音声の読み込みに失敗しました。");
-                    newBase64Voice = null;
+                    newBase664Voice = null;
                 };
                 reader.readAsDataURL(file);
             });
