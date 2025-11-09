@@ -6,7 +6,7 @@ function showManualPage() {
     appState.isEditing = false;
     
     // --- 1. アプリの使い方 ---
-    // ★★★ 修正点: p-6->p-4, pタグの文字サイズを text-sm に、色を text-gray-600 に変更 ★★★
+    // ★★★ 修正点: p-6->p-4, pタグ/liタグの文字サイズを text-sm に、色を text-gray-600 に変更 ★★★
     const usageHtml = `
         <div class="bg-white rounded-lg shadow p-4 space-y-4">
             <h2 class="text-xl font-semibold mb-4">ようこそ！</h2>
@@ -20,7 +20,7 @@ function showManualPage() {
                 <p class="text-sm text-gray-600">
                     このアプリの核となる、あなたの個人的な鳥類図鑑です。
                 </p>
-                <ul class="list-disc list-inside space-y-2 text-gray-600">
+                <ul class="list-disc list-inside space-y-2 text-sm text-gray-600">
                     <li><strong>検索:</strong> 鳥の名前（ひらがな可）で図鑑全体を検索できます。</li>
                     <li><strong>絞り込み:</strong> 「分類」「種類」「観察時期」「生息地」「サイズ」などで高度な絞り込み（フィルター）が可能です。</li>
                     <li><strong>表示切替:</strong> 写真付きの「タイル表示」と、名前のみの「リスト表示」を切り替えられます。</li>
@@ -47,7 +47,7 @@ function showManualPage() {
                 <p class="text-sm text-gray-600">
                     日々の探鳥会や観察記録を「イベント」として時系列で保存できます。
                 </p>
-                <ul class="list-disc list-inside space-y-2 text-gray-600">
+                <ul class="list-disc list-inside space-y-2 text-sm text-gray-600">
                     <li><strong>イベント作成:</strong> 「新規イベント作成」から、日付、場所、天気、同行者などの基本情報を記録できます。</li>
                     <li><strong>観察記録:</strong>
                         作成したイベントの詳細画面で、「観察した鳥」（名前、数、確認方法）を無制限に追加できます。
@@ -69,7 +69,7 @@ function showManualPage() {
                 <p class="text-sm text-gray-600">
                     アプリの各種設定、データの管理、そして「バーダーカード」機能が含まれます。
                 </p>
-                <ul class="list-disc list-inside space-y-2 text-gray-600">
+                <ul class="list-disc list-inside space-y-2 text-sm text-gray-600">
                     <li><strong>バーダーカード:</strong>
                         <ul class="list-inside list-disc ml-4 mt-1 text-xs text-gray-600">
                             <li>あなたの名前と写真、ライフリストの集計結果が載った「名刺」を作成できます。</li>
@@ -120,7 +120,7 @@ function showManualPage() {
     `;
 
     // --- 2. 観察時の注意 (素案) ---
-    // ★★★ 修正点: p-6->p-4, pタグの文字サイズを text-sm に、色を text-gray-600 に変更 ★★★
+    // ★★★ 修正点: p-6->p-4, pタグ/liタグの文字サイズを text-sm に、色を text-gray-600 に変更 ★★★
     const precautionsHtml = `
         <div class="bg-white rounded-lg shadow p-4 space-y-4">
             <h2 class="text-xl font-semibold mb-4">野鳥観察の基本</h2>
@@ -129,7 +129,7 @@ function showManualPage() {
             </p>
 
             <h3 class="text-lg font-semibold pt-4 border-t border-gray-100">1. 野鳥への配慮</h3>
-            <ul class="list-disc list-inside space-y-2 text-gray-600">
+            <ul class="list-disc list-inside space-y-2 text-sm text-gray-600">
                 <li><strong>距離を保つ:</strong> 鳥が警戒したり、逃げたりしないよう、十分な距離を保ちましょう。特に巣やヒナには絶対に近づかないでください。巣立ち雛は親から餌をもらっている時期なので、見つけてもそっとしておきましょう。持ち去ると誘拐にあたり、法にも違反します。</li>
                 <li><strong>ストレスを与えない:</strong> しつこく追いかけ回したり、大声を出したりしないでください。</li>
                 <li><strong>餌を与えない:</strong> 人間の食べ物は鳥にとって有害であり、生態系のバランスを崩す原因となります。人や鳥の感染症が広がる、行動の変化により生存が難しくなる（本来の食物を得る事ができなくなる）、農作物の食害や人への攻撃行動を増加させ駆除される恐れがある、人への警戒心が薄れ密猟や事故を助長する、等の影響も考えられます。</li>
@@ -137,14 +137,14 @@ function showManualPage() {
             </ul>
 
             <h3 class="text-lg font-semibold pt-4 border-t border-gray-100">2. 環境への配慮</h3>
-            <ul class="list-disc list-inside space-y-2 text-gray-600">
+            <ul class="list-disc list-inside space-y-2 text-sm text-gray-600">
                 <li><strong>ルールを守る:</strong> 私有地や立ち入り禁止区域には絶対に入らないでください。農地（あぜ道など）を踏み荒らさないよう注意しましょう。</li>
                 <li><strong>ゴミは持ち帰る:</strong> 当たり前のことですが、ゴミはすべて持ち帰りましょう。</li>
                 <li><strong>自然を壊さない:</strong> 撮影のために枝を折ったり、草をむしったりする行為は絶対にやめましょう。</li>
             </ul>
             
             <h3 class="text-lg font-semibold pt-4 border-t border-gray-100">3. 他の人への配慮</h3>
-            <ul class="list-disc list-inside space-y-2 text-gray-600">
+            <ul class="list-disc list-inside space-y-2 text-sm text-gray-600">
                 <li><strong>地域住民への配慮:</strong> 住宅地や早朝の観察では、話し声や車のドアの音などに注意し、静かに行動しましょう。</li>
                 <li><strong>他の観察者への配慮:</strong> 三脚を立てる場所や移動の際は、お互いに譲り合いましょう。珍しい鳥の情報を共有する際は、鳥に過度なプレッシャーがかからないよう配慮しましょう。</li>
                 <li><strong>安全第一:</strong> 夢中になるあまり、足元や周囲（車、自転車など）への注意を怠らないようにしましょう。</li>

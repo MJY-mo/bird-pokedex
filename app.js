@@ -621,15 +621,14 @@ function updateHeader(mode, title = "鳥図鑑") {
         headerActions.classList.add('hidden'); 
         searchPopup.classList.add('hidden'); filterPopup.classList.add('hidden'); viewPopup.classList.add('hidden');
         
-        // ★★★ 修正点: remove('pt-popup') を削除し、デフォルトで 'pt-popup' を追加する ★★★
-        app.classList.add('pt-popup');
+        // ★★★ 修正点: 'pt-popup' の add/remove ロジックをすべて削除 ★★★
+        // (style.css 側で常時適用するため)
         
         searchToggleButton.classList.remove('active'); filterToggleButton.classList.remove('active'); viewToggleButton.classList.remove('active');
         filterActiveDot.classList.add('hidden');
 
         if (mode === 'list') {
             headerActions.classList.remove('hidden'); 
-            // app.classList.add('pt-popup'); // ← デフォルトで追加済
             if (getFilterStatus().isFiltered) filterActiveDot.classList.remove('hidden');
             const { activePopup } = appState.listControls;
             if (activePopup === 'search') { searchToggleButton.classList.add('active'); searchPopup.classList.remove('hidden'); renderSearchPopup(); } 
@@ -637,17 +636,14 @@ function updateHeader(mode, title = "鳥図鑑") {
             else if (activePopup === 'view') { viewToggleButton.classList.add('active'); viewPopup.classList.remove('hidden'); renderViewPopup(); }
         
         } else if (mode === 'events' || mode === 'manual' || mode === 'settings') {
-             // ★★★ 修正点: 'events', 'manual', 'settings' は 'pt-popup' が必要 ★★★
-             // (デフォルトで追加済なので、ここでは何もしない)
+             // (何もしない)
         
         } else if (mode === 'detail' || mode === 'edit') {
-            app.classList.remove('pt-popup'); // ← padding を削除
             backButton.classList.remove('hidden');
             backButton.textContent = mode === 'edit' ? "< 中止" : "< 戻る";
             backButton.onclick = mode === 'edit' ? () => showDetailPage(appState.currentBirdId) : () => showListPage(); 
         
         } else if (mode === 'newEvent' || mode === 'eventDetail') { 
-             app.classList.remove('pt-popup'); // ← padding を削除
              backButton.classList.remove('hidden');
              backButton.textContent = "< 戻る";
              backButton.onclick = () => {
@@ -658,7 +654,6 @@ function updateHeader(mode, title = "鳥図鑑") {
              };
         
         } else if (mode === 'error' || mode === 'loading') {
-            app.classList.remove('pt-popup'); // ← padding を削除
             // アクションなし
         }
     } catch (error) {
