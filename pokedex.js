@@ -17,7 +17,8 @@ function showListPage() {
         return;
     }
 
-    app.innerHTML = `<div id="pokedex-list-container"><div id="pokedex-list"></div><div id="pagination-controls" class="mt-6 flex justify-between items-center"></div></div>`;
+    // ★★★ 修正点: p-4 を追加し、リストの外側に余白を戻す ★★★
+    app.innerHTML = `<div id="pokedex-list-container" class="p-4"><div id="pokedex-list"></div><div id="pagination-controls" class="mt-6 flex justify-between items-center"></div></div>`;
     updateHeader('list'); 
     
     setTimeout(() => {
@@ -37,24 +38,68 @@ function showListPage() {
     }, 0);
 }
 
-// --- ポップアップ描画 (図鑑: 検索) ---
+// --- ★★★ 修正点: 検索ポップアップにクリアボタンを追加 ★★★ ---
 function renderSearchPopup() { 
-    const { filterText } = appState.listControls; const filterStatus = getFilterStatus(); 
-    searchPopup.innerHTML = `<input type="search" id="searchBox" placeholder="鳥を検索..." value="${escapeHTML(filterText)}" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent" autocomplete="off"><p id="search-status-text" class="text-xs text-green-600 mt-1">${filterStatus.isTextFiltered ? '検索中...' : ''}</p><div id="search-suggestions" class="mt-2 border border-gray-200 rounded-lg bg-white overflow-hidden shadow-lg max-h-48 overflow-y-auto"></div>`;
+    const { filterText } = appState.listControls; 
+    const filterStatus = getFilterStatus(); 
+    
+    searchPopup.innerHTML = `
+        <div class="relative w-full">
+            <input type="search" id="searchBox" placeholder="鳥を検索..." value="${escapeHTML(filterText)}" class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent" autocomplete="off">
+            <button id="clear-search-btn" class="absolute inset-y-0 right-0 flex items-center justify-center w-10 text-gray-500 hover:text-red-600 ${filterText ? '' : 'hidden'}">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <p id="search-status-text" class="text-xs text-green-600 mt-1">${filterStatus.isTextFiltered ? '検索中...' : ''}</p>
+        <div id="search-suggestions" class="mt-2 border border-gray-200 rounded-lg bg-white overflow-hidden shadow-lg max-h-48 overflow-y-auto"></div>`;
     
     setTimeout(() => {
         const searchBox = searchPopup.querySelector('#searchBox');
-        if (searchBox) {
+        const clearBtn = searchPopup.querySelector('#clear-search-btn');
+        
+        if (searchBox && clearBtn) {
+            // 検索入力時のリスナー
             searchBox.addEventListener('input', (e) => {
-                const newText = e.target.value; appState.listControls.filterText = newText; appState.listControls.currentPage = 1; 
-                applyFiltersAndRenderList(); renderSearchSuggestions(getSearchSuggestions(newText)); saveListControlsState();
-                const currentStatus = getFilterStatus(); filterActiveDot.classList.toggle('hidden', !currentStatus.isFiltered);
-                const statusElem = searchPopup.querySelector('#search-status-text'); if(statusElem) statusElem.textContent = currentStatus.isTextFiltered ? '検索中...' : '';
+                const newText = e.target.value;
+                appState.listControls.filterText = newText; 
+                appState.listControls.currentPage = 1; 
+                
+                applyFiltersAndRenderList(); 
+                renderSearchSuggestions(getSearchSuggestions(newText)); 
+                saveListControlsState();
+                
+                clearBtn.classList.toggle('hidden', !newText); // テキストがあればボタン表示
+                
+                const currentStatus = getFilterStatus(); 
+                filterActiveDot.classList.toggle('hidden', !currentStatus.isFiltered);
+                const statusElem = searchPopup.querySelector('#search-status-text'); 
+                if(statusElem) statusElem.textContent = currentStatus.isTextFiltered ? '検索中...' : '';
             });
+            
+            // クリアボタンのリスナー
+            clearBtn.addEventListener('click', () => {
+                appState.listControls.filterText = '';
+                appState.listControls.currentPage = 1;
+                searchBox.value = ''; // 入力欄をクリア
+                
+                applyFiltersAndRenderList();
+                renderSearchSuggestions([]); // 候補をクリア
+                saveListControlsState();
+                
+                clearBtn.classList.add('hidden'); // 自分を隠す
+                
+                updateHeader('list'); // ヘッダーの●を更新
+                
+                const statusElem = searchPopup.querySelector('#search-status-text'); 
+                if(statusElem) statusElem.textContent = '';
+                
+                searchBox.focus(); // 入力欄にフォーカスを戻す
+            });
+
             if (filterText) renderSearchSuggestions(getSearchSuggestions(filterText));
             searchBox.focus();
         } else {
-            console.error("Search box not found in popup.");
+            console.error("Search box or clear button not found in popup.");
         }
     }, 0);
 }
@@ -495,8 +540,7 @@ function showDetailPage(birdId) {
 
 
     app.innerHTML = `
-        <div class="space-y-4">
-            <div class="bg-gray-200 rounded-lg shadow overflow-hidden">
+        <div class="space-y-4 p-2"> <div class="bg-gray-200 rounded-lg shadow overflow-hidden">
                 <img src="${imageUrl}" alt="${escapeHTML(bird.name)}" 
                      onerror="this.onerror=null; this.src='${placeholderUrl}';" 
                      class="w-full h-56 object-cover">

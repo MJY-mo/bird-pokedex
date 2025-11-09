@@ -139,8 +139,9 @@ function showEventsPage() {
         }).join('');
         
      // --- 画面全体の描画 ---
+     // ★★★ 修正点: 外側のdivに p-2 を追加 ★★★
      app.innerHTML = `
-        <div class="space-y-4">
+        <div class="space-y-4 p-2">
              <button id="newEventButton" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-emerald-700 transition-colors">新規イベント作成</button>
              ${searchHtml} ${sortSelectHtml}
              <div class="bg-white rounded-lg shadow overflow-hidden">
@@ -242,8 +243,9 @@ function showNewEventForm() {
         memo: '' 
     };
     
+    // ★★★ 修正点: 外側のdivに p-2 を追加 ★★★
     app.innerHTML = `
-    <form id="newEventForm" class="bg-white rounded-lg shadow p-4 space-y-4">
+    <form id="newEventForm" class="bg-white rounded-lg shadow p-4 space-y-4 p-2">
         <h2 class="text-xl font-bold text-gray-900 mb-2">新規イベント作成</h2>
         <div class="space-y-3">
             <div>
@@ -593,8 +595,9 @@ function showEventDetail(originalIndex) {
      `;
      
      // --- 全体描画 ---
+     // ★★★ 修正点: 外側のdivに p-2 を追加 ★★★
      app.innerHTML = `
-        <div class="space-y-4">
+        <div class="space-y-4 p-2">
             <h2 class="text-2xl font-bold text-gray-900">${escapeHTML(event.name || '無題のイベント')}</h2>
             ${eventDetailsHtml}
             ${addBirdFormHtml}

@@ -669,10 +669,14 @@ function togglePopup(popupName) {
     if (popupName !== 'filter') appState.listControls.openFilterSection = null;
     updateHeader('list'); 
 }
+
+// ★★★ 修正点: `main#app` ではなく `document.body` でクリックを監視 ★★★
 function closePopupsOnMainTap(event) { 
     if (appState.listControls.activePopup === null) return; 
-    const clickedInsidePopup = event.target.closest('.popup-panel');
+
+    // ★ 修正: タップされた場所が、ヘッダーボタン、ポップアップ、サジェストリストの *内側* ではないことを確認
     const clickedHeaderButton = event.target.closest('.header-action-button');
+    const clickedInsidePopup = event.target.closest('.popup-panel');
     const clickedEventSuggestion = event.target.closest('.event-suggestion-list');
     
     if (!clickedInsidePopup && !clickedHeaderButton && !clickedEventSuggestion) {
@@ -939,11 +943,10 @@ window.addEventListener('load', async () => {
         await initializeDatabase(); 
         loadListControlsState();    
         showListPage(); // 初期表示は図鑑リスト
-        if (app) {
-            app.addEventListener('click', closePopupsOnMainTap);
-        } else {
-            console.error("Main app element not found");
-        }
+        
+        // ★★★ 修正点: `app` ではなく `document.body` にリスナーを登録 ★★★
+        document.body.addEventListener('click', closePopupsOnMainTap);
+
     } catch (error) {
         console.error("Initialization failed:", error);
         if (app) {
