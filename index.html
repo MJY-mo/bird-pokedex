@@ -98,18 +98,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/idb@7/build/umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script> 
-    
+
     <script src="app.js"></script>
     
-    <script src="settings.js"></script>
-    <script src="pokedex.js"></script>
-    <script src="events.js"></script>
-    <script src="manual.js"></script> 
-    
-    <script>
+    <script src="events.js"></script>   <script src="pokedex.js"></script> <script src="settings.js"></script> <script src="manual.js"></script>   <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./service-worker.js') // ← /bird-pokedex/ を削除
+                navigator.serviceWorker.register('./service-worker.js')
                     .then(registration => {
                         console.log('SW registered: ', registration);
                     })
