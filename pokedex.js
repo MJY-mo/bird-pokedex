@@ -43,8 +43,10 @@ function renderSearchPopup() {
     const { filterText } = appState.listControls; 
     const filterStatus = getFilterStatus(); 
     
+    // ★ 修正: ラベルを追加
     searchPopup.innerHTML = `
         <div class="relative w-full">
+            <label for="searchBox" class="sr-only">鳥を検索</label>
             <input type="search" id="searchBox" placeholder="鳥を検索..." value="${escapeHTML(filterText)}" class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent" autocomplete="off">
             <button id="clear-search-btn" class="absolute inset-y-0 right-0 flex items-center justify-center w-10 text-gray-500 hover:text-red-600 ${filterText ? '' : 'hidden'}">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -673,10 +675,10 @@ function renderDetailEditPage(birdId) {
         </div>
     `;
 
-    // ★ 修正: id と for を追加
+    // ★ 修正: id と for を追加, <label> を <p> に変更
     const liferEditHtml = `
         <div class="space-y-3">
-            <label class="block text-sm font-medium text-gray-700">ライフリスト（手動編集）</label>
+            <p class="block text-sm font-medium text-gray-700">ライフリスト（手動編集）</p>
             <p class="text-xs text-gray-500 -mt-2">
                 （「イベントから自動更新」がONの場合、ここでOFFにしても、次回のイベント登録で自動的にONに戻る可能性があります）
             </p>
@@ -705,10 +707,10 @@ function renderDetailEditPage(birdId) {
         <div class="bg-white rounded-lg shadow p-4 space-y-4">
             <h2 class="text-xl font-bold text-gray-900 mb-2">情報の編集</h2>
             <div class="space-y-2">
-                <div><label class="block text-sm font-medium text-gray-500">名前</label><p class="readonly-field">${escapeHTML(bird.name)}</p></div>
-                <div><label class="block text-sm font-medium text-gray-500">分類</label><p class="readonly-field">${escapeHTML(bird.classification)}</p></div>
-                 <div><label class="block text-sm font-medium text-gray-500">サイズ</label><p class="readonly-field">${escapeHTML(bird.size)}</p></div>
-                <div><label class="block text-sm font-medium text-gray-500">特記</label><p class="readonly-field">${escapeHTML(bird.special_notes) || '(なし)'}</p></div>
+                <div><p class="block text-sm font-medium text-gray-500">名前</p><p class="readonly-field">${escapeHTML(bird.name)}</p></div>
+                <div><p class="block text-sm font-medium text-gray-500">分類</p><p class="readonly-field">${escapeHTML(bird.classification)}</p></div>
+                 <div><p class="block text-sm font-medium text-gray-500">サイズ</p><p class="readonly-field">${escapeHTML(bird.size)}</p></div>
+                <div><p class="block text-sm font-medium text-gray-500">特記</p><p class="readonly-field">${escapeHTML(bird.special_notes) || '(なし)'}</p></div>
             </div>
             <hr class="my-4">
             <form id="editForm" class="space-y-4">
@@ -726,12 +728,12 @@ function renderDetailEditPage(birdId) {
                 <hr class="my-4">
                 
                 <div>
-                    <label for="edit_date" class="block text-sm font-medium text-gray-500">最新の観察日時 (イベント連携)</label>
+                    <p class="block text-sm font-medium text-gray-500">最新の観察日時 (イベント連携)</p>
                     <p class="readonly-field">${escapeHTML(bird.observed_date ? bird.observed_date.replace('T', ' ') : '(記録なし)')}</p>
                     <input type="hidden" id="edit_date" name="observed_date" value="${escapeHTML(bird.observed_date || '')}">
                 </div>
                 <div>
-                    <label for="edit_location" class="block text-sm font-medium text-gray-500">最新の観察場所 (イベント連携)</label>
+                    <p class="block text-sm font-medium text-gray-500">最新の観察場所 (イベント連携)</p>
                     <p class="readonly-field">${escapeHTML(bird.observed_location || '(記録なし)')}</p>
                     <input type="hidden" id="edit_location" name="observed_location" value="${escapeHTML(bird.observed_location || '')}">
                 </div>

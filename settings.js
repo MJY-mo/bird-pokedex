@@ -31,6 +31,7 @@ function showSettingsPage() {
                      class="w-20 h-20 object-cover rounded-full border-2 border-emerald-500 flex-shrink-0">
                 
                 <div class="flex-1 min-w-0">
+                    <label for="birder-name-input" class="sr-only">あなたの名前</label>
                     <input type="text" id="birder-name-input" value="${escapeHTML(myCard.birderName || '')}" placeholder="あなたの名前" class="w-full text-base font-bold text-gray-800 border-b border-gray-300 focus:border-emerald-500 focus:outline-none">
                     <p class="text-xs text-gray-600 mt-1">ライフリスト: ${liferTotals.any} 種</p>
                 </div>
@@ -122,7 +123,7 @@ function showSettingsPage() {
                 <hr class="border-gray-100">
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">ライフリスト再集計</label>
+                    <p class="block text-sm font-medium text-gray-700">ライフリスト再集計</p>
                     <p class="text-sm text-gray-500 mb-3">
                         過去の全イベント履歴をスキャンし、ライフリスト（目視、声など）を更新します。
                         （手動でOFFにした項目がONになることはあっても、ONの項目がOFFになることはありません）
@@ -140,7 +141,7 @@ function showSettingsPage() {
     let currentBgSettings;
     try {
         const storedSettings = localStorage.getItem('birdAppBackground');
-        currentBgSettings = storedSettings ? { ...defaultBgSettings, ...JSON.parse(storedSettings) } : defaultBgSettings;
+        currentBgSettings = storedSettings ? { ...defaultBgSettings, ...JSON.parse(storedSettings) } : defaultSettings;
     } catch (e) {
         currentBgSettings = defaultBgSettings;
     }
@@ -198,6 +199,7 @@ function showSettingsPage() {
                 <strong class="font-medium text-red-600">注意: 現在のすべてのデータ（設定含む）は、ファイルの内容で上書きされます。</strong>
             </p>
             
+            <label for="import-data-file" class="sr-only">バックアップファイルを選択</label>
             <input type="file" id="import-data-file" accept=".json, application/json" class="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100">
             
             <button id="import-data-btn" class="mt-4 w-full bg-red-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-red-700 transition-colors opacity-50 cursor-not-allowed" disabled>
