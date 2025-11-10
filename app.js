@@ -991,8 +991,8 @@ function showCropperModal(imageSrc, callback) {
         guides: true,
         center: true,
         highlight: false,
-        cropBoxMovable: false,
-        cropBoxResizable: false,
+        cropBoxMovable: true,
+        cropBoxResizable: true,
         toggleDragModeOnDblclick: false,
     });
 

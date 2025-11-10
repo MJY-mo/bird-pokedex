@@ -490,7 +490,16 @@ function showDetailPage(birdId) {
     const specialTags = (bird.special_notes || '').split(';').filter(Boolean).map(note => `<span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-100 text-red-700">${escapeHTML(note)}</span>`).join(' ');
     const placeholderUrl = `https://placehold.co/600x400/e0e0e0/b0b0b0?text=${escapeHTML(bird.name.charAt(0))}`;
     
+    // (440行目)
     const imageUrl = bird.photo_url || placeholderUrl;
+
+    // ★★★ 以下を丸ごと追加 (442行目〜450行目) ★★★
+    const isPlaceholder = !bird.photo_url;
+    const editPhotoBtnHtml = isPlaceholder ? '' : `
+        <button id="edit-photo-overlay-btn" class="absolute top-2 right-2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-colors" title="写真を再編集">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z"></path></svg>
+        </button>
+    `;
     
     const habitatLabels = getHabitatLabels(bird);
     const habitatText = habitatLabels.length > 0 ? habitatLabels.join(', ') : '(情報なし)';
@@ -554,12 +563,12 @@ function showDetailPage(birdId) {
 
 
     app.innerHTML = `
-        <div class="space-y-4 p-2"> <div class="bg-gray-200 rounded-lg shadow overflow-hidden">
+        <div class="space-y-4 p-2"> 
+            <div class="bg-gray-200 rounded-lg shadow overflow-hidden relative">
                 <img src="${imageUrl}" alt="${escapeHTML(bird.name)}" 
                      onerror="this.onerror=null; this.src='${placeholderUrl}';" 
                      class="w-full h-56 object-cover">
-            </div>
-            <div class="bg-white rounded-lg shadow overflow-hidden">
+                ${editPhotoBtnHtml} </div>            <div class="bg-white rounded-lg shadow overflow-hidden">
                 <div class="p-4">
                     <div class="flex flex-wrap gap-2 mb-3">${seasonTag}${rarityTag}${specialTags}</div>
                     
@@ -603,7 +612,25 @@ function showDetailPage(birdId) {
         } else {
             console.error("Edit button not found on detail page.");
         }
-        
+
+if (!isPlaceholder) {
+            const editPhotoBtn = document.getElementById('edit-photo-overlay-btn');
+            if (editPhotoBtn) {
+                editPhotoBtn.onclick = () => {
+                    // app.js のグローバル関数を呼び出す
+                    showCropperModal(bird.photo_url, async (base64Image) => {
+                        // コールバック (クロップ完了時)
+                        const idx = birdDatabase.findIndex(b => b.id === birdId);
+                        if (idx > -1) {
+                            birdDatabase[idx].photo_url = base64Image;
+                            await saveDatabase(); // DBに保存
+                            showDetailPage(birdId); // ページを再描画して反映
+                        }
+                    });
+                };
+            }
+        }  
+      
         if (bird.lastObservedEventId) {
             const latestEventLink = document.getElementById('latest-event-link');
             if (latestEventLink) {

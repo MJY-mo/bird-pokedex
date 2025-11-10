@@ -21,14 +21,23 @@ function showSettingsPage() {
     const myPhotoUrl = myCard.birderPhoto || 'https://placehold.co/150x150/e0e0e0/b0b0b0?text=No+Image';
 
     // (余白・はみ出し修正済みのHTML)
-    const myBirderCardHtml = `
+const myBirderCardHtml = `
         <div class="bg-white rounded-lg shadow p-4">
             <h2 class="text-xl font-semibold mb-3">マイ・バーダーカード</h2>
             
             <div class="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg mb-4">
-                <img id="birder-photo-preview" src="${myPhotoUrl}" 
-                     onerror="this.onerror=null; this.src='https://placehold.co/150x150/e0e0e0/b0b0b0?text=Error';"
-                     class="w-20 h-20 object-cover rounded-full border-2 border-emerald-500 flex-shrink-0">
+                
+                <div class="relative flex-shrink-0">
+                    <img id="birder-photo-preview" src="${myPhotoUrl}" 
+                         onerror="this.onerror=null; this.src='https://placehold.co/150x150/e0e0e0/b0b0b0?text=Error';"
+                         class="w-20 h-20 object-cover rounded-full border-2 border-emerald-500">
+                    
+                    <button id="adjust-birder-photo-btn" 
+                            class="absolute -top-1 -right-1 bg-white border border-gray-300 text-gray-600 p-1 rounded-full hover:bg-gray-100 hover:text-emerald-600 transition-colors ${!myCard.birderPhoto ? 'hidden' : ''}" 
+                            title="写真を再編集">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z"></path></svg>
+                    </button>
+                </div>
                 
                 <div class="flex-1 min-w-0">
                     <label for="birder-name-input" class="sr-only">あなたの名前</label>
@@ -299,12 +308,15 @@ function showSettingsPage() {
             }
 
 
-            // --- マイ・バーダーカードのリスナー ---
+// --- マイ・バーダーカードのリスナー ---
             const nameInput = document.getElementById('birder-name-input');
             const photoInput = document.getElementById('birder-photo-input');
             const photoPreview = document.getElementById('birder-photo-preview');
             const removePhotoBtn = document.getElementById('birder-remove-photo-btn');
             const shareCardBtn = document.getElementById('share-card-btn');
+            
+            // ★ 修正: 新しい調整ボタンを取得 ★
+            const adjustBirderPhotoBtn = document.getElementById('adjust-birder-photo-btn');
 
             if (nameInput) {
                 nameInput.onchange = (e) => { 
@@ -319,10 +331,31 @@ function showSettingsPage() {
                     handleBirderPhotoChange(e, photoPreview, removePhotoBtn);
                 };
                 removePhotoBtn.onclick = (e) => {
-                    // 削除ボタンが押されたら、isRemove=true で呼び出す
+                    // D削除ボタンが押されたら、isRemove=true で呼び出す
                     handleBirderPhotoChange(e, photoPreview, removePhotoBtn, true);
                 };
             }
+
+            // ★★★ 以下を丸ごと追加 (293行目〜313行目) ★★★
+            if (adjustBirderPhotoBtn && photoPreview) {
+                adjustBirderPhotoBtn.onclick = () => {
+                    const currentImage = appState.settings.birderPhoto;
+                    if (currentImage) {
+                        // app.js のグローバル関数を呼び出す
+                        showCropperModal(currentImage, (base64Image) => {
+                            // コールバック (クロップ完了時)
+                            appState.settings.birderPhoto = base64Image;
+                            saveListControlsState(); // 変更をlocalStorageに保存
+                            
+                            // プレビュー画像とボタンの表示を更新
+                            photoPreview.src = base64Image;
+                            if (removePhotoBtn) removePhotoBtn.classList.remove('hidden');
+                            if (adjustBirderPhotoBtn) adjustBirderPhotoBtn.classList.remove('hidden');
+                        });
+                    }
+                };
+            }
+
             if (shareCardBtn) {
                 shareCardBtn.onclick = () => handleShareMyCard(liferTotals);
             }
