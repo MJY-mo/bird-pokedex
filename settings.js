@@ -17,11 +17,19 @@ function showSettingsPage() {
     });
 
     // --- 2. ★★★ 自分のバーダーカード（編集機能付き） ★★★ ---
-    const myCard = appState.settings; // birderName, birderPhoto を含む
+const myCard = appState.settings; // birderName, birderPhoto を含む
     const myPhotoUrl = myCard.birderPhoto || 'https://placehold.co/150x150/e0e0e0/b0b0b0?text=No+Image';
 
+    // ★ 修正: pokedex.js と同じロジックを適用
+    const isPlaceholder = !myCard.birderPhoto;
+    const buttonIcon = isPlaceholder 
+        ? `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>` // 「+」アイコン
+        : `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z"></path></svg>`; // 「鉛筆」アイコン
+    
+    const buttonTitle = isPlaceholder ? "写真を追加" : "写真を再編集";
+
     // (余白・はみ出し修正済みのHTML)
-const myBirderCardHtml = `
+    const myBirderCardHtml = `
         <div class="bg-white rounded-lg shadow p-4">
             <h2 class="text-xl font-semibold mb-3">マイ・バーダーカード</h2>
             
@@ -33,9 +41,9 @@ const myBirderCardHtml = `
                          class="w-20 h-20 object-cover rounded-full border-2 border-emerald-500">
                     
                     <button id="adjust-birder-photo-btn" 
-                            class="absolute -top-1 -right-1 bg-white border border-gray-300 text-gray-600 p-1 rounded-full hover:bg-gray-100 hover:text-emerald-600 transition-colors ${!myCard.birderPhoto ? 'hidden' : ''}" 
-                            title="写真を再編集">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z"></path></svg>
+                            class="absolute -top-1 -right-1 bg-white border border-gray-300 text-gray-600 p-1 rounded-full hover:bg-gray-100 hover:text-emerald-600 transition-colors" 
+                            title="${buttonTitle}">
+                        ${buttonIcon}
                     </button>
                 </div>
                 
@@ -46,17 +54,8 @@ const myBirderCardHtml = `
                 </div>
             </div>
             
-            <div>
-                <label for="birder-photo-input" class="block text-sm font-medium text-gray-700">カードの写真 (5MBまで)</label>
-                <input type="file" id="birder-photo-input" accept="image/*" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
-                <button type="button" id="birder-remove-photo-btn" class="mt-2 text-sm font-medium text-red-600 hover:text-red-800 ${!myCard.birderPhoto ? 'hidden' : ''}">
-                    写真を削除
-                </button>
-                <p class="text-xs text-gray-500 mt-1">名前と写真は自動保存されます。</p>
-            </div>
-            
-            <hr class="my-6 border-gray-100 px-4">
-            
+            <hr class="my-6 border-gray-100 px-4">       
+     
             <div class="space-y-3">
                 <button id="share-card-btn" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-emerald-700 transition-colors">
                     カードを送る (共有)
@@ -310,12 +309,11 @@ const myBirderCardHtml = `
 
 // --- マイ・バーダーカードのリスナー ---
             const nameInput = document.getElementById('birder-name-input');
-            const photoInput = document.getElementById('birder-photo-input');
+            // const photoInput = document.getElementById('birder-photo-input'); // ★ 削除
             const photoPreview = document.getElementById('birder-photo-preview');
-            const removePhotoBtn = document.getElementById('birder-remove-photo-btn');
+            // const removePhotoBtn = document.getElementById('birder-remove-photo-btn'); // ★ 削除
             const shareCardBtn = document.getElementById('share-card-btn');
             
-            // ★ 修正: 新しい調整ボタンを取得 ★
             const adjustBirderPhotoBtn = document.getElementById('adjust-birder-photo-btn');
 
             if (nameInput) {
@@ -325,37 +323,56 @@ const myBirderCardHtml = `
                 };
             }
             
-            // ★★★ 修正点: Cropper.js を呼び出すように変更 ★★★
-            if (photoInput && photoPreview && removePhotoBtn) {
-                photoInput.onchange = (e) => {
-                    handleBirderPhotoChange(e, photoPreview, removePhotoBtn);
-                };
-                removePhotoBtn.onclick = (e) => {
-                    // D削除ボタンが押されたら、isRemove=true で呼び出す
-                    handleBirderPhotoChange(e, photoPreview, removePhotoBtn, true);
-                };
-            }
+            // ★ 修正: photoInput と removePhotoBtn のリスナーを削除
 
-            // ★★★ 以下を丸ごと追加 (293行目〜313行目) ★★★
+            // ★ 修正: adjustBirderPhotoBtn のロジックを pokedex.js と同様に更新
             if (adjustBirderPhotoBtn && photoPreview) {
                 adjustBirderPhotoBtn.onclick = () => {
-                    const currentImage = appState.settings.birderPhoto;
+                    
+                    const currentImage = appState.settings.birderPhoto; // (isPlaceholder と同義)
+
+                    // 共通の保存コールバック関数
+                    const saveCroppedImage = (base64Image) => {
+                        appState.settings.birderPhoto = base64Image;
+                        saveListControlsState(); // 変更をlocalStorageに保存
+                        
+                        // プレビュー画像とボタンの表示を更新 (ページ再描画の代わり)
+                        photoPreview.src = base64Image;
+                        
+                        // ボタンのアイコンとタイトルを「編集」用に更新
+                        adjustBirderPhotoBtn.title = "写真を再編集";
+                        adjustBirderPhotoBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z"></path></svg>`;
+                    };
+
                     if (currentImage) {
-                        // app.js のグローバル関数を呼び出す
-                        showCropperModal(currentImage, (base64Image) => {
-                            // コールバック (クロップ完了時)
-                            appState.settings.birderPhoto = base64Image;
-                            saveListControlsState(); // 変更をlocalStorageに保存
+                        // 1. 既存画像の場合: そのままCropperに渡す
+                        showCropperModal(currentImage, saveCroppedImage);
+                    } else {
+                        // 2. プレースホルダーの場合: ファイル選択をトリガー
+                        const fileInput = document.createElement('input');
+                        fileInput.type = 'file';
+                        fileInput.accept = 'image/*';
+                        fileInput.onchange = (e) => {
+                            const file = e.target.files[0];
+                            if (!file) return;
                             
-                            // プレビュー画像とボタンの表示を更新
-                            photoPreview.src = base64Image;
-                            if (removePhotoBtn) removePhotoBtn.classList.remove('hidden');
-                            if (adjustBirderPhotoBtn) adjustBirderPhotoBtn.classList.remove('hidden');
-                        });
+                            // (pokedex.js からファイルサイズチェックをコピー)
+                            if (file.size > 5 * 1024 * 1024) { // 5MB 制限
+                                showCustomConfirm("画像サイズが5MBを超えています。5MB以下のファイルを選択してください。", "OK", true);
+                                return;
+                            }
+                            
+                            const reader = new FileReader();
+                            reader.onload = (event) => {
+                                // 3. 読み込んだ画像をCropperに渡す
+                                showCropperModal(event.target.result, saveCroppedImage);
+                            };
+                            reader.readAsDataURL(file);
+                        };
+                        fileInput.click();
                     }
                 };
             }
-
             if (shareCardBtn) {
                 shareCardBtn.onclick = () => handleShareMyCard(liferTotals);
             }
@@ -821,53 +838,6 @@ async function handleRescanLiferList() {
 
 
 // --- ★★★ 修正: カードの写真変更ハンドラ (Cropper.js を起動) ★★★ ---
-function handleBirderPhotoChange(event, previewElement, removeBtn, isRemove = false) {
-    const placeholder = 'https://placehold.co/150x150/e0e0e0/b0b0b0?text=No+Image';
-
-    if (isRemove) {
-        // 「削除」ボタンが押された時の処理
-        (async () => {
-            const confirmed = await showCustomConfirm('本当にこの画像を削除しますか？', '画像を削除');
-            if (confirmed) {
-                appState.settings.birderPhoto = ''; // 空の文字列を保存
-                previewElement.src = placeholder;
-                removeBtn.classList.add('hidden');
-                saveListControlsState();
-            }
-        })();
-        return;
-    }
-
-    const file = event.target.files[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) { // 5MB 制限
-        showCustomConfirm("画像サイズが5MBを超えています。5MB以下のファイルを選択してください。", "OK", true);
-        event.target.value = null;
-        return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        // ファイルが読み込めたら、Cropperモーダルを表示
-        // ★★★ 修正: showCropperModal は app.js で定義されたグローバル関数
-        showCropperModal(e.target.result, (base64Image) => {
-            // クロップが完了したら（コールバック）、結果を保存・表示
-            appState.settings.birderPhoto = base64Image;
-            previewElement.src = base64Image;
-            removeBtn.classList.remove('hidden');
-            saveListControlsState(); // 変更を即時保存
-        });
-    };
-    reader.onerror = (error) => {
-        console.error("File reading error:", error);
-        showCustomConfirm("画像の読み込みに失敗しました。", "OK", true);
-    };
-    reader.readAsDataURL(file);
-    
-    // 選択されたファイルをリセット（同じファイルを再度選択できるようにするため）
-    event.target.value = null;
-}
 
 // --- ★★★ カードを共有（またはエクスポート）するハンドラ ★★★ ---
 async function handleShareMyCard(liferTotals) {
