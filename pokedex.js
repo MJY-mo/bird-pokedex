@@ -494,10 +494,20 @@ function showDetailPage(birdId) {
     const imageUrl = bird.photo_url || placeholderUrl;
 
     // ★★★ 以下を丸ごと追加 (442行目〜450行目) ★★★
+// (443行目)
     const isPlaceholder = !bird.photo_url;
-    const editPhotoBtnHtml = isPlaceholder ? '' : `
-        <button id="edit-photo-overlay-btn" class="absolute top-2 right-2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-colors" title="写真を再編集">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z"></path></svg>
+    
+    // ★ 修正: 常にボタンを表示。アイコンをプレースホルダーか否かで変更
+    const buttonIcon = isPlaceholder 
+        ? `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>` // 「+」アイコン
+        : `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z"></path></svg>`; // 「鉛筆」アイコン
+    
+    const buttonTitle = isPlaceholder ? "写真を追加" : "写真を再編集";
+    
+    // ★ 修正: if分岐を削除
+    const editPhotoBtnHtml = `
+        <button id="edit-photo-overlay-btn" class="absolute top-2 right-2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-colors" title="${buttonTitle}">
+            ${buttonIcon}
         </button>
     `;
     
@@ -613,24 +623,51 @@ function showDetailPage(birdId) {
         } else {
             console.error("Edit modal open button not found on detail page.");
         }
-if (!isPlaceholder) {
-            const editPhotoBtn = document.getElementById('edit-photo-overlay-btn');
-            if (editPhotoBtn) {
-                editPhotoBtn.onclick = () => {
-                    // app.js のグローバル関数を呼び出す
-                    showCropperModal(bird.photo_url, async (base64Image) => {
-                        // コールバック (クロップ完了時)
-                        const idx = birdDatabase.findIndex(b => b.id === birdId);
-                        if (idx > -1) {
-                            birdDatabase[idx].photo_url = base64Image;
-                            await saveDatabase(); // DBに保存
-                            showDetailPage(birdId); // ページを再描画して反映
-                        }
-                    });
+// ★ 修正: 'edit-photo-overlay-btn' は常に存在するため、if(!isPlaceholder)を削除
+        const editPhotoBtn = document.getElementById('edit-photo-overlay-btn');
+        if (editPhotoBtn) {
+            editPhotoBtn.onclick = () => {
+                
+                // 共通の保存コールバック関数
+                const saveCroppedImage = async (base64Image) => {
+                    const idx = birdDatabase.findIndex(b => b.id === birdId);
+                    if (idx > -1) {
+                        birdDatabase[idx].photo_url = base64Image;
+                        await saveDatabase(); // DBに保存
+                        showDetailPage(birdId); // ページを再描画して反映
+                    }
                 };
-            }
-        }  
-      
+
+                if (isPlaceholder) {
+                    // 1. プレースホルダーの場合: ファイル選択をトリガー
+                    const fileInput = document.createElement('input');
+                    fileInput.type = 'file';
+                    fileInput.accept = 'image/*';
+                    fileInput.onchange = (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        
+                        // (pokedex.js/renderDetailEditPageAsModal からファイルサイズチェックをコピー)
+                        if (file.size > 5 * 1024 * 1024) { // 5MB 制限
+                            showCustomConfirm("画像サイズが5MBを超えています。5MB以下のファイルを選択してください。", "OK", true);
+                            return;
+                        }
+                        
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            // 2. 読み込んだ画像をCropperに渡す
+                            showCropperModal(event.target.result, saveCroppedImage);
+                        };
+                        reader.readAsDataURL(file);
+                    };
+                    fileInput.click();
+                } else {
+                    // 1. 既存画像の場合: そのままCropperに渡す
+                    showCropperModal(bird.photo_url, saveCroppedImage);
+                }
+            };
+        } 
+     
         if (bird.lastObservedEventId) {
             const latestEventLink = document.getElementById('latest-event-link');
             if (latestEventLink) {
@@ -691,22 +728,6 @@ function renderDetailEditPageAsModal(birdId) {
     const rarityOptions = [ { value: '', label: '未設定' }, { value: '1', label: '★☆☆☆☆' }, { value: '2', label: '★★☆☆☆' }, { value: '3', label: '★★★☆☆' }, { value: '4', label: '★★★★☆' }, { value: '5', label: '★★★★★' } ];
     const placeholderUrl = `https://placehold.co/600x400/e0e0e0/b0b0b0?text=${escapeHTML(bird.name.charAt(0))}`;
     const currentImageUrl = bird.photo_url || placeholderUrl;
-    const photoInputHtml = `
-        <div>
-            <label for="edit_photo" class="block text-sm font-medium text-gray-700">写真</label>
-            <img id="photo_preview" src="${currentImageUrl}" alt="プレビュー" 
-                 onerror="this.onerror=null; this.src='${placeholderUrl}';" 
-                 class="mt-2 w-full h-48 object-cover rounded-lg border border-gray-200 bg-gray-100">
-            
-            <input type="file" id="edit_photo" name="photo_file" accept="image/*" class="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
-            
-            <p id="photo_message" class="text-xs text-gray-500 mt-1">スマホから写真を選択できます (5MBまで)。</p>
-            
-            <button type="button" id="remove_photo_btn" class="mt-2 text-sm font-medium text-red-600 hover:text-red-800 ${!bird.photo_url ? 'hidden' : ''}">
-                画像を削除
-            </button>
-        </div>
-    `;
 
     const voiceInputHtml = `
         <div>
@@ -763,8 +784,6 @@ function renderDetailEditPageAsModal(birdId) {
             <hr class="my-4">
             <form id="editForm" class="space-y-4">
                 
-                ${photoInputHtml}
-                <hr class="my-4">
                 ${voiceInputHtml}
                 <hr class="my-4">
 
@@ -807,54 +826,6 @@ function renderDetailEditPageAsModal(birdId) {
         const voicePreview = document.getElementById('voice_preview');
         const removeVoiceBtn = document.getElementById('remove_voice_btn');
         const voiceMessage = document.getElementById('voice_message');
-
-        if (photoInput && photoPreview && removePhotoBtn && photoMessage) {
-            photoInput.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-
-                if (file.size > 5 * 1024 * 1024) { // 5MB 制限
-                    showCustomConfirm("画像サイズが5MBを超えています。5MB以下のファイルを選択してください。", "OK", true);
-                    e.target.value = null;
-                    return;
-                }
-
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    // ★ 修正: Cropperを起動せず、そのままBase64をセット
-                    const base64Image = event.target.result;
-                    newBase64Image = base64Image; // ★ 編集フォームの closure 変数に保存
-                    photoPreview.src = base64Image; // ★ プレビューを更新
-                    removePhotoBtn.classList.remove('hidden');
-                    photoMessage.textContent = "画像が選択されました。（保存時に確定）";
-                    photoMessage.classList.remove('text-red-600');
-                };
-                reader.onerror = (error) => {
-                    console.error("File reading error:", error);
-                    showCustomConfirm("画像の読み込みに失敗しました。", "OK", true);
-                };
-                reader.readAsDataURL(file);
-                
-                e.target.value = null;
-            });
-            removePhotoBtn.onclick = async () => {
-                const confirmed = await showCustomConfirm(
-                    '本当にこの画像を削除しますか？\n（「保存する」ボタンを押すまで確定されません）',
-                    '画像を削除'
-                );
-                if (confirmed) {
-                    newBase64Image = ""; // ★ closure 変数に「削除」をマーク
-                    const placeholderUrl = `https://placehold.co/600x400/e0e0e0/b0b0b0?text=${escapeHTML(bird.name.charAt(0))}`;
-                    photoPreview.src = placeholderUrl;
-                    photoInput.value = null;
-                    removePhotoBtn.classList.add('hidden');
-                    photoMessage.textContent = "画像は削除されます（保存時に確定）。";
-                    photoMessage.classList.remove('text-red-600');
-                }
-            };
-        } else {
-             console.error("Photo edit form elements not found.");
-        }
         
         if (voiceInput) {
             voiceInput.addEventListener('change', (e) => {
@@ -913,10 +884,9 @@ function renderDetailEditPageAsModal(birdId) {
         if (editForm) {
             editForm.onsubmit = async (event) => {
                 event.preventDefault();
-                await handleSave(event, newBase64Image, newBase64Voice); 
+                await handleSave(event, newBase64Voice); // ★ 修正: newBase64Image を削除
             };
         }
-
     }, 0);
 
     // ★ 追加: モーダルの「中止」ボタンリスナー
@@ -934,9 +904,9 @@ function renderDetailEditPageAsModal(birdId) {
 
 // --- 編集保存 ---
 // ★ 修正: handleSave 関数を、モーダルを閉じるように修正
-async function handleSave(event, newBase64Image, newBase64Voice) { 
+async function handleSave(event, newBase64Voice) { // ★ 修正: newBase64Image を削除
     
-    const formData = new FormData(event.target); 
+    const formData = new FormData(event.target);
     const form = event.target; // ★ フォーム要素自体
     const birdId = appState.currentBirdId;
     
@@ -958,10 +928,6 @@ async function handleSave(event, newBase64Image, newBase64Voice) {
         } 
     });
     
-    // 2. 画像データを処理
-    if (newBase64Image !== null) {
-        birdDatabase[idx]['photo_url'] = newBase64Image;
-    }
     
     // 3. ★ 機能追加: 音声データを処理
     if (newBase64Voice !== null) {
