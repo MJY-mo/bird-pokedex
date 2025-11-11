@@ -329,24 +329,35 @@ const myCard = appState.settings; // birderName, birderPhoto を含む
             if (adjustBirderPhotoBtn && photoPreview) {
                 adjustBirderPhotoBtn.onclick = () => {
                     
-                    const currentImage = appState.settings.birderPhoto; // (isPlaceholder と同義)
+                    const currentImage = appState.settings.birderPhoto; 
 
                     // 共通の保存コールバック関数
                     const saveCroppedImage = (base64Image) => {
                         appState.settings.birderPhoto = base64Image;
                         saveListControlsState(); // 変更をlocalStorageに保存
                         
-                        // プレビュー画像とボタンの表示を更新 (ページ再描画の代わり)
+                        // プレビュー画像とボタンの表示を更新
                         photoPreview.src = base64Image;
                         
-                        // ボタンのアイコンとタイトルを「編集」用に更新
                         adjustBirderPhotoBtn.title = "写真を再編集";
                         adjustBirderPhotoBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z"></path></svg>`;
+                    };
+                    
+                    // ★ 追加: 削除コールバック関数
+                    const deleteCroppedImage = () => {
+                        appState.settings.birderPhoto = ''; // ★ 画像を削除
+                        saveListControlsState(); // 変更をlocalStorageに保存
+                        
+                        // プレビューとボタンを更新 (リロードの代わり)
+                        photoPreview.src = 'https://placehold.co/150x150/e0e0e0/b0b0b0?text=No+Image';
+                        adjustBirderPhotoBtn.title = "写真を追加";
+                        adjustBirderPhotoBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>`;
                     };
 
                     if (currentImage) {
                         // 1. 既存画像の場合: そのままCropperに渡す
-                        showCropperModal(currentImage, saveCroppedImage);
+                        // ★ 修正: 第3引数に deleteCroppedImage (削除あり) を渡す
+                        showCropperModal(currentImage, saveCroppedImage, deleteCroppedImage);
                     } else {
                         // 2. プレースホルダーの場合: ファイル選択をトリガー
                         const fileInput = document.createElement('input');
@@ -356,8 +367,7 @@ const myCard = appState.settings; // birderName, birderPhoto を含む
                             const file = e.target.files[0];
                             if (!file) return;
                             
-                            // (pokedex.js からファイルサイズチェックをコピー)
-                            if (file.size > 5 * 1024 * 1024) { // 5MB 制限
+                            if (file.size > 5 * 1024 * 1024) { 
                                 showCustomConfirm("画像サイズが5MBを超えています。5MB以下のファイルを選択してください。", "OK", true);
                                 return;
                             }
@@ -365,7 +375,8 @@ const myCard = appState.settings; // birderName, birderPhoto を含む
                             const reader = new FileReader();
                             reader.onload = (event) => {
                                 // 3. 読み込んだ画像をCropperに渡す
-                                showCropperModal(event.target.result, saveCroppedImage);
+                                // ★ 修正: 第3引数に null (削除なし) を渡す
+                                showCropperModal(event.target.result, saveCroppedImage, null);
                             };
                             reader.readAsDataURL(file);
                         };

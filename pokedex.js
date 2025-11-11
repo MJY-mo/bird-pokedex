@@ -623,6 +623,7 @@ function showDetailPage(birdId) {
         } else {
             console.error("Edit modal open button not found on detail page.");
         }
+
 // ★ 修正: 'edit-photo-overlay-btn' は常に存在するため、if(!isPlaceholder)を削除
         const editPhotoBtn = document.getElementById('edit-photo-overlay-btn');
         if (editPhotoBtn) {
@@ -633,6 +634,16 @@ function showDetailPage(birdId) {
                     const idx = birdDatabase.findIndex(b => b.id === birdId);
                     if (idx > -1) {
                         birdDatabase[idx].photo_url = base64Image;
+                        await saveDatabase(); // DBに保存
+                        showDetailPage(birdId); // ページを再描画して反映
+                    }
+                };
+                
+                // ★ 追加: 削除コールバック関数
+                const deleteCroppedImage = async () => {
+                    const idx = birdDatabase.findIndex(b => b.id === birdId);
+                    if (idx > -1) {
+                        birdDatabase[idx].photo_url = ''; // ★ 画像を削除
                         await saveDatabase(); // DBに保存
                         showDetailPage(birdId); // ページを再描画して反映
                     }
@@ -656,17 +667,19 @@ function showDetailPage(birdId) {
                         const reader = new FileReader();
                         reader.onload = (event) => {
                             // 2. 読み込んだ画像をCropperに渡す
-                            showCropperModal(event.target.result, saveCroppedImage);
+                            // ★ 修正: 第3引数に null (削除なし) を渡す
+                            showCropperModal(event.target.result, saveCroppedImage, null);
                         };
                         reader.readAsDataURL(file);
                     };
                     fileInput.click();
                 } else {
                     // 1. 既存画像の場合: そのままCropperに渡す
-                    showCropperModal(bird.photo_url, saveCroppedImage);
+                    // ★ 修正: 第3引数に deleteCroppedImage (削除あり) を渡す
+                    showCropperModal(bird.photo_url, saveCroppedImage, deleteCroppedImage);
                 }
             };
-        } 
+        }
      
         if (bird.lastObservedEventId) {
             const latestEventLink = document.getElementById('latest-event-link');

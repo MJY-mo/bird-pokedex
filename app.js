@@ -939,9 +939,11 @@ let cropperInstance = null; // Cropperのインスタンスを保持する変数
 /**
  * 画像切り抜きモーダルを表示する
  * @param {string | null} imageSrc - 編集する画像(Base64) or null(削除の場合)
- * @param {function(string):void} callback - 完了時にBase64を返すコールバック
+ * @param {function(string):void} saveCallback - ★ 完了時にBase64を返すコールバック
+ * @param {function():void | null} deleteCallback - ★ 削除時に実行するコールバック (nullなら削除ボタン非表示)
  */
-function showCropperModal(imageSrc, callback) {
+// ★ 修正: 引数を (imageSrc, saveCallback, deleteCallback) に変更
+function showCropperModal(imageSrc, saveCallback, deleteCallback) {
     // 既存のモーダルがあれば削除
     const existingModal = document.getElementById('cropper-modal-container');
     if (existingModal) {
@@ -952,7 +954,7 @@ function showCropperModal(imageSrc, callback) {
         cropperInstance = null;
     }
     
-    // モーダルのHTMLを動的に作成
+    // ★ 修正: cropper-modal-actions に「削除」ボタンを追加
     const modalHtml = `
         <div id="cropper-modal-container" class="cropper-modal-backdrop">
             <div class="cropper-modal-content">
@@ -960,8 +962,10 @@ function showCropperModal(imageSrc, callback) {
                     <img id="cropper-image" src="${imageSrc}">
                 </div>
                 <div class="cropper-modal-actions">
-                    <button id="cropper-cancel-btn" class="confirm-btn confirm-btn-cancel">キャンセル</button>
-                    <button id="cropper-done-btn" class="confirm-btn confirm-btn-ok">切り抜いて決定</button>
+                    <button id="cropper-delete-btn" class="confirm-btn bg-red-600 text-white hover:bg-red-700">削除</button>
+                    
+                    <div class="flex-grow"></div> <button id="cropper-cancel-btn" class="confirm-btn confirm-btn-cancel">キャンセル</button>
+                    <button id="cropper-done-btn" class="confirm-btn confirm-btn-ok">決定</button>
                 </div>
             </div>
         </div>
@@ -973,14 +977,14 @@ function showCropperModal(imageSrc, callback) {
     const image = document.getElementById('cropper-image');
     const doneBtn = document.getElementById('cropper-done-btn');
     const cancelBtn = document.getElementById('cropper-cancel-btn');
+    const deleteBtn = document.getElementById('cropper-delete-btn'); // ★ 追加
 
-    if (!image || !doneBtn || !cancelBtn) {
+    if (!image || !doneBtn || !cancelBtn || !deleteBtn) {
         console.error("Cropper modal elements failed to create.");
         return;
     }
 
     // Cropper.js を初期化
-    // (index.html で Cropper の CSS/JS が読み込まれている必要があります)
     cropperInstance = new Cropper(image, {
         aspectRatio: 1 / 1, // バーダーカードは 1:1 (正方形)
         viewMode: 1, // 0: 制限なし, 1: 枠内に制限
@@ -1005,26 +1009,47 @@ function showCropperModal(imageSrc, callback) {
 
     // 「決定」ボタン
     doneBtn.onclick = () => {
-        // Cropper.js で切り抜いた結果を取得 (1:1 の 300x300px にする)
         const croppedCanvas = cropperInstance.getCroppedCanvas({
             width: 300,
             height: 300,
             imageSmoothingQuality: 'high',
         });
         
-        // Base64データとして取得
-        const base64Image = croppedCanvas.toDataURL('image/jpeg', 0.9); // JPEGの90%品質
+        const base64Image = croppedCanvas.toDataURL('image/jpeg', 0.9); 
         
-        // コールバック関数で結果を返す
-        callback(base64Image);
+        // ★ 修正: callback -> saveCallback
+        saveCallback(base64Image);
         
         // モーダルを閉じる
         cropperInstance.destroy();
         cropperInstance = null;
         document.getElementById('cropper-modal-container').remove();
     };
-}
 
+    // ★ 追加: 「削除」ボタンのロジック
+    if (deleteCallback && typeof deleteCallback === 'function') {
+        // deleteCallback が指定されている場合のみ、ボタンを表示してリスナーを設定
+        deleteBtn.style.display = 'block';
+        deleteBtn.onclick = async () => {
+            // カスタム確認モーダル（app.jsで定義済み）を呼び出す
+            const confirmed = await showCustomConfirm(
+                '本当にこの画像を削除しますか？',
+                '画像を削除'
+            );
+            if (confirmed) {
+                deleteCallback(); // 削除コールバックを実行
+                
+                // モーダルを閉じる
+                cropperInstance.destroy();
+                cropperInstance = null;
+                document.getElementById('cropper-modal-container').remove();
+            }
+        };
+    } else {
+        // deleteCallback がない場合 (新規追加時など)、削除ボタンを隠す
+        deleteBtn.style.display = 'none';
+    }
+}
 
 // --- ★★★ アプリケーション初期化 (修正) ★★★ ---
 // ページのすべてのリソース（他のJSファイルを含む）が読み込まれてから起動する
