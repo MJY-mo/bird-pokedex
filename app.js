@@ -954,18 +954,34 @@ function showCropperModal(imageSrc, saveCallback, deleteCallback) {
         cropperInstance = null;
     }
     
-    // ★ 修正: cropper-modal-actions に「削除」ボタンを追加
+    // ★ 修正: style.cssの@apply定義を、TailwindクラスとしてHTMLに直接書き込む
     const modalHtml = `
-        <div id="cropper-modal-container" class="cropper-modal-backdrop">
-            <div class="cropper-modal-content">
-                <div class="cropper-image-container">
+        <div id="cropper-modal-container" 
+             class="fixed inset-0 w-full h-full flex items-center justify-center z-50" 
+             style="background-color: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px);">
+            
+            <div class="bg-white rounded-lg shadow-2xl p-4 m-4 max-w-lg w-full">
+                
+                <div class="w-full h-64 md:h-80 lg:h-96 mb-4 bg-gray-100">
                     <img id="cropper-image" src="${imageSrc}">
                 </div>
-                <div class="cropper-modal-actions">
-                    <button id="cropper-delete-btn" class="confirm-btn bg-red-600 text-white hover:bg-red-700">削除</button>
+                
+                <div class="flex justify-end space-x-3">
+                    <button id="cropper-delete-btn" 
+                            class="px-4 py-2 rounded-lg font-semibold shadow transition-transform transform active:scale-95 bg-red-600 text-white hover:bg-red-700">
+                        削除
+                    </button>
                     
-                    <div class="flex-grow"></div> <button id="cropper-cancel-btn" class="confirm-btn confirm-btn-cancel">キャンセル</button>
-                    <button id="cropper-done-btn" class="confirm-btn confirm-btn-ok">決定</button>
+                    <div class="flex-grow"></div> 
+                    
+                    <button id="cropper-cancel-btn" 
+                            class="px-4 py-2 rounded-lg font-semibold shadow transition-transform transform active:scale-95 bg-gray-200 text-gray-700 hover:bg-gray-300">
+                        キャンセル
+                    </button>
+                    <button id="cropper-done-btn" 
+                            class="px-4 py-2 rounded-lg font-semibold shadow transition-transform transform active:scale-95 bg-emerald-600 text-white hover:bg-emerald-700">
+                        決定
+                    </button>
                 </div>
             </div>
         </div>
@@ -979,7 +995,7 @@ function showCropperModal(imageSrc, saveCallback, deleteCallback) {
     const cancelBtn = document.getElementById('cropper-cancel-btn');
     const deleteBtn = document.getElementById('cropper-delete-btn'); // ★ 追加
 
-    if (!image || !doneBtn || !cancelBtn || !deleteBtn) {
+    if (!image || !doneBtn || !cancelBtn || !deleteBtn) { // ★ 修正: deleteBtn を追加
         console.error("Cropper modal elements failed to create.");
         return;
     }
@@ -1050,7 +1066,6 @@ function showCropperModal(imageSrc, saveCallback, deleteCallback) {
         deleteBtn.style.display = 'none';
     }
 }
-
 // --- ★★★ アプリケーション初期化 (修正) ★★★ ---
 // ページのすべてのリソース（他のJSファイルを含む）が読み込まれてから起動する
 window.addEventListener('load', async () => { 

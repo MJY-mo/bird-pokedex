@@ -54,34 +54,6 @@ main#app {
 }
 
 
-/* --- ★ 機能追加: カスタム確認モーダル --- */
-#custom-confirm-modal {
-    @apply fixed inset-0 w-full h-full flex items-center justify-center z-50;
-    background-color: rgba(0, 0, 0, 0.6); /* 半透明の黒背景 */
-    backdrop-filter: blur(5px); /* 背景ぼかし */
-}
-.confirm-modal-content {
-    @apply bg-white rounded-xl shadow-2xl p-6 m-4 max-w-sm w-full;
-    animation: modal-fade-in 0.2s ease-out;
-}
-.confirm-modal-title {
-    @apply text-xl font-bold text-gray-900 mb-3;
-}
-.confirm-modal-text {
-    @apply text-gray-600 mb-6 whitespace-pre-wrap; /* 改行(\n)を反映 */
-}
-.confirm-modal-buttons {
-    @apply flex justify-end space-x-3;
-}
-.confirm-btn {
-    @apply px-4 py-2 rounded-lg font-semibold shadow transition-transform transform active:scale-95;
-}
-.confirm-btn-ok {
-    @apply bg-red-600 text-white hover:bg-red-700;
-}
-.confirm-btn-cancel {
-    @apply bg-gray-200 text-gray-700 hover:bg-gray-300;
-}
 @keyframes modal-fade-in {
     from { opacity: 0; transform: scale(0.95); }
     to { opacity: 1; transform: scale(1); }
@@ -113,43 +85,3 @@ main#app {
     /* 勲章の形 (CSS clip-path) */
     clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
 }
-
-/* --- ★★★ 追加: Cropper.js モーダル用スタイル ★★★ --- */
-.cropper-modal-backdrop {
-    @apply fixed inset-0 w-full h-full flex items-center justify-center z-50;
-    background-color: rgba(0, 0, 0, 0.7); /* 半透明の黒背景 */
-    backdrop-filter: blur(5px); /* 背景ぼかし */
-    animation: modal-fade-in 0.2s ease-out; /* (custom-confirm-modal から拝借) */
-}
-
-.cropper-modal-content {
-    /* ★ 修正: p-4 に戻し、pb-20 を削除 */
-    @apply bg-white rounded-lg shadow-2xl m-4 max-w-lg w-full;
-    @apply p-4; /* p-0 pb-20 から変更 */
-}
-.cropper-image-container {
-    /* ★ 修正: p-4 を削除し、ボタンとのマージン(mb-4)を追加 */
-    @apply w-full h-64 md:h-80 lg:h-96 bg-gray-100; 
-    @apply mb-4; /* p-4 を削除し、下マージンを追加 */
-}
-.cropper-modal-actions {
-    /* ★ 修正: fixed を解除し、コンテナ内に配置 */
-    @apply flex justify-end space-x-3;
-
-    /* ★ 追加: fixed や absolute を強制的に上書きし、
-       ポップアップの内側（通常の流れ）に配置する */
-    position: relative !important;
-    bottom: auto !important;
-    left: auto !important;
-    right: auto !important;
-    z-index: auto !important;
-    width: auto !important;
-    background-color: transparent !important;
-    border: none !important;
-}/* ★★★ 以下を丸ごと追加 ★★★ */
-/* 編集モーダルのスクロール設定 (iOS対応) */
-#edit-form-content-area {
-    -webkit-overflow-scrolling: touch;
-}
-
-/* (ボタンの .confirm-btn スタイルは style.css に既に存在するので流用) */
