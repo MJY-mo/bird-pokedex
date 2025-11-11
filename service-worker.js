@@ -1,6 +1,6 @@
 // キャッシュの名前を定義します。
 // ★ ファイルを更新したら、必ず 'v1' の部分を 'v2', 'v3' のように変更してください
-const CACHE_NAME = 'bird-pokedex-cache-v3'; // ★バージョンをv2に変更
+const CACHE_NAME = 'bird-pokedex-cache-v4'; // ★バージョンをv2に変更
 
 // オフラインで動作するためにキャッシュするファイル（= アプリの本体）のリスト
 const URLS_TO_CACHE = [
