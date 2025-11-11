@@ -596,23 +596,23 @@ function showDetailPage(birdId) {
                     ${descriptionHtml}
                 </div>
             </div>
-            <button id="editButton" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-emerald-700 transition-colors">
+            <button id="edit-modal-open-btn" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-emerald-700 transition-colors">
                 情報を編集する
             </button>
-
             <audio id="bird-voice-player" class="hidden" src="${bird.voice_url || ''}"></audio>
         </div>
     `;
     updateHeader('detail', bird.name);
 
     setTimeout(() => {
-        const editButton = document.getElementById('editButton');
-        if (editButton) {
-            editButton.onclick = () => renderDetailEditPage(birdId);
+        // ★ 修正: 'editButton' -> 'edit-modal-open-btn'
+        const editModalOpenBtn = document.getElementById('edit-modal-open-btn');
+        if (editModalOpenBtn) {
+            // ★ 修正: 呼び出す関数名を変更
+            editModalOpenBtn.onclick = () => renderDetailEditPageAsModal(birdId);
         } else {
-            console.error("Edit button not found on detail page.");
+            console.error("Edit modal open button not found on detail page.");
         }
-
 if (!isPlaceholder) {
             const editPhotoBtn = document.getElementById('edit-photo-overlay-btn');
             if (editPhotoBtn) {
@@ -660,15 +660,35 @@ if (!isPlaceholder) {
 
 // --- 詳細画面 (編集) ---
 // (変更なし)
-function renderDetailEditPage(birdId) { 
-    appState.currentPage = 'edit'; appState.isEditing = true;
-    const bird = birdDatabase.find(b => b.id === birdId); if (!bird) { showListPage(); return; } currentBird = bird;
+// --- 詳細画面 (編集) ---
+// ★★★ 修正: ページ全体を書き換えるのではなく、モーダルとして表示する関数に変更 ★★★
+function renderDetailEditPageAsModal(birdId) { 
+    // appState.currentPage = 'edit'; // メインページのStateは変更しない
+    // appState.isEditing = true;     // メインページのStateは変更しない
+
+    const bird = birdDatabase.find(b => b.id === birdId); 
+    if (!bird) { showListPage(); return; } 
+    currentBird = bird; // handleSave で参照するため
     
     let newBase64Image = null; 
     let newBase64Voice = null; 
     
+    // --- ★ 追加: モーダルのDOMを取得 ---
+    const modal = document.getElementById('edit-form-modal');
+    const modalContent = document.getElementById('edit-form-content-area');
+    const modalTitle = document.getElementById('edit-form-title');
+    const modalCancelBtn = document.getElementById('edit-form-cancel-btn');
+
+    if (!modal || !modalContent || !modalTitle || !modalCancelBtn) {
+        console.error("Edit modal elements not found!");
+        return;
+    }
+
+    // モーダルヘッダーのタイトルを設定
+    modalTitle.textContent = `編集: ${bird.name}`;
+
+    // --- (フォームのHTML定義は、元の関数からそのままコピー) ---
     const rarityOptions = [ { value: '', label: '未設定' }, { value: '1', label: '★☆☆☆☆' }, { value: '2', label: '★★☆☆☆' }, { value: '3', label: '★★★☆☆' }, { value: '4', label: '★★★★☆' }, { value: '5', label: '★★★★★' } ];
-    
     const placeholderUrl = `https://placehold.co/600x400/e0e0e0/b0b0b0?text=${escapeHTML(bird.name.charAt(0))}`;
     const currentImageUrl = bird.photo_url || placeholderUrl;
     const photoInputHtml = `
@@ -701,8 +721,7 @@ function renderDetailEditPage(birdId) {
             </button>
         </div>
     `;
-
-    // ★ 修正: id と for を追加, <label> を <p> に変更
+    
     const liferEditHtml = `
         <div class="space-y-3">
             <p class="block text-sm font-medium text-gray-700">ライフリスト（手動編集）</p>
@@ -729,9 +748,11 @@ function renderDetailEditPage(birdId) {
             </div>
         </div>
     `;
+    // --- (コピーここまで) ---
 
-    app.innerHTML = `
-        <div class="bg-white rounded-lg shadow p-4 space-y-4">
+    // ★ 修正: app.innerHTML ではなく、modalContent.innerHTML にフォームを描画
+    modalContent.innerHTML = `
+        <div class="bg-white rounded-lg shadow p-4 space-y-4 m-2">
             <h2 class="text-xl font-bold text-gray-900 mb-2">情報の編集</h2>
             <div class="space-y-2">
                 <div><p class="block text-sm font-medium text-gray-500">名前</p><p class="readonly-field">${escapeHTML(bird.name)}</p></div>
@@ -770,39 +791,29 @@ function renderDetailEditPage(birdId) {
             </form>
         </div>
     `;
-    updateHeader('edit', `編集: ${bird.name}`);
     
-    // ★★★ 修正 (renderDetailEditPage 内の setTimeout) ★★★
+    // ★ 修正: updateHeader() は呼び出さない
+    
+    // ★ 修正: リスナー設定をモーダル内で行う
     setTimeout(() => {
         const editForm = document.getElementById('editForm');
         
-        // --- 写真のリスナー ---
+        // --- (ここから 713〜776行目 の写真・音声リスナー設定をそのままコピー) ---
         const photoInput = document.getElementById('edit_photo');
         const photoPreview = document.getElementById('photo_preview');
         const removePhotoBtn = document.getElementById('remove_photo_btn');
         const photoMessage = document.getElementById('photo_message');
-
-        // ★ 機能追加: 音声のリスナー
         const voiceInput = document.getElementById('edit_voice');
         const voicePreview = document.getElementById('voice_preview');
         const removeVoiceBtn = document.getElementById('remove_voice_btn');
         const voiceMessage = document.getElementById('voice_message');
-        
-        if (!voiceInput || !voicePreview || !removeVoiceBtn || !voiceMessage) {
-             console.error("Voice edit form elements not found.");
-        }
 
-
-        // ★★★ 修正 (写真のリスナーを app.js/settings.js と同じロジックに変更) ★★★
         if (photoInput && photoPreview && removePhotoBtn && photoMessage) {
-            
-            // 1. 写真ファイル選択時の処理 (Cropper起動)
             photoInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
 
                 if (file.size > 5 * 1024 * 1024) { // 5MB 制限
-                    // showCustomConfirm は app.js で定義されている (読み込み順修正で呼び出し可能)
                     showCustomConfirm("画像サイズが5MBを超えています。5MB以下のファイルを選択してください。", "OK", true);
                     e.target.value = null;
                     return;
@@ -810,15 +821,13 @@ function renderDetailEditPage(birdId) {
 
                 const reader = new FileReader();
                 reader.onload = (event) => {
-                    // showCropperModal は app.js で定義されている (読み込み順修正で呼び出し可能)
-                    showCropperModal(event.target.result, (base64Image) => {
-                        // クロップ完了時のコールバック
-                        newBase64Image = base64Image; // ★ 編集フォームの closure 変数に保存
-                        photoPreview.src = base64Image;
-                        removePhotoBtn.classList.remove('hidden');
-                        photoMessage.textContent = "画像が選択されました。（保存時に確定）";
-                        photoMessage.classList.remove('text-red-600');
-                    });
+                    // ★ 修正: Cropperを起動せず、そのままBase64をセット
+                    const base64Image = event.target.result;
+                    newBase64Image = base64Image; // ★ 編集フォームの closure 変数に保存
+                    photoPreview.src = base64Image; // ★ プレビューを更新
+                    removePhotoBtn.classList.remove('hidden');
+                    photoMessage.textContent = "画像が選択されました。（保存時に確定）";
+                    photoMessage.classList.remove('text-red-600');
                 };
                 reader.onerror = (error) => {
                     console.error("File reading error:", error);
@@ -826,11 +835,8 @@ function renderDetailEditPage(birdId) {
                 };
                 reader.readAsDataURL(file);
                 
-                // 同じファイルを再度選択できるようにリセット
                 e.target.value = null;
             });
-
-            // 2. 写真削除ボタンの処理
             removePhotoBtn.onclick = async () => {
                 const confirmed = await showCustomConfirm(
                     '本当にこの画像を削除しますか？\n（「保存する」ボタンを押すまで確定されません）',
@@ -849,10 +855,7 @@ function renderDetailEditPage(birdId) {
         } else {
              console.error("Photo edit form elements not found.");
         }
-
-
         
-        // --- ★ 機能追加: 音声ファイル選択時の処理 ---
         if (voiceInput) {
             voiceInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
@@ -860,9 +863,8 @@ function renderDetailEditPage(birdId) {
                     newBase64Voice = null;
                     return;
                 }
-                
                 if (file.size > 10 * 1024 * 1024) { // 10MB 制限
-                    console.warn("音声サイズが10MBを超えています。");
+                    showCustomConfirm("音声サイズが10MBを超えています。10MB以下のファイルを選択してください。", "OK", true); // ★ アラート修正
                     e.target.value = null;
                     newBase64Voice = null;
                     voicePreview.src = bird.voice_url || '';
@@ -871,7 +873,6 @@ function renderDetailEditPage(birdId) {
                     voiceMessage.classList.add('text-red-600');
                     return;
                 }
-                
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     newBase64Voice = event.target.result; 
@@ -883,14 +884,12 @@ function renderDetailEditPage(birdId) {
                 };
                 reader.onerror = (error) => {
                     console.error("File reading error:", error);
-                    console.warn("音声の読み込みに失敗しました。");
+                    showCustomConfirm("音声の読み込みに失敗しました。", "OK", true); // ★ アラート修正
                     newBase64Voice = null;
                 };
                 reader.readAsDataURL(file);
             });
         }
-        
-        // --- ★ 機能追加: 音声削除ボタンの処理 ---
         if (removeVoiceBtn) {
             removeVoiceBtn.onclick = async () => {
                 const confirmed = await showCustomConfirm(
@@ -908,6 +907,7 @@ function renderDetailEditPage(birdId) {
                 }
             };
         }
+        // --- (リスナーのコピーここまで) ---
 
         // --- フォーム送信（保存）時の処理 ---
         if (editForm) {
@@ -918,10 +918,22 @@ function renderDetailEditPage(birdId) {
         }
 
     }, 0);
+
+    // ★ 追加: モーダルの「中止」ボタンリスナー
+    // (リスナーが重複しないよう、毎回新しいノードで設定)
+    const newCancelBtn = modalCancelBtn.cloneNode(true);
+    modalCancelBtn.parentNode.replaceChild(newCancelBtn, modalCancelBtn);
+    newCancelBtn.onclick = () => {
+        modal.classList.add('hidden'); // モーダルを閉じる
+        modalContent.innerHTML = '';    // 中身を掃除
+    };
+    
+    // ★ 追加: モーダルを表示
+    modal.classList.remove('hidden');
 }
 
 // --- 編集保存 ---
-// ★ 修正: newBase64Voice を受け取る
+// ★ 修正: handleSave 関数を、モーダルを閉じるように修正
 async function handleSave(event, newBase64Image, newBase64Voice) { 
     
     const formData = new FormData(event.target); 
@@ -968,15 +980,20 @@ async function handleSave(event, newBase64Image, newBase64Voice) {
         // 5. IndexedDB に保存
         await saveDatabase(); 
         
-        // 6. 詳細ページに戻る
+        // ★ 修正: モーダルを閉じる
+        const modal = document.getElementById('edit-form-modal');
+        const modalContent = document.getElementById('edit-form-content-area');
+        if (modal) modal.classList.add('hidden');
+        if (modalContent) modalContent.innerHTML = ''; // 掃除
+        
+        // 6. 詳細ページを再描画して反映
         showDetailPage(birdId);
         
     } catch (error) {
         console.error("Failed to save bird data:", error);
-        console.warn("データの保存に失敗しました。");
+        showCustomConfirm("データの保存に失敗しました。", "OK", true); // ★ アラート修正
     }
 }
-
 /**
  * ★ 機能追加: IDからイベントを探して詳細ページに飛ぶ
  */

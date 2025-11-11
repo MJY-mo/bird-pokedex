@@ -134,4 +134,11 @@ main#app {
 .cropper-modal-actions {
     @apply flex justify-end space-x-3;
 }
+
+/* ★★★ 以下を丸ごと追加 ★★★ */
+/* 編集モーダルのスクロール設定 (iOS対応) */
+#edit-form-content-area {
+    -webkit-overflow-scrolling: touch;
+}
+
 /* (ボタンの .confirm-btn スタイルは style.css に既に存在するので流用) */
