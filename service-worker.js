@@ -74,9 +74,15 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const requestUrl = new URL(event.request.url);
 
-    // CSVやTXTは常にネットワークから取得 (変更なし)
+    // CSVやTXTは常にネットワークから取得
     if (requestUrl.pathname.endsWith('.csv') || requestUrl.pathname.endsWith('.txt')) {
-        return; 
+        
+        // ★ 修正: 'return;' の代わりに、
+        // Service Worker がネットワーク取得を明示的に行う
+        event.respondWith(
+            fetch(event.request)
+        );
+        return; // respondWith を呼んだので、ここで処理を終了
     }
 
     // "Cache-First" 戦略
