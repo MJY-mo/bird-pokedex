@@ -123,20 +123,18 @@ main#app {
 }
 
 .cropper-modal-content {
-    /* ★ 修正: ボタン分の余白(pb-20)を追加し、paddingをリセット */
+    /* ★ 修正: p-4 に戻し、pb-20 を削除 */
     @apply bg-white rounded-lg shadow-2xl m-4 max-w-lg w-full;
-    @apply p-0 pb-20; /* p-4 を p-0 に変更し、下部に余白 */
+    @apply p-4; /* p-0 pb-20 から変更 */
 }
 .cropper-image-container {
-    /* ★ 修正: p-4 をこちらに移動 */
-    @apply w-full h-64 md:h-80 lg:h-96 bg-gray-100 p-4; 
-    /* mb-4 は不要 (actionsがfixedになったため) */
+    /* ★ 修正: p-4 を削除し、ボタンとのマージン(mb-4)を追加 */
+    @apply w-full h-64 md:h-80 lg:h-96 bg-gray-100; 
+    @apply mb-4; /* p-4 を削除し、下マージンを追加 */
 }
 .cropper-modal-actions {
-    /* ★ 修正: 画面下部に固定 */
-    @apply fixed bottom-0 left-0 right-0 z-10; /* モーダル内の他の要素より手前 */
-    @apply w-full max-w-lg mx-auto; /* コンテナ幅に合わせる */
-    @apply p-4 bg-white border-t border-gray-200; /* 背景と区切り線 */
+    /* ★ 修正: fixed を解除し、コンテナ内に配置 */
+    /* (fixed関連のスタイルをすべて削除) */
     @apply flex justify-end space-x-3;
 }
 /* ★★★ 以下を丸ごと追加 ★★★ */
