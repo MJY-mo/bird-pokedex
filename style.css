@@ -134,10 +134,19 @@ main#app {
 }
 .cropper-modal-actions {
     /* ★ 修正: fixed を解除し、コンテナ内に配置 */
-    /* (fixed関連のスタイルをすべて削除) */
     @apply flex justify-end space-x-3;
-}
-/* ★★★ 以下を丸ごと追加 ★★★ */
+
+    /* ★ 追加: fixed や absolute を強制的に上書きし、
+       ポップアップの内側（通常の流れ）に配置する */
+    position: relative !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
+    z-index: auto !important;
+    width: auto !important;
+    background-color: transparent !important;
+    border: none !important;
+}/* ★★★ 以下を丸ごと追加 ★★★ */
 /* 編集モーダルのスクロール設定 (iOS対応) */
 #edit-form-content-area {
     -webkit-overflow-scrolling: touch;
