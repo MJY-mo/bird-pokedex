@@ -53,11 +53,59 @@ const myCard = appState.settings; // birderName, birderPhoto を含む
                     <p class="text-xs text-gray-600 mt-1">ライフリスト: ${liferTotals.any} 種</p>
                 </div>
             </div>
+
+            <div class="grid grid-cols-4 gap-2 text-center mt-3 mb-4">
+                <div>
+                    <p class="text-xs font-medium text-gray-500">目視</p>
+                    <p class="text-lg font-semibold text-emerald-700">${liferTotals.seen}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-gray-500">声</p>
+                    <p class="text-lg font-semibold text-emerald-700">${liferTotals.heard}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-gray-500">写真</p>
+                    <p class="text-lg font-semibold text-emerald-700">${liferTotals.photo}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-gray-500">動画</p>
+                    <p class="text-lg font-semibold text-emerald-700">${liferTotals.video}</p>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <div>
+                    <label for="birder-link-hp" class="block text-sm font-medium text-gray-700">HP / Webサイト</label>
+                    <input type="url" id="birder-link-hp" value="${escapeHTML(myCard.socialLinks.hp || '')}" placeholder="https://..." class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 text-sm focus:ring-emerald-500 focus:border-emerald-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label for="birder-link-x" class="block text-sm font-medium text-gray-700">X (Twitter)</label>
+                        <input type="text" id="birder-link-x" value="${escapeHTML(myCard.socialLinks.x || '')}" placeholder="@username" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 text-sm focus:ring-emerald-500 focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label for="birder-link-bluesky" class="block text-sm font-medium text-gray-700">Bluesky</label>
+                        <input type="text" id="birder-link-bluesky" value="${escapeHTML(myCard.socialLinks.bluesky || '')}" placeholder="@username.bsky.social" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 text-sm focus:ring-emerald-500 focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label for="birder-link-instagram" class="block text-sm font-medium text-gray-700">Instagram</label>
+                        <input type="text" id="birder-link-instagram" value="${escapeHTML(myCard.socialLinks.instagram || '')}" placeholder="username" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 text-sm focus:ring-emerald-500 focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label for="birder-link-threads" class="block text-sm font-medium text-gray-700">Threads</label>
+                        <input type="text" id="birder-link-threads" value="${escapeHTML(myCard.socialLinks.threads || '')}" placeholder="@username" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 text-sm focus:ring-emerald-500 focus:border-emerald-500">
+                    </div>
+                </div>
+                <div>
+                    <label for="birder-comment" class="block text-sm font-medium text-gray-700">コメント</label>
+                    <textarea id="birder-comment" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 text-sm focus:ring-emerald-500 focus:border-emerald-500" placeholder="よろしくお願いします！">${escapeHTML(myCard.birderComment || '')}</textarea>
+                </div>
+            </div>
             
             <hr class="my-6 border-gray-100 px-4">       
      
             <div class="space-y-3">
-                <button id="share-card-btn" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-emerald-700 transition-colors">
+                <button id="share-card-btn" class="w-full bg-pink-200 text-pink-800 font-bold py-3 px-4 rounded-lg shadow hover:bg-pink-300 transition-colors">
                     カードを送る (共有)
                 </button>
                 <p class="text-xs text-gray-500 text-center">
@@ -136,7 +184,7 @@ const myCard = appState.settings; // birderName, birderPhoto を含む
                         過去の全イベント履歴をスキャンし、ライフリスト（目視、声など）を更新します。
                         （手動でOFFにした項目がONになることはあっても、ONの項目がOFFになることはありません）
                     </p>
-                    <button id="rescan-lifer-btn" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-emerald-700 transition-colors">
+                    <button id="rescan-lifer-btn" class="w-full bg-yellow-500 text-gray-800 font-bold py-3 px-4 rounded-lg shadow hover:bg-yellow-600 transition-colors">
                         イベント履歴からライフリストを追加
                     </button>
                 </div>
@@ -185,7 +233,7 @@ const myCard = appState.settings; // birderName, birderPhoto を含む
             <p class="text-gray-600 mb-4">
                 すべてのイベントと、それに紐づく観察記録（鳥の名前、数、確認方法など）をCSVファイルとしてダウンロードします。(1行 = 1観察記録)
             </p>
-            <button id="export-csv-btn" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-green-700 transition-colors">
+            <button id="export-csv-btn" class="w-full bg-cyan-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-cyan-700 transition-colors">
                 観察記録CSVをダウンロード
             </button>
         </div>
@@ -386,6 +434,33 @@ const myCard = appState.settings; // birderName, birderPhoto を含む
             }
             if (shareCardBtn) {
                 shareCardBtn.onclick = () => handleShareMyCard(liferTotals);
+            }
+
+            // --- ★ 修正: SNS・コメント入力欄のリスナーを追加 ---
+            const socialInputs = [
+                { id: 'birder-link-hp', key: 'hp' },
+                { id: 'birder-link-x', key: 'x' },
+                { id: 'birder-link-bluesky', key: 'bluesky' },
+                { id: 'birder-link-instagram', key: 'instagram' },
+                { id: 'birder-link-threads', key: 'threads' }
+            ];
+
+            socialInputs.forEach(item => {
+                const inputElement = document.getElementById(item.id);
+                if (inputElement) {
+                    inputElement.onchange = (e) => {
+                        appState.settings.socialLinks[item.key] = e.target.value;
+                        saveListControlsState(); // app.js の関数
+                    };
+                }
+            });
+
+            const commentInput = document.getElementById('birder-comment');
+            if (commentInput) {
+                commentInput.onchange = (e) => {
+                    appState.settings.birderComment = e.target.value;
+                    saveListControlsState(); // app.js の関数
+                };
             }
             
             // --- もらったカードのリスナー ---
@@ -855,11 +930,14 @@ async function handleShareMyCard(liferTotals) {
     
     // ★ 修正: バージョン情報を追加
     const myCardData = {
-        type: 'BirdPokedexCard', // データの種類を識別
-        version: 1, // ★ バージョンを追加
+        type: 'BirdPokedexCard', 
+        version: 1, 
         name: appState.settings.birderName || '名無しのバーダー',
         photo: appState.settings.birderPhoto || '', // Base64
         totals: liferTotals,
+        // ★ 修正: SNSリンクとコメントを追加
+        socialLinks: appState.settings.socialLinks || {},
+        comment: appState.settings.birderComment || '',
         exportedDate: new Date().toISOString()
     };
     
@@ -918,8 +996,9 @@ function migrateReceivedCardData(cardData) {
         name: '（名前なし）',
         photo: '',
         totals: { seen: 0, heard: 0, photo: 0, video: 0, any: 0 },
-        // (V2で追加されるであろう項目)
-        // favoriteBird: null 
+        // ★ 修正: デフォルト値を追加
+        socialLinks: { hp: '', x: '', bluesky: '', instagram: '', threads: '' },
+        comment: ''
     };
 
     let migratedData = {};
@@ -929,7 +1008,9 @@ function migrateReceivedCardData(cardData) {
             name: cardData.name || defaultV1Card.name,
             photo: cardData.photo || defaultV1Card.photo,
             totals: cardData.totals || defaultV1Card.totals,
-            // favoriteBird: defaultV1Card.favoriteBird
+            // ★ 修正: 読み込み処理を追加
+            socialLinks: cardData.socialLinks || defaultV1Card.socialLinks,
+            comment: cardData.comment || defaultV1Card.comment
         };
     }
     // else if (version === 2) {

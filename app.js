@@ -529,7 +529,16 @@ function loadListControlsState() {
     const defaultSettings = {
         autoUpdateLiferList: true,
         birderName: '',
-        birderPhoto: ''
+        birderPhoto: '',
+        // ★ 修正: SNSリンクとコメントの保存場所を追加
+        socialLinks: {
+            hp: '',
+            x: '',
+            bluesky: '',
+            instagram: '',
+            threads: ''
+        },
+        birderComment: ''
     };
 
     if (storedState) {

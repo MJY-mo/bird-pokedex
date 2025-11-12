@@ -35,7 +35,7 @@ function showEventsPage() {
                 </select>
             </div>
             <div class="flex space-x-2 pt-2">
-                <button id="event-search-button" class="flex-1 bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg shadow hover:bg-emerald-700">検索</button>
+                <button id="event-search-button" class="flex-1 bg-yellow-500 text-gray-800 font-bold py-2 px-4 rounded-lg shadow hover:bg-yellow-600">検索</button>
                 <button id="event-clear-button" class="flex-1 bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-lg shadow hover:bg-gray-300">クリア</button>
             </div>
         </div>
@@ -142,7 +142,7 @@ function showEventsPage() {
      // ★★★ 修正点: 外側のdivに p-2 を追加 ★★★
      app.innerHTML = `
         <div class="space-y-4 p-2">
-             <button id="newEventButton" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-emerald-700 transition-colors">新規イベント作成</button>
+             <button id="newEventButton" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-blue-700 transition-colors">新規イベント作成</button>
              ${searchHtml} ${sortSelectHtml}
              <div class="bg-white rounded-lg shadow overflow-hidden">
                 <h2 class="text-xl font-semibold p-4 border-b border-gray-200">イベント履歴</h2>
@@ -521,7 +521,7 @@ function showEventDetail(originalIndex) {
                             <label class="flex items-center space-x-1.5"><input type="checkbox" id="bird_video_input" class="form-checkbox text-emerald-600 rounded">${iconVideo}<span>動画</span></label>
                         </div>
                     </div>
-                     <button type="button" id="addBirdButton" class="w-full bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg shadow hover:bg-emerald-600 transition-colors">
+                     <button type="button" id="addBirdButton" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow hover:bg-blue-700 transition-colors">
                         追加
                     </button>
                 </div>
