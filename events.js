@@ -160,7 +160,6 @@ function showEventsPage() {
         <div class="space-y-4 p-2">
              <button id="newEventButton" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-blue-700 transition-colors">新規イベント作成</button>
              ${searchAccordionHtml} ${sortSelectHtml} <div class="bg-white rounded-lg shadow overflow-hidden">
-// (167行目 付近)
 
                 <h2 class="text-xl font-semibold p-4 border-b border-gray-200">イベント履歴</h2>
                 <div id="event-list">${listHtml}</div>
