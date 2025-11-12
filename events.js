@@ -19,14 +19,14 @@ function showEventsPage() {
     const currentFilterName = appState.eventControls.filterBirdName;
     const currentFilterType = appState.eventControls.filterObservedType;
     
-    const searchHtml = `
-        <div class="bg-white rounded-lg shadow p-4 space-y-3">
-            <h3 class="text-lg font-semibold text-gray-800">イベント検索</h3>
-            <div>
+    const searchHtmlContent = `
+        <div class="p-4 space-y-3"> <div>
+// (35行目)
                 <label for="event-filter-name" class="block text-sm font-medium text-gray-700">観察した鳥</label>
                 <input type="search" id="event-filter-name" value="${escapeHTML(currentFilterName)}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="例: スズメ">
             </div>
             <div>
+// (40行目)
                 <label for="event-filter-type" class="block text-sm font-medium text-gray-700">確認方法</label>
                 <select id="event-filter-type" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500">
                     ${filterOptions.map(opt => 
@@ -35,6 +35,7 @@ function showEventsPage() {
                 </select>
             </div>
             <div class="flex space-x-2 pt-2">
+// (48行目)
                 <button id="event-search-button" class="flex-1 bg-yellow-500 text-gray-800 font-bold py-2 px-4 rounded-lg shadow hover:bg-yellow-600">検索</button>
                 <button id="event-clear-button" class="flex-1 bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-lg shadow hover:bg-gray-300">クリア</button>
             </div>
@@ -140,11 +141,27 @@ function showEventsPage() {
         
      // --- 画面全体の描画 ---
      // ★★★ 修正点: 外側のdivに p-2 を追加 ★★★
+     const searchAccordionHtml = `
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <button id="accordion-toggle-search" class="accordion-toggle w-full flex justify-between items-center p-4 text-left">
+                <h2 class="text-xl font-semibold text-gray-800">イベント検索</h2>
+                <svg id="accordion-arrow-search" class="accordion-arrow h-5 w-5 text-gray-500 transition-transform transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+            <div id="accordion-content-search" class="accordion-content" style="max-height: 0px;">
+                <div class="border-t border-gray-100">
+                    ${searchHtmlContent} </div>
+            </div>
+        </div>
+     `;
+
      app.innerHTML = `
         <div class="space-y-4 p-2">
              <button id="newEventButton" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-blue-700 transition-colors">新規イベント作成</button>
-             ${searchHtml} ${sortSelectHtml}
-             <div class="bg-white rounded-lg shadow overflow-hidden">
+             ${searchAccordionHtml} ${sortSelectHtml} <div class="bg-white rounded-lg shadow overflow-hidden">
+// (167行目 付近)
+
                 <h2 class="text-xl font-semibold p-4 border-b border-gray-200">イベント履歴</h2>
                 <div id="event-list">${listHtml}</div>
              </div>
@@ -159,6 +176,21 @@ function showEventsPage() {
     setTimeout(() => {
         const newEventBtn = document.getElementById('newEventButton');
         if (newEventBtn) {
+// (185行目)
+            newEventBtn.onclick = showNewEventForm; 
+        } else {
+            console.error("New event button not found");
+        }
+        
+        // ★★★ ここから追加 ★★★
+        const searchAccordionToggle = document.getElementById('accordion-toggle-search');
+        if (searchAccordionToggle) {
+            // events.js の 597行目にある toggleAccordion 関数を呼び出す
+            searchAccordionToggle.onclick = () => toggleAccordion('accordion-content-search', 'accordion-arrow-search');
+        }
+        // ★★★ 追加ここまで ★★★
+        
+        const sortSelect = document.getElementById('event-list-sort');
             newEventBtn.onclick = showNewEventForm; 
         } else {
             console.error("New event button not found");
