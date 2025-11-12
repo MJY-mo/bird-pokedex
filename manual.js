@@ -6,6 +6,7 @@ function showManualPage() {
     appState.isEditing = false;
     
     // --- 1. アプリの使い方 ---
+    // ★ 修正: 「最も重要な注意点」セクション(101行目〜136行目)を削除
     const usageHtml = `
         <div class="bg-white rounded-lg shadow p-4 space-y-4">
             <h2 class="text-xl font-semibold mb-4">ようこそ！</h2>
@@ -85,40 +86,52 @@ function showManualPage() {
                     <li><strong>背景設定:</strong> アプリの背景色や、背景画像（と透明度）を自由に変更できます。</li>
                 </ul>
             </section>
+        </div>
+    `;
 
+    // --- 2. ★★★ 新設: データに関する注意書き ★★★ ---
+    const dataPrecautionsHtml = `
+        <div class="bg-red-50 rounded-lg shadow p-4 space-y-4">
+            <h2 class="text-xl font-semibold mb-4 text-red-700">⚠️ 使用上の注意！</h2>
+            
             <section class="space-y-3">
-                <h3 class="text-lg font-semibold pt-4 border-t border-gray-100 text-red-700">⚠️ 最も重要な注意点</h3>
-                <div class="bg-red-50 border border-red-200 rounded-lg p-4 space-y-3">
-                    <h4 class="font-semibold text-red-800">1. データは「あなたのブラウザ」にのみ保存されます</h4>
-                    <p class="text-sm text-red-700">
-                        このアプリはサーバーと通信していません。あなたの観察記録、写真、設定は**すべて、今お使いのデバイス（スマホやPC）のブラウザ内**に保存されています。
-                    </p>
-                    <p class="text-sm text-red-700">
-                        機種変更をした場合や、ブラウザの「キャッシュ」や「サイトデータを削除」する操作を行うと、**データはすべて消え、復元できません。**
-                    </p>
-                </div>
+                <h3 class="text-lg font-semibold text-red-800">1. データは「あなたのブラウザ」にのみ保存されます</h3>
+                <p class="text-sm text-red-700">
+                    このアプリはサーバーと通信していません。あなたの観察記録、写真、設定は**すべて、今お使いのデバイス（スマホやPC）のブラウザ内**に保存されています。
+                </p>
+                <p class="text-sm text-red-700">
+                    機種変更をした場合や、以下の操作を行うと、**データはすべて消え、復元できません。**
+                </p>
                 
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
-                    <h4 class="font-semibold text-blue-800">2. 解決策：必ずバックアップを！</h4>
-                    <p class="text-sm text-blue-700">
-                        データを守るため、**定期的（例：月に一度）に「設定」タブ →「データ管理」にある「データのエクスポート」を実行してください。**
-                    </p>
-                    <p class="text-sm text-blue-700">
-                        'bird-pokedex-backup-xxxx.json' というファイルがダウンロードされます。これさえあれば、万が一データが消えても「データのインポート」から復元できます。
-                    </p>
-                </div>
+                <ul class="list-disc list-inside space-y-2 text-sm text-red-700 pl-2">
+                    <li>ブラウザ（Chrome/Safari）の**「閲覧履歴データの削除」**で「キャッシュ」や**「サイトデータ」**を削除する。</li>
+                    <li>ホーム画面の「BLNCR鳥図鑑」アイコンを**「アンインストール」**（または「Appを削除」）する。</li>
+                    <li>ブラウザ（Chrome/Safari）自体をスマホから削除する。</li>
+                    <li>スマホの「ストレージ クリーンアップ」機能でブラウザのデータを削除する。</li>
+                </ul>
+            </section>
+            
+            <section class="space-y-3">
+                <h3 class="text-lg font-semibold pt-4 border-t border-red-200 text-blue-800">2. 解決策：必ずバックアップを！</h3>
+                <p class="text-sm text-blue-700">
+                    データを守るため、**定期的（例：月に一度）に「設定」タブ →「データ管理」にある「データのエクスポート」を実行してください。**
+                </p>
+                <p class="text-sm text-blue-700">
+                    'bird-pokedex-backup-xxxx.json' というファイルがダウンロードされます。これさえあれば、万が一データが消えても「データのインポート」から復元できます。
+                </p>
+            </section>
                 
-                 <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3">
-                    <h4 class="font-semibold text-yellow-800">3. インポートは「上書き」です</h4>
-                    <p class="text-sm text-yellow-700">
-                        「データのインポート」を実行すると、現在のデータは**すべて消去**され、ファイルの内容で**完全に上書き**されます。ご注意ください。
-                    </p>
-                </div>
+            <section class="space-y-3">
+                <h3 class="text-lg font-semibold pt-4 border-t border-red-200 text-yellow-800">3. インポートは「上書き」です</h3>
+                <p class="text-sm text-yellow-700">
+                    「データのインポート」を実行すると、現在のデータは**すべて消去**され、ファイルの内容で**完全に上書き**されます。ご注意ください。
+                </p>
             </section>
         </div>
     `;
 
-    // --- 2. 観察時の注意 (素案) ---
+    // --- 3. 観察時の注意 (素案) ---
+    // ★ 修正: 「野鳥観察の基本」のみに分離
     const precautionsHtml = `
         <div class="bg-white rounded-lg shadow p-4 space-y-4">
             <h2 class="text-xl font-semibold mb-4">野鳥観察の基本</h2>
@@ -128,9 +141,9 @@ function showManualPage() {
 
             <h3 class="text-lg font-semibold pt-4 border-t border-gray-100">1. 野鳥への配慮</h3>
             <ul class="list-disc list-inside space-y-2 text-sm text-gray-600">
-                <li><strong>距離を保つ:</strong> 鳥が警戒したり、逃げたりしないよう、十分な距離を保ちましょう。特に巣やヒナには絶対に近づかないでください。巣立ち雛は親から餌をもらっている時期なので、見つけてもそっとしておきましょう。持ち去ると誘拐にあたり、法にも違反します。</li>
+                <li><strong>距離を保つ:</strong> 鳥が警戒したり、逃げたりしないよう、十分な距離を保ちましょう。特に巣やヒナには絶対に近づかないでください。巣立ち雛は親から餌をもらっている時期なので、見つけてもそとしておきましょう。持ち去ると誘拐にあたり、法にも違反します。もし野鳥が野生生物に襲われていても、介入してはいけません（外来生物による被害を除く）。</li>
                 <li><strong>ストレスを与えない:</strong> しつこく追いかけ回したり、大声を出したりしないでください。</li>
-                <li><strong>餌を与えない:</strong> 人間の食べ物は鳥にとって有害であり、生態系のバランスを崩す原因となります。人や鳥の感染症が広がる、行動の変化により生存が難しくなる（本来の食物を得る事ができなくなる）、農作物の食害や人への攻撃行動を増加させ駆D除される恐れがある、人への警戒心が薄れ密猟や事故を助長する、等の影響も考えられます。</li>
+                <li><strong>餌を与えない:</strong> 人間の食べ物は鳥にとって有害であり、生態系のバランスを崩す原因となります。人や鳥の感染症が広がる、行動の変化により生存が難しくなる（本来の食物を得る事ができなくなる）、農作物の食害や人への攻撃行動を増加させ駆D除される恐れがある、人への警戒心が薄れ密猟や事故を助長する、等の影響を想像できるようになりましょう。</li>
                 <li><strong>録音音声の再生:</strong> 鳥の鳴き声（録音）を再生すると、鳥を混乱させたり、過度な警戒や縄張り防衛行動（体力の消耗）を強いたりする可能性があります。特に繁殖期は控えましょう。</li>
             </ul>
 
@@ -138,19 +151,20 @@ function showManualPage() {
             <ul class="list-disc list-inside space-y-2 text-sm text-gray-600">
                 <li><strong>ルールを守る:</strong> 私有地や立ち入り禁止区域には絶対に入らないでください。農地（あぜ道など）を踏み荒らさないよう注意しましょう。</li>
                 <li><strong>ゴミは持ち帰る:</strong> 当たり前のことですが、ゴミはすべて持ち帰りましょう。</li>
-                <li><strong>自然を壊さない:</strong> 撮影のために枝を折ったり、草をむしったりする行為は絶対にやめましょう。</li>
+                <li><strong>自然を壊さない:</strong> 撮影のために枝を折ったり、草をむしったり、構造物を設置する行為は絶対にやめましょう。</li>
             </ul>
             
             <h3 class="text-lg font-semibold pt-4 border-t border-gray-100">3. 他の人への配慮</h3>
             <ul class="list-disc list-inside space-y-2 text-sm text-gray-600">
                 <li><strong>地域住民への配慮:</strong> 住宅地や早朝の観察では、話し声や車のドアの音などに注意し、静かに行動しましょう。</li>
-                <li><strong>他の観察者への配慮:</strong> 三脚を立てる場所や移動の際は、お互いに譲り合いましょう。珍しい鳥の情報を共有する際は、鳥に過度なプレッシャーがかからないよう配慮しましょう。</li>
+                <li><strong>他の観察者への配慮:</strong> 三脚を立てる場所や移動の際は、お互いに譲り合いましょう。珍しい鳥の情報を共有する際は、鳥に過度なプレッシャーがかからないよう情報公開の範囲に配慮しましょう。</li>
                 <li><strong>安全第一:</strong> 夢中になるあまり、足元や周囲（車、自転車など）への注意を怠らないようにしましょう。</li>
             </ul>
         </div>
     `;
     
     // --- 画面全体の描画 (アコーディオン化) ---
+    // ★ 修正: 3つのアコーディオンを描画
     app.innerHTML = `
         <div class="space-y-2">
             
@@ -168,9 +182,23 @@ function showManualPage() {
                 </div>
             </div>
 
+            <div class="bg-red-50 rounded-lg shadow overflow-hidden border border-red-200">
+                <button id="accordion-toggle-data-precautions" class="accordion-toggle w-full flex justify-between items-center p-4 text-left">
+                    <h2 class="text-xl font-semibold text-red-700">⚠️ 使用上の注意！</h2>
+                    <svg id="accordion-arrow-data-precautions" class="accordion-arrow h-5 w-5 text-red-500 transition-transform transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div id="accordion-content-data-precautions" class="accordion-content" style="max-height: 0px;">
+                    <div class="border-t border-red-100 p-2">
+                       ${dataPrecautionsHtml}
+                    </div>
+                </div>
+            </div>
+
             <div class="bg-white rounded-lg shadow overflow-hidden">
                 <button id="accordion-toggle-precautions" class="accordion-toggle w-full flex justify-between items-center p-4 text-left">
-                    <h2 class="text-xl font-semibold text-gray-800">観察時の注意</h2>
+                    <h2 class="text-xl font-semibold text-gray-800">野鳥観察の基本</h2>
                     <svg id="accordion-arrow-precautions" class="accordion-arrow h-5 w-5 text-gray-500 transition-transform transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
@@ -219,6 +247,12 @@ function showManualPage() {
                 usageToggle.onclick = () => toggleAccordion('accordion-content-usage', 'accordion-arrow-usage');
             }
             
+            // ★ 修正: 新しい「使用上の注意！」リスナーを追加
+            const dataPrecautionsToggle = document.getElementById('accordion-toggle-data-precautions');
+            if (dataPrecautionsToggle) {
+                dataPrecautionsToggle.onclick = () => toggleAccordion('accordion-content-data-precautions', 'accordion-arrow-data-precautions');
+            }
+
             const precautionsToggle = document.getElementById('accordion-toggle-precautions');
             if (precautionsToggle) {
                 precautionsToggle.onclick = () => toggleAccordion('accordion-content-precautions', 'accordion-arrow-precautions');

@@ -436,7 +436,10 @@ function showEventDetail(originalIndex) {
      const now = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
      const defaultDateTime = now.toISOString().slice(0, 16);
 
+
      const details = [
+         // ★ 修正: 「イベント名」の編集欄を追加
+         { label: 'イベント名', name: 'name', value: event.name || '', type: 'text', placeholder: '例: 週末の探鳥会' },
          { label: '日時', name: 'dateTime', value: event.dateTime || '', type: 'datetime-local', placeholder: defaultDateTime },
          { label: '天気', name: 'weather', value: event.weather || '', type: 'text', placeholder: '例: 晴れ' },
          { label: '場所', name: 'location', value: event.location || '', type: 'text', placeholder: '例: 〇〇公園' },

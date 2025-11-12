@@ -49,9 +49,9 @@
             </div>
         </div>
         
-        <div id="search-popup" class="popup-panel bg-white border-t border-gray-200 p-4 hidden"></div>
-        <div id="filter-popup" class="popup-panel bg-gray-50 border-t border-b border-gray-200 hidden overflow-y-auto" style="max-height: calc(100vh - 4rem);"></div>
-        <div id="view-popup" class="popup-panel bg-gray-50 border-t border-b border-gray-200 hidden overflow-y-auto" style="max-height: calc(100vh - 4rem);"></div>
+       <div id="search-popup" class="fixed top-16 z-10 w-full max-w-lg mx-auto bg-white border-t border-gray-200 p-4 hidden"></div>
+        <div id="filter-popup" class="fixed top-16 z-10 w-full max-w-lg mx-auto bg-gray-50 border-t border-b border-gray-200 hidden overflow-y-auto" style="max-height: calc(100vh - 4rem);"></div>
+        <div id="view-popup" class="fixed top-16 z-10 w-full max-w-lg mx-auto bg-gray-50 border-t border-b border-gray-200 hidden overflow-y-auto" style="max-height: calc(100vh - 4rem);"></div>
     </header>
 
     <main id="app" class="container mx-auto max-w-lg p-2"></main>
@@ -86,9 +86,9 @@
         </button>
     </nav>
 
-    <div id="custom-confirm-modal" class="hidden fixed inset-0 w-full h-full flex items-center justify-center z-50"
-         style="background-color: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px);">
-        
+    <div id="custom-confirm-modal" class="hidden fixed inset-0 w-full h-full flex items-center justify-center z-60"
+         style="background-color: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px);">    
+    
         <div class="bg-white rounded-xl shadow-2xl p-6 m-4 max-w-sm w-full"
              style="animation: modal-fade-in 0.2s ease-out;">
             
