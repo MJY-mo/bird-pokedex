@@ -166,7 +166,7 @@ function showManualPage() {
     // --- 画面全体の描画 (アコーディオン化) ---
     // ★ 修正: 3つのアコーディオンを描画
     app.innerHTML = `
-        <div class="space-y-2">
+        <div class="space-y-2 p-2">
             
             <div class="bg-white rounded-lg shadow overflow-hidden">
                 <button id="accordion-toggle-usage" class="accordion-toggle w-full flex justify-between items-center p-4 text-left">

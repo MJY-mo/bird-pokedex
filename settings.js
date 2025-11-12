@@ -266,7 +266,7 @@ const myCard = appState.settings; // birderName, birderPhoto を含む
     
     // --- 画面全体の描画 (アコーディオン化) ---
     app.innerHTML = `
-        <div class="space-y-2">
+        <div class="space-y-2 p-2">
             
             <div class="bg-white rounded-lg shadow overflow-hidden">
                 <button id="accordion-toggle-card" class="accordion-toggle w-full flex justify-between items-center p-4 text-left">
