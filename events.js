@@ -21,12 +21,10 @@ function showEventsPage() {
     
     const searchHtmlContent = `
         <div class="p-4 space-y-3"> <div>
-// (35行目)
                 <label for="event-filter-name" class="block text-sm font-medium text-gray-700">観察した鳥</label>
                 <input type="search" id="event-filter-name" value="${escapeHTML(currentFilterName)}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="例: スズメ">
             </div>
             <div>
-// (40行目)
                 <label for="event-filter-type" class="block text-sm font-medium text-gray-700">確認方法</label>
                 <select id="event-filter-type" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500">
                     ${filterOptions.map(opt => 
@@ -35,7 +33,6 @@ function showEventsPage() {
                 </select>
             </div>
             <div class="flex space-x-2 pt-2">
-// (48行目)
                 <button id="event-search-button" class="flex-1 bg-yellow-500 text-gray-800 font-bold py-2 px-4 rounded-lg shadow hover:bg-yellow-600">検索</button>
                 <button id="event-clear-button" class="flex-1 bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-lg shadow hover:bg-gray-300">クリア</button>
             </div>
