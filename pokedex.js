@@ -206,10 +206,12 @@ function renderFilterPopup() {
 
     // ★ 修正: DOMの描画が完了するのを待つ
     setTimeout(() => {
-        filterPopup.querySelectorAll('.accordion-header').forEach(btn => btn.addEventListener('click', () => {
+
+        filterPopup.querySelectorAll('.accordion-header').forEach(btn => btn.addEventListener('click', (event) => { // ★ 1. (event) を追加
+            event.stopPropagation(); // ★ 2. この1行を追加して、イベントの伝播を止める
             const id = btn.dataset.section; appState.listControls.openFilterSection = (appState.listControls.openFilterSection === id) ? null : id; renderFilterPopup(); 
         }));
-        
+      
         const updateCheckboxFilter = (name, values, isOrder = false) => { 
             if (isOrder) appState.listControls.filters.classification.orders = values; else appState.listControls.filters[name] = values;
             appState.listControls.currentPage = 1; applyFiltersAndRenderList(); saveListControlsState(); updateHeader('list');
