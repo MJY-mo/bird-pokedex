@@ -270,9 +270,11 @@ function showNewEventForm() {
             </div>
         </div>
         <hr class="my-4">
-        <button type="submit" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-emerald-700 transition-colors">
+
+        <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-blue-700 transition-colors">
             イベントを作成
         </button>
+
     </form>`;
     
     updateHeader('newEvent', '新規イベント');
