@@ -191,12 +191,7 @@ function showEventsPage() {
         // ★★★ 追加ここまで ★★★
         
         const sortSelect = document.getElementById('event-list-sort');
-            newEventBtn.onclick = showNewEventForm; 
-        } else {
-            console.error("New event button not found");
-        }
-        
-        const sortSelect = document.getElementById('event-list-sort');
+
         if (sortSelect) {
             sortSelect.addEventListener('change', (e) => {
                 appState.eventControls.listSort = e.target.value;
