@@ -2,7 +2,6 @@
 body {
     font-family: 'Inter', sans-serif;
     overscroll-behavior-y: none; /* iOSでのバウンススクロールを無効化 */
-    min-height: 100vh; /* 最小の高さを確保 */
     /* ★ 修正: 背景色はJSで制御するため、ここでの指定を削除 */
 }
 .tab-active { @apply border-emerald-500 text-emerald-600; }
@@ -11,7 +10,8 @@ body {
 /* ★★★ 修正点: ヘッダーの高さ(4rem)分のpadding-topを常に適用 ★★★ */
 main#app { 
     padding-top: 4rem;
-    padding-bottom: 5rem; 
+    padding-bottom: 12rem; 
+    min-height: calc(100vh - 8rem);
 }
 
 /* ★★★ 修正点: 'pt-popup' クラスは不要になったため削除 ★★★ */
