@@ -291,7 +291,8 @@ const myCard = appState.settings; // birderName, birderPhoto を含む
                     <svg id="accordion-arrow-font" class="accordion-arrow h-5 w-5 text-gray-500 transition-transform transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
-                </button> <div id="accordion-content-font" class="accordion-content" style="max-height: 0px;">
+                </button>
+                <div id="accordion-content-font" class="accordion-content" style="max-height: 0px;">
                     <div class="border-t border-gray-100 space-y-2 p-2">
                        ${fontSizeHtml} ${backgroundSettingsHtml} </div>
                 </div>
@@ -310,7 +311,9 @@ const myCard = appState.settings; // birderName, birderPhoto を含む
                         ${receivedCardsHtml}
                     </div>
                 </div>
-            </div> <div class="bg-white rounded-lg shadow overflow-hidden">
+            </div>
+
+            <div class="bg-white rounded-lg shadow overflow-hidden">
                 <button id="accordion-toggle-data" class="accordion-toggle w-full flex justify-between items-center p-4 text-left">
 
                     <h2 class="text-xl font-semibold text-gray-800">データ管理</h2>
