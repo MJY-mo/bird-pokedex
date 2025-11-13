@@ -1,7 +1,6 @@
 // --- 設定画面 ---
 function showSettingsPage() { 
     appState.currentPage = 'settings'; appState.isEditing = false;
-    app.style.paddingBottom = '5rem';
     
     // --- 1. ライフリスト集計 ---
     const totalSpecies = birdDatabase.length;
