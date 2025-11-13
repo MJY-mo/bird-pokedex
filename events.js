@@ -4,7 +4,7 @@ const EVENT_ITEMS_PER_PAGE = 10;
 // --- イベントリスト画面 ---
 function showEventsPage() { 
     appState.currentPage = 'events'; appState.isEditing = false;
-    app.style.paddingBottom = null;
+    app.style.paddingBottom = '12rem';
     
     // 日本語ソート用のコレーター
     const jaCollator = new Intl.Collator('ja');

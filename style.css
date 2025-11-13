@@ -11,7 +11,7 @@ body {
 /* ★★★ 修正点: ヘッダーの高さ(4rem)分のpadding-topを常に適用 ★★★ */
 main#app { 
     padding-top: 4rem;
-    padding-bottom: 12rem; 
+    padding-bottom: 5rem; 
 }
 
 /* ★★★ 修正点: 'pt-popup' クラスは不要になったため削除 ★★★ */

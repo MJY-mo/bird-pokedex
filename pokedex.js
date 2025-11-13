@@ -1,7 +1,7 @@
 // --- 画面描画: 図鑑リスト ---
 function showListPage() { 
     appState.currentPage = 'list'; appState.isEditing = false;
-    app.style.paddingBottom = null;
+    app.style.paddingBottom = '12rem';
 
     console.log(`showListPage called. birdDatabase length: ${birdDatabase ? birdDatabase.length : 'null'}, loadError: ${localStorage.getItem('birdDatabaseLoadError')}`); 
     
