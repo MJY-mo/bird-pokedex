@@ -366,6 +366,11 @@ const myCard = appState.settings; // birderName, birderPhoto を含む
                 }
             };
 
+            const dataContent = document.getElementById('accordion-content-data');
+            if (dataContent) {
+                const _ = dataContent.scrollHeight; // 読み取るだけで再計算がトリガーされる
+            }
+
             const cardToggle = document.getElementById('accordion-toggle-card');
             if (cardToggle) {
                 cardToggle.onclick = () => toggleAccordion('accordion-content-card', 'accordion-arrow-card');
