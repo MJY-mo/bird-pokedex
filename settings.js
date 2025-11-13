@@ -283,44 +283,58 @@ const myCard = appState.settings; // birderName, birderPhoto を含む
 
     // --- 画面全体の描画 (アコーディオン化) ---
     app.innerHTML = `
-        <div class="space-y-2 p-2">
-            
-            <div class="bg-white rounded-lg shadow overflow-hidden">
-                <button id="accordion-toggle-font" class="accordion-toggle w-full flex justify-between items-center p-4 text-left">
-                    <h2 class="text-xl font-semibold text-gray-800">文字サイズ・背景</h2>
-               </div>
-            </div>
+        <div class="space-y-2 p-2">
+            
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <button id="accordion-toggle-font" class="accordion-toggle w-full flex justify-between items-center p-4 text-left">
+                    <h2 class="text-xl font-semibold text-gray-800">文字サイズ・背景</h2>
+                    
+                    <svg id="accordion-arrow-font" class="accordion-arrow h-5 w-5 text-gray-500 transition-transform transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
 
-            <div class="bg-white rounded-lg shadow overflow-hidden">
-                <button id="accordion-toggle-card" class="accordion-toggle w-full flex justify-between items-center p-4 text-left">
-                    <h2 class="text-xl font-semibold text-gray-800">バーダーカード</h2>
-                    <svg id="accordion-arrow-card" class="accordion-arrow h-5 w-5 text-gray-500 transition-transform transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                </button>
-                <div id="accordion-content-card" class="accordion-content" style="max-height: 0px;">
-                    <div class="border-t border-gray-100 space-y-2 p-2">
-                        ${myBirderCardHtml}
-                        ${receivedCardsHtml}
-                    </div>
-                </div>
-            </div> <div class="bg-white rounded-lg shadow overflow-hidden">
-                <button id="accordion-toggle-data" class="accordion-toggle w-full flex justify-between items-center p-4 text-left">
+                </button>
+                
+                <div id="accordion-content-font" class="accordion-content" style="max-height: 0px;">
+                    <div class="border-t border-gray-100 space-y-2 p-2">
+                        ${fontSizeHtml}
+                        ${backgroundSettingsHtml}
+                    </div>
+                </div>
 
-                    <h2 class="text-xl font-semibold text-gray-800">データ管理</h2>
-                    <svg id="accordion-arrow-data" class="accordion-arrow h-5 w-5 text-gray-500 transition-transform transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                </button>
-                <div id="accordion-content-data" class="accordion-content" style="max-height: 0px;">
-                    <div class="border-t border-gray-100 space-y-2 p-2">
-                        ${liferSettingsHtml}
-                        ${importExportHtml}
-                    </div>
-                </div>
-            </div>
+            </div>
 
-        </div>`;
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <button id="accordion-toggle-card" class="accordion-toggle w-full flex justify-between items-center p-4 text-left">
+                    <h2 class="text-xl font-semibold text-gray-800">バーダーカード</h2>
+                    <svg id="accordion-arrow-card" class="accordion-arrow h-5 w-5 text-gray-500 transition-transform transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div id="accordion-content-card" class="accordion-content" style="max-height: 0px;">
+                    <div class="border-t border-gray-100 space-y-2 p-2">
+                        ${myBirderCardHtml}
+                        ${receivedCardsHtml}
+                    </div>
+                </div>
+            </div> 
+            
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <button id="accordion-toggle-data" class="accordion-toggle w-full flex justify-between items-center p-4 text-left">
+                    <h2 class="text-xl font-semibold text-gray-800">データ管理</h2>
+                    <svg id="accordion-arrow-data" class="accordion-arrow h-5 w-5 text-gray-500 transition-transform transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div id="accordion-content-data" class="accordion-content" style="max-height: 0px;">
+                    <div class="border-t border-gray-100 space-y-2 p-2">
+                        ${liferSettingsHtml}
+                        ${importExportHtml}
+                    </div>
+                </div>
+            </div>
+
+        </div>`;
 
 
     updateHeader('settings', '設定');
