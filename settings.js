@@ -193,6 +193,23 @@ const myCard = appState.settings; // birderName, birderPhoto を含む
     `;
 
     // --- 5. 既存の機能 (背景設定) ---
+
+    const currentFontSize = appState.settings.fontSize || 16;
+    const fontSizeHtml = `
+        <div class="bg-white rounded-lg shadow p-4">
+            <h2 class="text-xl font-semibold mb-4">表示設定</h2>
+            <div class="space-y-4">
+                <div>
+                    <label for="font-size-slider" class="block text-sm font-medium text-gray-700">
+                        基本の文字サイズ: <span id="font-size-value">${currentFontSize}</span> px
+                    </label>
+                    <input type="range" id="font-size-slider" min="12" max="24" step="1" value="${currentFontSize}" class="mt-1 block w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                    <p class="text-xs text-gray-500 mt-1">アプリ全体の文字サイズ基準を変更します。</p>
+                </div>
+            </div>
+        </div>
+    `;
+
     const defaultBgSettings = { bgColor: '#f3f4f6', bgImage: '', bgOpacity: 0.1 };
     let currentBgSettings;
     try {
@@ -269,6 +286,22 @@ const myCard = appState.settings; // birderName, birderPhoto を含む
         <div class="space-y-2 p-2">
             
             <div class="bg-white rounded-lg shadow overflow-hidden">
+
+            </div>
+
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <button id="accordion-toggle-font" class="accordion-toggle w-full flex justify-between items-center p-4 text-left">
+                    <h2 class="text-xl font-semibold text-gray-800">文字サイズ・背景</h2>
+                    <svg id="accordion-arrow-font" class="accordion-arrow h-5 w-5 text-gray-500 transition-transform transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div id="accordion-content-font" class="accordion-content" style="max-height: 0px;">
+                    <div class="border-t border-gray-100 space-y-2 p-2">
+                       ${fontSizeHtml} ${backgroundSettingsHtml} </div>
+                </div>
+            </div>
+
                 <button id="accordion-toggle-card" class="accordion-toggle w-full flex justify-between items-center p-4 text-left">
                     <h2 class="text-xl font-semibold text-gray-800">バーダーカード</h2>
                     <svg id="accordion-arrow-card" class="accordion-arrow h-5 w-5 text-gray-500 transition-transform transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -575,6 +608,31 @@ const myCard = appState.settings; // birderName, birderPhoto を含む
                     reader.readAsDataURL(file);
                 };
             }
+
+// --- ★★★ ここから追加 ★★★ ---
+            const fontSlider = document.getElementById('font-size-slider');
+            const fontValue = document.getElementById('font-size-value');
+            const fontAccordionToggle = document.getElementById('accordion-toggle-font'); // 新しいアコーディオンのToggle
+            const bgToggle = document.getElementById('accordion-toggle-bg'); // 古いアコーディオンのToggle
+
+            if (fontSlider && fontValue) {
+                fontSlider.oninput = (e) => {
+                    const newSize = parseInt(e.target.value, 10);
+                    fontValue.textContent = newSize;
+                    applyFontSize(newSize); // app.js で定義したグローバル関数
+                };
+            }
+
+            // 新しいアコーディオン(font)のリスナー
+            if (fontAccordionToggle) {
+                fontAccordionToggle.onclick = () => toggleAccordion('accordion-content-font', 'accordion-arrow-font');
+            }
+            
+            // 古いアコーディオン(bg)のリスナーを削除
+            if (bgToggle) {
+                bgToggle.onclick = null; 
+            }
+
 
         } catch (error) {
             console.error("Error setting up settings page listeners:", error);

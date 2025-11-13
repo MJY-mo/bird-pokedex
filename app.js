@@ -538,7 +538,8 @@ function loadListControlsState() {
             instagram: '',
             threads: ''
         },
-        birderComment: ''
+        birderComment: '',
+        fontSize: 16 // ★ この行を追加 (デフォルトを16pxとする)
     };
 
     if (storedState) {
@@ -1075,6 +1076,35 @@ function showCropperModal(imageSrc, saveCallback, deleteCallback) {
         deleteBtn.style.display = 'none';
     }
 }
+
+/**
+ * アプリ全体の基本フォントサイズを適用する
+ * @param {number} sizeInPx - 基本となるフォントサイズ (ピクセル)
+ */
+function applyFontSize(sizeInPx) {
+    if (sizeInPx < 12) sizeInPx = 12; // 最小サイズ
+    if (sizeInPx > 24) sizeInPx = 24; // 最大サイズ
+    
+    // <html> タグの font-size を変更する
+    // これにより、Tailwindの "rem" 単位の基準が変わり、
+    // text-sm や text-lg などの相対的なサイズがすべて連動して変化する
+    document.documentElement.style.fontSize = `${sizeInPx}px`;
+    
+    // 設定を保存
+    appState.settings.fontSize = sizeInPx;
+    saveListControlsState();
+}
+
+/**
+ * 保存されたフォントサイズ設定を読み込んで適用する
+ */
+function loadAndApplyFontSize() {
+    // appState.settings.fontSize は loadListControlsState() で読み込まれている
+    const savedSize = appState.settings.fontSize || 16;
+    applyFontSize(savedSize);
+}
+// --- ★★★ 追加ここまで ★★★ ---
+
 // --- ★★★ アプリケーション初期化 (修正) ★★★ ---
 // ページのすべてのリソース（他のJSファイルを含む）が読み込まれてから起動する
 window.addEventListener('load', async () => { 
@@ -1084,7 +1114,11 @@ window.addEventListener('load', async () => {
         
         setupTabs(); 
         await initializeDatabase(); 
-        loadListControlsState();    
+        loadListControlsState();   
+ 
+ // ★ 修正: フォントサイズ設定を読み込んで適用
+        loadAndApplyFontSize();
+
         showListPage(); // 初期表示は図鑑リスト
         
         // ★★★ 修正点: `app` ではなく `document.body` にリスナーを登録 ★★★
