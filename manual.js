@@ -4,6 +4,7 @@ function showManualPage() {
     
     appState.currentPage = 'manual'; 
     appState.isEditing = false;
+    app.style.paddingBottom = null;
     
     // --- 1. アプリの使い方 ---
     // ★ 修正: 「最も重要な注意点」セクション(101行目〜136行目)を削除
