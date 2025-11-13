@@ -20,6 +20,9 @@ function showListPage() {
 
     // ★★★ 修正点: p-4 を追加し、リストの外側に余白を戻す ★★★
     app.innerHTML = `<div id="pokedex-list-container" class="p-4"><div id="pokedex-list"></div><div id="pagination-controls" class="mt-6 flex justify-between items-center"></div></div>`;
+
+    app.style.paddingBottom = '12rem';
+
     updateHeader('list'); 
     
     setTimeout(() => {

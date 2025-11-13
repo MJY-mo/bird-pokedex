@@ -212,6 +212,8 @@ function showManualPage() {
 
         </div>
     `;
+
+    app.style.paddingBottom = '5rem';
     
     updateHeader('manual', '説明書'); // app.js の関数
 

@@ -163,6 +163,9 @@ function showEventsPage() {
              </div>
              <div id="event-pagination-controls" class="mt-6 flex justify-between items-center"></div>
         </div>`;
+
+    app.style.paddingBottom = '12rem';
+
     updateHeader('events', 'イベント');
 
     // ★ ページネーションUIを描画
