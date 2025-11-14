@@ -769,6 +769,9 @@ function setupTabs() {
         const button = document.getElementById(tab.id);
         if (button) { 
             button.addEventListener('click', (e) => {
+
+                window.scrollTo(0, 0);
+
                 tabs.forEach(t => {
                     const btn = document.getElementById(t.id);
                     if (btn) btn.classList.replace('tab-active', 'tab-inactive');
