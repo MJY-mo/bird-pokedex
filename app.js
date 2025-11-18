@@ -956,182 +956,108 @@ let cropperInstance = null; // Cropperのインスタンスを保持する変数
  * @param {function():void | null} deleteCallback - ★ 削除時に実行するコールバック (nullなら削除ボタン非表示)
  */
 // ★ 修正: 引数を (imageSrc, saveCallback, deleteCallback) に変更
-function showCropperModal(imageSrc, saveCallback, deleteCallback) {
+// --- トリミングモーダル表示関数 ---
+function showCropperModal(imageUrl, onSave, onDelete = null) { 
     // 既存のモーダルがあれば削除
-    const existingModal = document.getElementById('cropper-modal-container');
+    const existingModal = document.getElementById('cropper-modal');
     if (existingModal) {
-        existingModal.remove();
+        document.body.removeChild(existingModal);
     }
-    if (cropperInstance) {
-        cropperInstance.destroy();
-        cropperInstance = null;
-    }
+
+    // モーダルのHTML作成
+    const modal = document.createElement('div');
+    modal.id = 'cropper-modal';
+    modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4';
     
-    // ★ 修正: style.cssの@apply定義を、TailwindクラスとしてHTMLに直接書き込む
-    const modalHtml = `
-        <div id="cropper-modal-container" 
-             class="fixed inset-0 w-full h-full flex items-center justify-center z-50" 
-             style="background-color: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px);">
-            
-            <div class="bg-white rounded-lg shadow-2xl p-4 m-4 max-w-lg w-full">
-                
-                <div class="w-full h-64 md:h-80 lg:h-96 mb-4 bg-gray-100">
-                    <img id="cropper-image" src="${imageSrc}">
-                </div>
-                
-                <div class="flex justify-end space-x-3">
-                    <button id="cropper-delete-btn" 
-                            class="px-4 py-2 rounded-lg font-semibold shadow transition-transform transform active:scale-95 bg-red-600 text-white hover:bg-red-700">
-                        削除
-                    </button>
-                    
-                    <div class="flex-grow"></div> 
-                    
-                    <button id="cropper-cancel-btn" 
-                            class="px-4 py-2 rounded-lg font-semibold shadow transition-transform transform active:scale-95 bg-gray-200 text-gray-700 hover:bg-gray-300">
-                        キャンセル
-                    </button>
-                    <button id="cropper-done-btn" 
-                            class="px-4 py-2 rounded-lg font-semibold shadow transition-transform transform active:scale-95 bg-emerald-600 text-white hover:bg-emerald-700">
-                        決定
-                    </button>
-                </div>
+    // 削除ボタンのHTML (onDeleteがある場合のみ表示)
+    const deleteBtnHtml = onDelete 
+        ? `<button id="cropper-delete-btn" class="text-red-500 hover:text-red-400 font-bold px-4 py-2">写真を削除</button>` 
+        : '';
+
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-lg font-semibold text-gray-800">画像のトリミング</h3>
+                <button id="cropper-cancel-btn" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="flex-grow relative bg-gray-100 h-96 sm:h-[500px]">
+                <img id="cropper-image" src="${imageUrl}" class="max-w-full max-h-full block" style="opacity: 0;"> 
+            </div>
+            <div class="p-4 border-t border-gray-200 flex justify-between items-center">
+                <div>${deleteBtnHtml}</div>
+                <button id="cropper-save-btn" class="bg-emerald-600 text-white font-bold py-2 px-6 rounded-lg shadow hover:bg-emerald-700 transition-colors">
+                    保存する
+                </button>
             </div>
         </div>
     `;
-    
-    // body にモーダルを挿入
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    
-    const image = document.getElementById('cropper-image');
-    const doneBtn = document.getElementById('cropper-done-btn');
-    const cancelBtn = document.getElementById('cropper-cancel-btn');
-    const deleteBtn = document.getElementById('cropper-delete-btn'); // ★ 追加
 
-    if (!image || !doneBtn || !cancelBtn || !deleteBtn) { // ★ 修正: deleteBtn を追加
-        console.error("Cropper modal elements failed to create.");
-        return;
+    document.body.appendChild(modal);
+
+    const image = document.getElementById('cropper-image');
+    let cropper = null;
+
+    // 画像読み込み完了後にCropperを初期化
+    image.onload = () => {
+        image.style.opacity = 1;
+        cropper = new Cropper(image, {
+            aspectRatio: 1, // 正方形に固定 (1:1)
+            viewMode: 1,    // 画像を枠内に収める
+            dragMode: 'move',
+            autoCropArea: 1.0,
+            restore: false,
+            guides: true,
+            center: true,
+            highlight: false,
+            cropBoxMovable: false, // クロップボックスを固定
+            cropBoxResizable: false, // クロップボックスサイズ変更不可
+            toggleDragModeOnDblclick: false,
+        });
+    };
+    
+    // 2. キャンセルボタンの処理
+    const cancelBtn = document.getElementById('cropper-cancel-btn');
+    cancelBtn.onclick = () => {
+        document.body.removeChild(modal);
+    };
+    
+    // 3. 削除ボタンの処理
+    if (onDelete) {
+        const deleteBtn = document.getElementById('cropper-delete-btn');
+        if (deleteBtn) {
+            deleteBtn.onclick = () => {
+                if (confirm('本当にこの写真を削除しますか？')) {
+                    onDelete();
+                    document.body.removeChild(modal);
+                }
+            };
+        }
     }
 
-    // Cropper.js を初期化
-    cropperInstance = new Cropper(image, {
-        aspectRatio: 1 / 1, // バーダーカードは 1:1 (正方形)
-        viewMode: 1, // 0: 制限なし, 1: 枠内に制限
-        dragMode: 'move',
-        autoCropArea: 0.9,
-        responsive: true,
-        modal: true,
-        guides: true,
-        center: true,
-        highlight: false,
-        cropBoxMovable: true,
-        cropBoxResizable: true,
-        toggleDragModeOnDblclick: false,
-    });
-
-    // 「キャンセル」ボタン
-    cancelBtn.onclick = () => {
-        cropperInstance.destroy();
-        cropperInstance = null;
-        document.getElementById('cropper-modal-container').remove();
-    };
-
-    // 「決定」ボタン
-    doneBtn.onclick = () => {
-        const croppedCanvas = cropperInstance.getCroppedCanvas({
-            width: 300,
-            height: 300,
+    // 4. 保存ボタンの処理
+    const saveCroppedBtn = document.getElementById('cropper-save-btn');
+    saveCroppedBtn.onclick = () => {
+        if (!cropper) return;
+        
+        // ★★★ ここが重要な修正ポイント（軽量化） ★★★
+        const canvas = cropper.getCroppedCanvas({
+            maxWidth: 1024,   // 長辺を1024pxに制限
+            maxHeight: 1024,
+            fillColor: '#fff', // JPEG変換時に背景が黒くなるのを防ぐため白で塗る
+            imageSmoothingEnabled: true,
             imageSmoothingQuality: 'high',
         });
         
-        const base64Image = croppedCanvas.toDataURL('image/jpeg', 0.9); 
+        // JPEG形式にして、画質を 0.7 (70%) に落とす
+        const base64Image = canvas.toDataURL('image/jpeg', 0.7);
         
-        // ★ 修正: callback -> saveCallback
-        saveCallback(base64Image);
-        
-        // モーダルを閉じる
-        cropperInstance.destroy();
-        cropperInstance = null;
-        document.getElementById('cropper-modal-container').remove();
-    };
-
-    // ★ 追加: 「削除」ボタンのロジック
-    if (deleteCallback && typeof deleteCallback === 'function') {
-        // deleteCallback が指定されている場合のみ、ボタンを表示してリスナーを設定
-        deleteBtn.style.display = 'block';
-        deleteBtn.onclick = async () => {
-            // カスタム確認モーダル（app.jsで定義済み）を呼び出す
-            const confirmed = await showCustomConfirm(
-                '本当にこの画像を削除しますか？',
-                '画像を削除'
-            );
-            if (confirmed) {
-                deleteCallback(); // 削除コールバックを実行
-                
-                // モーダルを閉じる
-                cropperInstance.destroy();
-                cropperInstance = null;
-                document.getElementById('cropper-modal-container').remove();
-            }
-        };
-    } else {
-        // deleteCallback がない場合 (新規追加時など)、削除ボタンを隠す
-        deleteBtn.style.display = 'none';
-    }
-}
-
-/**
- * アプリ全体の基本フォントサイズを適用する
- * @param {number} sizeInPx - 基本となるフォントサイズ (ピクセル)
- */
-function applyFontSize(sizeInPx) {
-    if (sizeInPx < 12) sizeInPx = 12; // 最小サイズ
-    if (sizeInPx > 24) sizeInPx = 24; // 最大サイズ
-    
-    // <html> タグの font-size を変更する
-    // これにより、Tailwindの "rem" 単位の基準が変わり、
-    // text-sm や text-lg などの相対的なサイズがすべて連動して変化する
-    document.documentElement.style.fontSize = `${sizeInPx}px`;
-    
-    // 設定を保存
-    appState.settings.fontSize = sizeInPx;
-    saveListControlsState();
-}
-
-/**
- * 保存されたフォントサイズ設定を読み込んで適用する
- */
-function loadAndApplyFontSize() {
-    // appState.settings.fontSize は loadListControlsState() で読み込まれている
-    const savedSize = appState.settings.fontSize || 16;
-    applyFontSize(savedSize);
-}
-// --- ★★★ 追加ここまで ★★★ ---
-
-// --- ★★★ アプリケーション初期化 (修正) ★★★ ---
-// ページのすべてのリソース（他のJSファイルを含む）が読み込まれてから起動する
-window.addEventListener('load', async () => { 
-    try { 
-        // アプリ起動時に背景設定を適用
-        applyBackgroundSettings();
-        
-        setupTabs(); 
-        await initializeDatabase(); 
-        loadListControlsState();   
- 
- // ★ 修正: フォントサイズ設定を読み込んで適用
-        loadAndApplyFontSize();
-
-        showListPage(); // 初期表示は図鑑リスト
-        
-        // ★★★ 修正点: `app` ではなく `document.body` にリスナーを登録 ★★★
-        document.body.addEventListener('click', closePopupsOnMainTap);
-
-    } catch (error) {
-        console.error("Initialization failed:", error);
-        if (app) {
-            app.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow" role="alert"><strong class="font-bold">アプリ起動エラー</strong><span class="block sm:inline">アプリの起動に失敗しました。</span><p class="mt-2">開発者コンソール(F12)で詳細を確認してください。</p><p class="mt-2 text-sm">${escapeHTML(error.message)}</p></div>`;
+        if (onSave) {
+            onSave(base64Image);
         }
-        try { updateHeader('error', 'エラー'); } catch(e) { console.error("Failed to update header on error:", e); } 
-    }
-});
+        
+        // モーダルを閉じて破棄
+        document.body.removeChild(modal);
+    };
+}
