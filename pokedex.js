@@ -385,6 +385,9 @@ function applyFiltersAndRenderList() {
             
                 const placeholderUrl = './favicon3.png';
                 const imageUrl = bird.photo_url || placeholderUrl;
+// 画像がない場合は薄くするクラス(opacity-30)をつける
+                const opacityClass = bird.photo_url ? '' : 'opacity-30'; 
+
                 const seasonTag = getSeasonTag(bird.season);
                 const habitatLabels = getHabitatLabels(bird); 
                 const habitatText = habitatLabels.join(', '); 
@@ -394,7 +397,7 @@ function applyFiltersAndRenderList() {
                     <div class="bg-white rounded-lg shadow overflow-hidden cursor-pointer" onclick="showDetailPage('${bird.id}')">
                         <img src="${imageUrl}" alt="${escapeHTML(bird.name)}" 
                              onerror="this.onerror=null; this.src='${placeholderUrl}';"
-                             class="w-full h-32 object-cover">
+                             class="w-full h-32 object-cover ${opacityClass}">
                         <div class="p-3">
                             <h3 class="font-semibold text-gray-800 mb-1 truncate">${liferMedal}${escapeHTML(bird.name)}</h3>
                             <div class="flex flex-col items-start space-y-1"> 
@@ -495,9 +498,9 @@ function showDetailPage(birdId) {
     const rarityTag = !isNaN(rarity) && rarity > 0 ? `<span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700">${'★'.repeat(rarity)}${'☆'.repeat(5 - rarity)}</span>` : '';
     const specialTags = (bird.special_notes || '').split(';').filter(Boolean).map(note => `<span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-100 text-red-700">${escapeHTML(note)}</span>`).join(' ');
     const placeholderUrl = './favicon3.png';
-    
-    // (440行目)
     const imageUrl = bird.photo_url || placeholderUrl;
+// 画像がない場合は薄くするクラス(opacity-30)をつける
+    const opacityClass = bird.photo_url ? '' : 'opacity-30';
 
     // ★★★ 以下を丸ごと追加 (442行目〜450行目) ★★★
 // (443行目)
@@ -583,7 +586,7 @@ function showDetailPage(birdId) {
             <div class="bg-gray-200 rounded-lg shadow overflow-hidden relative">
                 <img src="${imageUrl}" alt="${escapeHTML(bird.name)}" 
                      onerror="this.onerror=null; this.src='${placeholderUrl}';" 
-                     class="w-full h-56 object-cover">
+                     class="w-full h-56 object-cover ${opacityClass}">
                 ${editPhotoBtnHtml} </div>            <div class="bg-white rounded-lg shadow overflow-hidden">
                 <div class="p-4">
                     <div class="flex flex-wrap gap-2 mb-3">${seasonTag}${rarityTag}${specialTags}</div>
