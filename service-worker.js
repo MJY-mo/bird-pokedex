@@ -96,6 +96,14 @@ self.addEventListener('fetch', (event) => {
 
                 // 2. キャッシュになければネットワークに取りに行く
                 return fetch(event.request).then((networkResponse) => {
+
+                    // --- ★★★ ここから修正 ★★★ ---
+                    // レスポンスが正しくない場合（エラーや500など）は、キャッシュせずにそのまま返す
+                    if (!networkResponse || !networkResponse.ok) {
+                        return networkResponse;
+                    }
+                    // --- ★★★ 修正ここまで ★★★ ---
+
                     // 3. 取得したレスポンスをキャッシュに保存してから返す
                     // (これにより、CDNのファイルも次回からキャッシュで表示される)
                     return caches.open(CACHE_NAME).then((cache) => {
