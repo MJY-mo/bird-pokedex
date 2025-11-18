@@ -18,7 +18,7 @@ function showSettingsPage() {
 
     // --- 2. ★★★ 自分のバーダーカード（編集機能付き） ★★★ ---
 const myCard = appState.settings; // birderName, birderPhoto を含む
-    const myPhotoUrl = myCard.birderPhoto || 'https://placehold.co/150x150/e0e0e0/b0b0b0?text=No+Image';
+    const myPhotoUrl = myCard.birderPhoto || './favicon3.png';
 
     // ★ 修正: pokedex.js と同じロジックを適用
     const isPlaceholder = !myCard.birderPhoto;

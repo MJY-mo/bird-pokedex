@@ -383,7 +383,7 @@ function applyFiltersAndRenderList() {
                 const isLifer = bird.lifer_seen || bird.lifer_heard || bird.lifer_photo || bird.lifer_video;
                 const liferMedal = isLifer ? '<span class="lifer-medal" title="ライフリスト登録済み"></span>' : '';
             
-                const placeholderUrl = `https://placehold.co/150x150/e0e0e0/b0b0b0?text=${escapeHTML(bird.name.charAt(0))}`;
+                const placeholderUrl = './favicon3.png';
                 const imageUrl = bird.photo_url || placeholderUrl;
                 const seasonTag = getSeasonTag(bird.season);
                 const habitatLabels = getHabitatLabels(bird); 
@@ -494,7 +494,7 @@ function showDetailPage(birdId) {
     const rarity = parseInt(bird.rarity, 10);
     const rarityTag = !isNaN(rarity) && rarity > 0 ? `<span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700">${'★'.repeat(rarity)}${'☆'.repeat(5 - rarity)}</span>` : '';
     const specialTags = (bird.special_notes || '').split(';').filter(Boolean).map(note => `<span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-100 text-red-700">${escapeHTML(note)}</span>`).join(' ');
-    const placeholderUrl = `https://placehold.co/600x400/e0e0e0/b0b0b0?text=${escapeHTML(bird.name.charAt(0))}`;
+    const placeholderUrl = './favicon3.png';
     
     // (440行目)
     const imageUrl = bird.photo_url || placeholderUrl;
@@ -745,7 +745,7 @@ function renderDetailEditPageAsModal(birdId) {
 
     // --- (フォームのHTML定義は、元の関数からそのままコピー) ---
     const rarityOptions = [ { value: '', label: '未設定' }, { value: '1', label: '★☆☆☆☆' }, { value: '2', label: '★★☆☆☆' }, { value: '3', label: '★★★☆☆' }, { value: '4', label: '★★★★☆' }, { value: '5', label: '★★★★★' } ];
-    const placeholderUrl = `https://placehold.co/600x400/e0e0e0/b0b0b0?text=${escapeHTML(bird.name.charAt(0))}`;
+    const placeholderUrl = './favicon3.png';
     const currentImageUrl = bird.photo_url || placeholderUrl;
 
     const voiceInputHtml = `
