@@ -1061,3 +1061,39 @@ function showCropperModal(imageUrl, onSave, onDelete = null) {
         document.body.removeChild(modal);
     };
 }
+
+// --- アプリの起動（初期化処理） ---
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        // 1. データベースの準備
+        await initializeDatabase();
+        
+        // 2. 設定（フィルタ等）の読み込み
+        loadListControlsState();
+
+        // 3. 画面の初期表示（一覧画面）
+        showListPage();
+        
+        // 4. 背景設定の適用
+        applyBackgroundSettings();
+
+        // 5. タブ切り替えのリスナー設定
+        setupTabs(); // ★ ここでタブの設定関数を呼び出す
+
+        // 6. グローバルなフォントサイズ適用
+        if (appState.settings.fontSize) {
+            applyFontSize(appState.settings.fontSize);
+        }
+
+        // 7. ポップアップ外クリックの監視
+        document.body.addEventListener('click', closePopupsOnMainTap);
+
+    } catch (e) {
+        console.error("App initialization failed:", e);
+        // エラー時はユーザーに通知
+        const app = document.getElementById('app');
+        if (app) {
+            app.innerHTML = `<div class="p-4 text-red-600 font-bold">アプリの起動に失敗しました。<br>${e.message}</div>`;
+        }
+    }
+});
