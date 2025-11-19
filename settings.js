@@ -281,6 +281,26 @@ const myCard = appState.settings; // birderName, birderPhoto を含む
         </div>
     `;
 
+// --- ★★★ 追加: アプリ更新（メンテナンス）用HTML ★★★ ---
+    const maintenanceHtml = `
+        <div class="bg-white rounded-lg shadow p-4 mt-4">
+            <h2 class="text-xl font-semibold mb-4 text-blue-700">アプリのメンテナンス</h2>
+            <p class="text-gray-600 mb-3">
+                画面の表示がおかしい場合や、最新の機能が反映されない場合は、以下のボタンを押してください。
+            </p>
+            <button id="force-update-btn" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-blue-700 transition-colors flex justify-center items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                最新バージョンに更新
+            </button>
+            <div class="text-xs text-gray-500 mt-2 space-y-1">
+                <p>※キャッシュを削除して再読み込みします。登録データ（写真や記録）は消えません。</p>
+                <p class="text-red-500 font-bold">※更新後すぐにオフラインにしないでください。</p>
+                <p>※「最新」に変わらない場合は、5分ほど待ってからもう一度押してください。</p>
+            </div>
+        </div>
+    `;
+
+
     // --- 画面全体の描画 (アコーディオン化) ---
     app.innerHTML = `
         <div class="space-y-2 p-2">
@@ -330,7 +350,7 @@ const myCard = appState.settings; // birderName, birderPhoto を含む
                     <div class="border-t border-gray-100 space-y-2 p-2">
                         ${liferSettingsHtml}
                         ${importExportHtml}
-                    </div>
+                        ${maintenanceHtml} </div>
                 </div>
             </div>
 
@@ -521,6 +541,7 @@ const myCard = appState.settings; // birderName, birderPhoto を含む
             if (exportBtn) {
                  exportBtn.onclick = handleExportData;
             }
+
             if (importFile && importBtn) {
                 importFile.onchange = () => {
                     if (importFile.files.length > 0) {
@@ -534,6 +555,61 @@ const myCard = appState.settings; // birderName, birderPhoto を含む
                 importBtn.onclick = () => {
                     if (importFile.files.length > 0) {
                         handleImportData(importFile.files[0]);
+                    }
+                };
+            }
+
+                    // --- ★★★ 追加: 安全対策済みの更新ボタン処理 ★★★ ---
+            const forceUpdateBtn = document.getElementById('force-update-btn');
+            if (forceUpdateBtn) {
+                forceUpdateBtn.onclick = async () => {
+                    // 【安全装置1】 オフラインなら即座に止める
+                    if (!navigator.onLine) {
+                        await showCustomConfirm("エラー：インターネットに接続されていません。\n\nオフラインの状態でこの操作を行うと、アプリが起動しなくなります。\n電波の良い場所で再度お試しください。", "OK", true);
+                        return;
+                    }
+
+                    // 【安全装置2】 強い警告メッセージ
+                    const confirmed = await showCustomConfirm(
+                        "【重要】インターネット接続は安定していますか？\n\nアプリの修復を行います。一時的にキャッシュ（保存されたプログラム）を削除し、サーバーから最新版をダウンロードします。\n\n・電波の悪い場所で行うと、アプリが開かなくなる可能性があります。\n・登録済みの写真や記録データは消えません。\n\n実行しますか？",
+                        "更新を実行"
+                    );
+                    if (!confirmed) return;
+
+                    // 【安全装置3】 ボタンを無効化して連打防止＆「処理中」表示
+                    forceUpdateBtn.disabled = true;
+                    forceUpdateBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>更新処理中...`;
+                    forceUpdateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+                    try {
+                        // 1. Service Worker の登録解除
+                        if ('serviceWorker' in navigator) {
+                            const registrations = await navigator.serviceWorker.getRegistrations();
+                            for (const registration of registrations) {
+                                await registration.unregister();
+                            }
+                        }
+
+                        // 2. キャッシュストレージの全削除
+                        const cacheKeys = await caches.keys();
+                        for (const key of cacheKeys) {
+                            await caches.delete(key);
+                        }
+
+                        // 3. 完了メッセージと強制リロード
+                        await showCustomConfirm("キャッシュを削除しました。\nOKを押すとアプリを再読み込みします。", "OK", true);
+                        
+                        // キャッシュを無視してサーバーから取得
+                        window.location.reload(true);
+
+                    } catch (error) {
+                        console.error("Update failed:", error);
+                        await showCustomConfirm("更新に失敗しました。ページを手動で再読み込みしてください。", "OK", true);
+                        
+                        // 失敗したらボタンを元に戻す
+                        forceUpdateBtn.disabled = false;
+                        forceUpdateBtn.textContent = "最新バージョンに更新";
+                        forceUpdateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                     }
                 };
             }
