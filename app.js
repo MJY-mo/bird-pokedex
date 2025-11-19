@@ -755,6 +755,15 @@ function getSearchSuggestions(text) {
     return [...startsWith, ...includes].slice(0, 5); 
 } 
 
+function applyFontSize(size) {
+    const html = document.documentElement;
+    html.style.fontSize = `${size}px`;
+    if (appState.settings.fontSize !== size) {
+        appState.settings.fontSize = size;
+        saveListControlsState();
+    }
+}
+
 
 // --- タブ切り替え ---
 function setupTabs() { 
