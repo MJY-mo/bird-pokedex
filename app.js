@@ -1,43 +1,35 @@
+// app.js (修正済み完全版)
+
 // --- GitHub Pages URL設定 ---
 const GITHUB_CSV_URL = 'https://mjy-mo.github.io/bird-pokedex/bird-list.csv';
 const GITHUB_VERSION_URL = 'https://mjy-mo.github.io/bird-pokedex/version.txt';
 
-// --- ★ 機能追加: IndexedDB データベース設定 ---
+// --- IndexedDB データベース設定 ---
 const DB_NAME = 'BirdPokedexDB';
-const DB_VERSION = 1; // (もし前回のデバッグで 2 や 3 にしていたら、その番号のままにしてください)
+const DB_VERSION = 1;
 const STORE_BIRDS = 'birdDatabase';
 const STORE_EVENTS = 'events';
-// ★★★ バーダーカード保存用のストアを追加 ★★★
-const STORE_CARDS = 'receivedCards'; 
+const STORE_CARDS = 'receivedCards';
 
 /**
  * IndexedDB データベースを開き、ストア（テーブル）を作成する
  */
 async function openBirdDB() {
-    // idb.openDB は index.html で読み込んだライブラリの関数
     const db = await idb.openDB(DB_NAME, DB_VERSION, {
         upgrade(db) {
-            // 'birdDatabase' ストア（テーブル）を作成
             if (!db.objectStoreNames.contains(STORE_BIRDS)) {
-                // 'id' をキー（主キー）として使用
                 db.createObjectStore(STORE_BIRDS, { keyPath: 'id' });
             }
-            // 'events' ストア（テーブル）を作成
             if (!db.objectStoreNames.contains(STORE_EVENTS)) {
-                // 'id' をキー（主キー）として使用
                 db.createObjectStore(STORE_EVENTS, { keyPath: 'id' });
             }
-            // ★★★ 'receivedCards' ストア（テーブル）を作成 ★★★
             if (!db.objectStoreNames.contains(STORE_CARDS)) {
-                // 'id' をキー（主キー）として使用
                 db.createObjectStore(STORE_CARDS, { keyPath: 'id' });
             }
         },
     });
     return db;
 }
-// --- IndexedDB 設定ここまで ---
-
 
 // --- グローバル変数 ---
 const app = document.getElementById('app');
@@ -61,7 +53,6 @@ let currentBird = null;
 let allOrders = [];
 let birdEvents = [];
 let currentEventIndex = -1;
-// ★★★ もらったカードを保存するグローバル変数 ★★★
 let receivedCards = []; 
 
 // --- 絞り込み項目の定義 ---
@@ -96,10 +87,7 @@ const appState = {
             size: Object.keys(sizeRanges), classification: { orders: [], family: null },
             edited: 'all',
             lifer: {
-                seen: 'any', // 'any', 'yes', 'no'
-                heard: 'any',
-                photo: 'any',
-                video: 'any'
+                seen: 'any', heard: 'any', photo: 'any', video: 'any'
             }
         },
         viewMode: 'tile', activePopup: null, openFilterSection: null,
@@ -114,9 +102,8 @@ const appState = {
     },
     settings: {
         autoUpdateLiferList: true,
-        // ★★★ バーダーカード用の設定を追加 ★★★
         birderName: '',
-        birderPhoto: '' // Base64文字列
+        birderPhoto: '' 
     }
 };
 
@@ -165,11 +152,7 @@ const LOCAL_COLUMNS = [
     'lifer_seen', 'lifer_heard', 'lifer_photo', 'lifer_video'
 ];
 
-// --- ★ 修正: データ移行（マイグレーション）関数 ---
-/**
- * DBから読み込んだ「イベント」データを現在のアプリ構造に合わせる
- * (古いデータに存在しないプロパティを追加し、undefinedエラーを防ぐ)
- */
+// --- データ移行（マイグレーション）関数 ---
 function migrateEventData(event) {
     const defaults = {
         id: `event_${Date.now()}`,
@@ -178,15 +161,12 @@ function migrateEventData(event) {
         weather: '',
         location: '',
         companions: '',
-        observedBirds: [], // observedBirds が undefined になるのを防ぐ
+        observedBirds: [], 
         memo: ''
     };
     return { ...defaults, ...event };
 }
 
-/**
- * DBから読み込んだ「鳥」データを現在のアプリ構造に合わせる
- */
 function migrateBirdData(bird) {
     const defaults = {
         id: '',
@@ -222,28 +202,25 @@ async function initializeDatabase() {
     try {
         db = await openBirdDB();
         
-        // 1. イベントデータを IndexedDB から読み込む
+        // 1. イベントデータ
         const storedEvents = await db.getAll(STORE_EVENTS);
         if (storedEvents && Array.isArray(storedEvents)) {
-            // ★ 修正: 移行関数を通してからグローバル変数に代入
             birdEvents = storedEvents.map(migrateEventData);
         } else {
             birdEvents = [];
         }
         
-        // ★★★ 2. もらったカードデータを IndexedDB から読み込む ★★★
+        // 2. もらったカードデータ
         const storedCards = await db.getAll(STORE_CARDS);
         if (storedCards && Array.isArray(storedCards)) {
-            // (注: カードの移行は settings.js の handleImportReceivedCard で行うため、ここでは移行不要)
             receivedCards = storedCards;
         } else {
             receivedCards = [];
         }
 
-        // 3. 鳥データを IndexedDB から読み込む
+        // 3. 鳥データ
         const storedData = await db.getAll(STORE_BIRDS);
         if (storedData && Array.isArray(storedData) && storedData.length > 0) {
-            // ★ 修正: 移行関数を通してからグローバル変数に代入
             birdDatabase = storedData.map(migrateBirdData);
             console.log(`Loaded ${birdDatabase.length} birds from IndexedDB`);
             await checkAndUpdateData(); 
@@ -258,7 +235,7 @@ async function initializeDatabase() {
         localStorage.setItem('birdDatabaseLoadError', 'true'); 
         birdDatabase = [];
         birdEvents = [];
-        receivedCards = []; // ★ エラー時も初期化
+        receivedCards = [];
     }
     
     updateAllOrdersList(); 
@@ -318,7 +295,7 @@ async function fetchCSVAndSave() {
         
         if (newBirdDatabase.length === 0) throw new Error('必須データ(id, name, classification)を持つ行が0件でした。');
         
-        birdDatabase = newBirdDatabase; // グローバル変数を更新
+        birdDatabase = newBirdDatabase;
         updateAllOrdersList();
         
         await saveDatabase(); 
@@ -389,9 +366,7 @@ async function checkAndUpdateData() {
         const newDatabase = masterDataList.map(masterBird => {
             const localBird = localDataMap.get(masterBird.id);
             if (localBird) {
-                // ★ 修正: マージ処理でローカルデータを移行
-                // (もし将来 bird.userMemo を追加した場合、LOCAL_COLUMNS に 'userMemo' を追加する必要がある)
-                const mergedBird = { ...migrateBirdData(masterBird) }; // デフォルト構造を適用
+                const mergedBird = { ...migrateBirdData(masterBird) };
                 LOCAL_COLUMNS.forEach(key => { if (localBird[key] !== undefined) mergedBird[key] = localBird[key]; });
                 localDataMap.delete(masterBird.id); 
                 return mergedBird;
@@ -401,7 +376,7 @@ async function checkAndUpdateData() {
         });
         localDataMap.forEach(remainingLocalBird => newDatabase.push(remainingLocalBird));
         
-        birdDatabase = newDatabase; // グローバル変数を更新
+        birdDatabase = newDatabase;
         updateAllOrdersList();
         
         await saveDatabase(); 
@@ -460,14 +435,13 @@ async function saveEventsData() {
 }
 
 
-// ★★★ DB保存 (もらったカード) ★★★
+// --- DB保存 (もらったカード) ---
 async function saveReceivedCards() { 
      try { 
         const db = await openBirdDB();
         const tx = db.transaction(STORE_CARDS, 'readwrite');
         
         await tx.store.clear();
-        // receivedCards グローバル変数から保存
         await Promise.all(receivedCards.map(card => tx.store.put(card)));
         await tx.done;
 
@@ -484,7 +458,7 @@ function saveListControlsState() {
         const stateToSave = { 
             ...appState.listControls, 
             eventControls: appState.eventControls,
-            settings: appState.settings, // ★ ライフリスト設定も保存
+            settings: appState.settings,
             currentPage: 1 
         };
         localStorage.setItem('birdListControls', JSON.stringify(stateToSave));
@@ -525,12 +499,10 @@ function loadListControlsState() {
         filterObservedType: 'any'
     };
     
-    // ★★★ 修正: デフォルトにカード設定を追加 ★★★
     const defaultSettings = {
         autoUpdateLiferList: true,
         birderName: '',
         birderPhoto: '',
-        // ★ 修正: SNSリンクとコメントの保存場所を追加
         socialLinks: {
             hp: '',
             x: '',
@@ -539,7 +511,7 @@ function loadListControlsState() {
             threads: ''
         },
         birderComment: '',
-        fontSize: 16 // ★ この行を追加 (デフォルトを16pxとする)
+        fontSize: 16 
     };
 
     if (storedState) {
@@ -581,11 +553,10 @@ function loadListControlsState() {
         appState.listControls = { ...appState.listControls, ...loadedState };
         appState.eventControls = { ...defaultEventControls, ...(loadedState.eventControls || {}) };
         
-        // ★★★ 修正: settings もマージする (デフォルトを先に指定) ★★★
         appState.settings = { ...defaultSettings, ...(loadedState.settings || {}) }; 
         
         delete appState.listControls.eventControls; 
-        delete appState.listControls.settings; // 互換性のため
+        delete appState.listControls.settings;
 
     } else {
         defaultFilters.classification.orders = defaultClassificationOrders; 
@@ -618,7 +589,6 @@ function getFilterStatus() {
 
 
 // --- ヘッダー更新 ---
-// ★★★ 修正点: デフォルトタイトルを "鳥図鑑" に変更 ★★★
 function updateHeader(mode, title = "鳥図鑑") { 
     try { 
         if (!headerTitle || !backButton || !headerActions || !searchPopup || !filterPopup || !viewPopup || !app || !searchToggleButton || !filterToggleButton || !viewToggleButton || !filterActiveDot) {
@@ -630,9 +600,6 @@ function updateHeader(mode, title = "鳥図鑑") {
         backButton.classList.add('hidden');
         headerActions.classList.add('hidden'); 
         searchPopup.classList.add('hidden'); filterPopup.classList.add('hidden'); viewPopup.classList.add('hidden');
-        
-        // ★★★ 修正点: 'pt-popup' の add/remove ロジックをすべて削除 ★★★
-        // (style.css 側で常時適用するため)
         
         searchToggleButton.classList.remove('active'); filterToggleButton.classList.remove('active'); viewToggleButton.classList.remove('active');
         filterActiveDot.classList.add('hidden');
@@ -666,6 +633,18 @@ function updateHeader(mode, title = "鳥図鑑") {
         } else if (mode === 'error' || mode === 'loading') {
             // アクションなし
         }
+
+        // タブ切り替え時などにボタンのスタイルが残るのを防ぐためリセット
+        if (mode !== 'list') {
+            const activeBtnClasses = ['bg-emerald-100', 'text-emerald-700', 'fill-current'];
+            [searchToggleButton, filterToggleButton, viewToggleButton].forEach(btn => {
+                if (btn) {
+                    btn.classList.remove(...activeBtnClasses);
+                    btn.classList.add('text-gray-600');
+                }
+            });
+        }
+
     } catch (error) {
         console.error("Error updating header:", error);
     }
@@ -680,11 +659,9 @@ function togglePopup(popupName) {
     updateHeader('list'); 
 }
 
-// ★★★ 修正点: `main#app` ではなく `document.body` でクリックを監視 ★★★
 function closePopupsOnMainTap(event) { 
     if (appState.listControls.activePopup === null) return; 
 
-    // ★ 修正: タップされた場所が、ヘッダーボタン、ポップアップ、サジェストリストの *内側* ではないことを確認
     const clickedHeaderButton = event.target.closest('.header-action-button');
     const clickedInsidePopup = event.target.closest('.popup-panel');
     const clickedEventSuggestion = event.target.closest('.event-suggestion-list');
@@ -764,10 +741,62 @@ function applyFontSize(size) {
     }
 }
 
+// --- ★修正: ヘッダーボタン連動設定 ---
+function setupHeaderActions() {
+    const actions = [
+        { btnId: 'search-toggle-button', panelId: 'search-popup' },
+        { btnId: 'filter-toggle-button', panelId: 'filter-popup', onOpen: typeof renderFilterPanel !== 'undefined' ? renderFilterPanel : null },
+        { btnId: 'view-toggle-button', panelId: 'view-popup', onOpen: typeof renderViewSettings !== 'undefined' ? renderViewSettings : null }
+    ];
 
-// --- タブ切り替え ---
+    const activeBtnClasses = ['bg-emerald-100', 'text-emerald-700', 'fill-current'];
+
+    actions.forEach(({ btnId, panelId, onOpen }) => {
+        const btn = document.getElementById(btnId);
+        const panel = document.getElementById(panelId);
+
+        if (!btn || !panel) return;
+
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            
+            const isOpening = panel.classList.contains('hidden');
+
+            // Close all
+            actions.forEach(action => {
+                document.getElementById(action.panelId).classList.add('hidden');
+                const b = document.getElementById(action.btnId);
+                b.classList.remove(...activeBtnClasses);
+                b.classList.add('text-gray-600'); 
+            });
+
+            // Open target
+            if (isOpening) {
+                panel.classList.remove('hidden');
+                btn.classList.remove('text-gray-600');
+                btn.classList.add(...activeBtnClasses);
+                if (onOpen) onOpen();
+            }
+        };
+
+        panel.onclick = (e) => {
+            e.stopPropagation();
+        };
+    });
+
+    document.addEventListener('click', () => {
+        actions.forEach(action => {
+            document.getElementById(action.panelId).classList.add('hidden');
+            const b = document.getElementById(action.btnId);
+            b.classList.remove(...activeBtnClasses);
+            b.classList.add('text-gray-600');
+        });
+    });
+}
+
+
+// --- ★修正: タブ切り替え ---
 function setupTabs() { 
-    // ★★★ 修正: 'tab-manual' を追加 ★★★
     const tabs = [ 
         { id: 'tab-pokedex', page: showListPage }, 
         { id: 'tab-events', page: showEventsPage }, 
@@ -778,24 +807,45 @@ function setupTabs() {
         const button = document.getElementById(tab.id);
         if (button) { 
             button.addEventListener('click', (e) => {
-
                 window.scrollTo(0, 0);
 
+                // 全タブを非アクティブ化
                 tabs.forEach(t => {
                     const btn = document.getElementById(t.id);
-                    if (btn) btn.classList.replace('tab-active', 'tab-inactive');
+                    if (btn) {
+                        btn.classList.remove('tab-active');
+                        btn.classList.add('tab-inactive');
+                    }
                 });
-                if (e.currentTarget) e.currentTarget.classList.replace('tab-inactive', 'tab-active'); 
+                
+                // クリックされたタブをアクティブ化
+                if (e.currentTarget) {
+                    e.currentTarget.classList.remove('tab-inactive');
+                    e.currentTarget.classList.add('tab-active');
+                }
+
+                // ポップアップとヘッダーボタンをリセット
+                const headerBtns = ['search-toggle-button', 'filter-toggle-button', 'view-toggle-button'];
+                const activeBtnClasses = ['bg-emerald-100', 'text-emerald-700', 'fill-current'];
+                headerBtns.forEach(id => {
+                    const btn = document.getElementById(id);
+                    if(btn) {
+                        btn.classList.remove(...activeBtnClasses);
+                        btn.classList.add('text-gray-600');
+                    }
+                });
+                document.getElementById('search-popup').classList.add('hidden');
+                document.getElementById('filter-popup').classList.add('hidden');
+                document.getElementById('view-popup').classList.add('hidden');
+                
                 tab.page();
             });
-        } else {
-            console.error(`Tab button #${tab.id} not found`);
         }
     });
- }
+}
 
 
-// --- ★ 機能追加: カスタム確認モーダル（クッション） ---
+// --- カスタム確認モーダル（クッション） ---
 async function showCustomConfirm(text, okLabel = 'OK', hideCancel = false) {
     return new Promise((resolve) => {
         const modal = document.getElementById('custom-confirm-modal');
@@ -855,10 +905,10 @@ function hideCustomConfirm() {
 }
 
 
-// --- ★ 機能追加: 背景設定 ---
+// --- 背景設定 ---
 function applyBackgroundSettings() {
     const defaultSettings = {
-        bgColor: '#f3f4f6', // bg-gray-100
+        bgColor: '#f3f4f6', 
         bgImage: '',
         bgOpacity: 0.1
     };
@@ -890,16 +940,10 @@ function applyBackgroundSettings() {
     }
 }
 
-// --- ★★★ 新設: データ不整合を解消するお掃除関数 ★★★ ---
-/**
- * * 指定された鳥の名前リストに基づき、全イベントを再スキャンし、
- * 各鳥の「最新の観察イベントID (lastObservedEventId)」を更新する。
- * イベント削除時や、イベントから鳥を削除した時に呼び出す。
- * * @param {string[]} birdNames - 再スキャン対象の鳥の名前の配列
- */
+// --- データ不整合を解消するお掃除関数 ---
 async function rescanLatestEventForBirds(birdNames) {
     let birdDataNeedsSave = false;
-    const birdNameSet = new Set(birdNames); // 重複を削除
+    const birdNameSet = new Set(birdNames); 
 
     console.log(`[Rescan] ${birdNameSet.size}羽の鳥の最新イベントを再スキャンします...`);
 
@@ -907,27 +951,21 @@ async function rescanLatestEventForBirds(birdNames) {
         const birdInDB = birdDatabase.find(b => b.name === birdName);
         if (!birdInDB) continue;
 
-        // --- この鳥が含まれる全イベントから、日付が最新のものを探す ---
         let newLatestEvent = null;
-        let latestDate = ''; // '2025-01-01T12:00' のような文字列比較
+        let latestDate = ''; 
 
-        for (const event of birdEvents) { // (削除済みのイベントは含まれていない birdEvents)
-            // このイベントに、スキャン対象の鳥が含まれているか
+        for (const event of birdEvents) { 
             const isBirdInEvent = event.observedBirds.some(b => b.name === birdName);
             
             if (isBirdInEvent) {
-                // 日付が設定されており、それが今までの最新日付よりも新しいか
                 if (event.dateTime && event.dateTime > latestDate) {
                     latestDate = event.dateTime;
                     newLatestEvent = event;
                 }
             }
         }
-        // --- スキャン完了 ---
 
-        // --- birdDatabase を更新 ---
         if (newLatestEvent) {
-            // 新しい最新イベントが見つかった
             if (birdInDB.lastObservedEventId !== newLatestEvent.id) {
                 birdInDB.lastObservedEventId = newLatestEvent.id;
                 birdInDB.observed_date = newLatestEvent.dateTime;
@@ -936,9 +974,8 @@ async function rescanLatestEventForBirds(birdNames) {
                 console.log(`[Rescan] ${birdName}: 最新イベントを ${newLatestEvent.name} に更新`);
             }
         } else {
-            // この鳥のイベントが一つも見つからなかった
             if (birdInDB.lastObservedEventId !== null && birdInDB.lastObservedEventId !== '') {
-                birdInDB.lastObservedEventId = ''; // or null
+                birdInDB.lastObservedEventId = ''; 
                 birdInDB.observed_date = '';
                 birdInDB.observed_location = '';
                 birdDataNeedsSave = true;
@@ -948,37 +985,25 @@ async function rescanLatestEventForBirds(birdNames) {
     }
 
     if (birdDataNeedsSave) {
-        await saveDatabase(); // app.js の関数
+        await saveDatabase(); 
         console.log('[Rescan] 図鑑DBの更新が完了しました。');
     }
 }
 
 
-// --- ★★★ 新設: Cropper.js のモーダル制御 ★★★ ---
-// (settings.js から app.js に移動)
-let cropperInstance = null; // Cropperのインスタンスを保持する変数
+// --- Cropper.js のモーダル制御 ---
+let cropperInstance = null; 
 
-/**
- * 画像切り抜きモーダルを表示する
- * @param {string | null} imageSrc - 編集する画像(Base64) or null(削除の場合)
- * @param {function(string):void} saveCallback - ★ 完了時にBase64を返すコールバック
- * @param {function():void | null} deleteCallback - ★ 削除時に実行するコールバック (nullなら削除ボタン非表示)
- */
-// ★ 修正: 引数を (imageSrc, saveCallback, deleteCallback) に変更
-// --- トリミングモーダル表示関数 ---
 function showCropperModal(imageUrl, onSave, onDelete = null) { 
-    // 既存のモーダルがあれば削除
     const existingModal = document.getElementById('cropper-modal');
     if (existingModal) {
         document.body.removeChild(existingModal);
     }
 
-    // モーダルのHTML作成
     const modal = document.createElement('div');
     modal.id = 'cropper-modal';
     modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4';
     
-    // 削除ボタンのHTML (onDeleteがある場合のみ表示)
     const deleteBtnHtml = onDelete 
         ? `<button id="cropper-delete-btn" class="text-red-500 hover:text-red-400 font-bold px-4 py-2">写真を削除</button>` 
         : '';
@@ -1008,31 +1033,28 @@ function showCropperModal(imageUrl, onSave, onDelete = null) {
     const image = document.getElementById('cropper-image');
     let cropper = null;
 
-    // 画像読み込み完了後にCropperを初期化
     image.onload = () => {
         image.style.opacity = 1;
         cropper = new Cropper(image, {
-            aspectRatio: 1, // 正方形に固定 (1:1)
-            viewMode: 1,    // 画像を枠内に収める
+            aspectRatio: 1, 
+            viewMode: 1,    
             dragMode: 'move',
             autoCropArea: 1.0,
             restore: false,
             guides: true,
             center: true,
             highlight: false,
-            cropBoxMovable: false, // クロップボックスを固定
-            cropBoxResizable: false, // クロップボックスサイズ変更不可
+            cropBoxMovable: false, 
+            cropBoxResizable: false, 
             toggleDragModeOnDblclick: false,
         });
     };
     
-    // 2. キャンセルボタンの処理
     const cancelBtn = document.getElementById('cropper-cancel-btn');
     cancelBtn.onclick = () => {
         document.body.removeChild(modal);
     };
     
-    // 3. 削除ボタンの処理
     if (onDelete) {
         const deleteBtn = document.getElementById('cropper-delete-btn');
         if (deleteBtn) {
@@ -1045,28 +1067,24 @@ function showCropperModal(imageUrl, onSave, onDelete = null) {
         }
     }
 
-    // 4. 保存ボタンの処理
     const saveCroppedBtn = document.getElementById('cropper-save-btn');
     saveCroppedBtn.onclick = () => {
         if (!cropper) return;
         
-        // ★★★ ここが重要な修正ポイント（軽量化） ★★★
         const canvas = cropper.getCroppedCanvas({
-            maxWidth: 1024,   // 長辺を1024pxに制限
+            maxWidth: 1024,   
             maxHeight: 1024,
-            fillColor: '#fff', // JPEG変換時に背景が黒くなるのを防ぐため白で塗る
+            fillColor: '#fff', 
             imageSmoothingEnabled: true,
             imageSmoothingQuality: 'high',
         });
         
-        // JPEG形式にして、画質を 0.7 (70%) に落とす
         const base64Image = canvas.toDataURL('image/jpeg', 0.7);
         
         if (onSave) {
             onSave(base64Image);
         }
         
-        // モーダルを閉じて破棄
         document.body.removeChild(modal);
     };
 }
@@ -1087,19 +1105,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         applyBackgroundSettings();
 
         // 5. タブ切り替えのリスナー設定
-        setupTabs(); // ★ ここでタブの設定関数を呼び出す
+        setupTabs(); 
 
-        // 6. グローバルなフォントサイズ適用
+        // 6. ★ ヘッダーボタン連動のリスナー設定
+        setupHeaderActions();
+
+        // 7. グローバルなフォントサイズ適用
         if (appState.settings.fontSize) {
             applyFontSize(appState.settings.fontSize);
         }
 
-        // 7. ポップアップ外クリックの監視
+        // 8. ポップアップ外クリックの監視
+        // (setupHeaderActions内でもclick監視を追加していますが、念のため既存ロジックも残すならここ)
+        // ただし setupHeaderActions で document click を監視しているので、衝突しないよう注意。
+        // closePopupsOnMainTap は activePopup 変数を使っているため、共存させても問題ありません。
         document.body.addEventListener('click', closePopupsOnMainTap);
 
     } catch (e) {
         console.error("App initialization failed:", e);
-        // エラー時はユーザーに通知
         const app = document.getElementById('app');
         if (app) {
             app.innerHTML = `<div class="p-4 text-red-600 font-bold">アプリの起動に失敗しました。<br>${e.message}</div>`;

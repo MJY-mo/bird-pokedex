@@ -1,20 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Interフォントをデフォルトに */
 body {
     font-family: 'Inter', sans-serif;
     overscroll-behavior-y: none; /* iOSでのバウンススクロールを無効化 */
-    /* ★ 修正: 背景色はJSで制御するため、ここでの指定を削除 */
+    user-select: none; /* テキスト長押し選択を無効化（アプリっぽく） */
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    /* 背景色はJSで制御するため、ここでの指定は削除済み */
 }
-.tab-active { @apply border-emerald-500 text-emerald-600; }
-.tab-inactive { @apply border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300; }
 
-/* ★★★ 修正点: ヘッダーの高さ(4rem)分のpadding-topを常に適用 ★★★ */
+/* カスタムスクロールバー (Webkit) */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent; 
+}
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1; 
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8; 
+}
+
+
+/* ★★★ 修正点: タブの視認性向上 (ここを書き換えました) ★★★ */
+.tab-active {
+    color: #047857;           /* text-emerald-700 */
+    background-color: #ecfdf5; /* bg-emerald-50 */
+    border-top: 3px solid #059669; /* border-emerald-600 */
+}
+
+.tab-inactive {
+    color: #6b7280;           /* text-gray-500 */
+    background-color: transparent;
+    border-top: 3px solid transparent; /* 高さを揃えるための透明な線 */
+}
+/* ------------------------------------------------------- */
+
+
+/* ヘッダーの高さ(4rem)分のpadding-topを常に適用 */
 main#app { 
     padding-top: 4rem;
-    padding-bottom: 12rem; 
+    padding-bottom: 12rem; /* フッターに隠れないよう多めに確保 */
 }
-
-/* ★★★ 修正点: 'pt-popup' クラスは不要になったため削除 ★★★ */
-/* main#app.pt-popup { padding-top: 4rem; } */
 
 .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
 .arrow-down { transform: rotate(0deg); transition: transform 0.3s ease-in-out; }
@@ -48,13 +82,12 @@ main#app {
     @apply p-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-100;
 }
 
-
 @keyframes modal-fade-in {
     from { opacity: 0; transform: scale(0.95); }
     to { opacity: 1; transform: scale(1); }
 }
 
-/* --- ★ 機能追加: 背景設定用 --- */
+/* --- 背景設定用 --- */
 #background-overlay {
     position: fixed;
     top: 0;
@@ -69,7 +102,7 @@ main#app {
     transition: background-image 0.3s ease-in-out, opacity 0.3s ease-in-out;
 }
 
-/* --- ★ 機能追加: ライフリスト 勲章マーク --- */
+/* --- ライフリスト 勲章マーク --- */
 .lifer-medal {
     display: inline-block;
     width: 1rem; /* w-4 */
@@ -81,7 +114,12 @@ main#app {
     clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
 }
 
-/* ★★★ 確認モーダルを最前面に表示するための強制スタイル (ここから追加) ★★★ */
+/* 確認モーダルを最前面に表示するための強制スタイル */
 #custom-confirm-modal {
     z-index: 9999 !important; /* Tailwindのz-50よりも高い値に強制 */
+}
+
+/* 画像クロッピングモーダル用 (Cropper.js) - スマホではみ出さないように制御 */
+.cropper-container {
+    max-height: 70vh;
 }

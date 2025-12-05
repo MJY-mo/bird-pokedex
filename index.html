@@ -34,7 +34,10 @@
 
     <header id="header" class="bg-white shadow-md fixed top-0 z-20 w-full max-w-lg mx-auto">
         <div class="container mx-auto px-4 py-3 flex items-center justify-between h-16">
-            <button id="backButton" class="text-emerald-600 hidden w-20 text-left">&lt; 戻る</button>
+            <button id="backButton" class="hidden text-emerald-700 bg-emerald-50 hover:bg-emerald-100 font-bold py-1 px-3 rounded-full border border-emerald-200 transition-colors shadow-sm text-sm">
+                &lt; 戻る
+            </button>
+            
             <h1 id="headerTitle" class="text-xl font-bold text-gray-800 text-center flex-grow">鳥図鑑</h1>
             <div id="headerActions" class="flex items-center space-x-1 w-20 justify-end">
                  <button id="search-toggle-button" class="header-action-button p-2 text-gray-600 hover:text-emerald-600 rounded-lg">
@@ -50,9 +53,9 @@
             </div>
         </div>
         
-        <div id="search-popup" class="popup-panel fixed top-16 z-10 w-full max-w-lg mx-auto bg-white border-t border-gray-200 p-4 hidden"></div>
-        <div id="filter-popup" class="popup-panel fixed top-16 z-10 w-full max-w-lg mx-auto bg-gray-50 border-t border-b border-gray-200 hidden overflow-y-auto" style="max-height: calc(100vh - 4rem);"></div>
-        <div id="view-popup" class="popup-panel fixed top-16 z-10 w-full max-w-lg mx-auto bg-gray-50 border-t border-b border-gray-200 hidden overflow-y-auto" style="max-height: calc(100vh - 4rem);"></div>    </header>
+        <div id="search-popup" class="popup-panel fixed top-16 z-10 w-full max-w-lg mx-auto bg-white border-t border-gray-200 p-4 pb-32 hidden"></div>
+        <div id="filter-popup" class="popup-panel fixed top-16 z-10 w-full max-w-lg mx-auto bg-gray-50 border-t border-b border-gray-200 hidden overflow-y-auto pb-32" style="max-height: calc(100vh - 4rem);"></div>
+        <div id="view-popup" class="popup-panel fixed top-16 z-10 w-full max-w-lg mx-auto bg-gray-50 border-t border-b border-gray-200 hidden overflow-y-auto pb-32" style="max-height: calc(100vh - 4rem);"></div>    </header>
 
     <main id="app" class="container mx-auto max-w-lg p-2"></main>
 
