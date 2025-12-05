@@ -18,12 +18,7 @@ function showListPage() {
         return;
     }
 
-    // ★★★ 修正点: p-4 を追加し、リストの外側に余白を戻す ★★★
     app.innerHTML = `<div id="pokedex-list-container" class="p-4"><div id="pokedex-list"></div><div id="pagination-controls" class="mt-6 flex justify-between items-center"></div></div>`;
-
-    // 余白調整（フッターに隠れないように）
-    // Flexbox構成になったのでpaddingBottomは必須ではありませんが、念のため残しても害はありません
-    // app.style.paddingBottom = '12rem'; 
 
     updateHeader('list'); 
     
@@ -44,12 +39,11 @@ function showListPage() {
     }, 0);
 }
 
-// --- ★★★ 修正点: 検索ポップアップにクリアボタンを追加 ★★★ ---
+// --- 検索ポップアップ ---
 function renderSearchPopup() { 
     const { filterText } = appState.listControls; 
     const filterStatus = getFilterStatus(); 
     
-    // ★ 修正: ラベルを追加
     searchPopup.innerHTML = `
         <div class="relative w-full">
             <label for="searchBox" class="sr-only">鳥を検索</label>
@@ -66,7 +60,6 @@ function renderSearchPopup() {
         const clearBtn = searchPopup.querySelector('#clear-search-btn');
         
         if (searchBox && clearBtn) {
-            // 検索入力時のリスナー
             searchBox.addEventListener('input', (e) => {
                 const newText = e.target.value;
                 appState.listControls.filterText = newText; 
@@ -76,7 +69,7 @@ function renderSearchPopup() {
                 renderSearchSuggestions(getSearchSuggestions(newText)); 
                 saveListControlsState();
                 
-                clearBtn.classList.toggle('hidden', !newText); // テキストがあればボタン表示
+                clearBtn.classList.toggle('hidden', !newText); 
                 
                 const currentStatus = getFilterStatus(); 
                 filterActiveDot.classList.toggle('hidden', !currentStatus.isFiltered);
@@ -84,24 +77,23 @@ function renderSearchPopup() {
                 if(statusElem) statusElem.textContent = currentStatus.isTextFiltered ? '検索中...' : '';
             });
             
-            // クリアボタンのリスナー
             clearBtn.addEventListener('click', () => {
                 appState.listControls.filterText = '';
                 appState.listControls.currentPage = 1;
-                searchBox.value = ''; // 入力欄をクリア
+                searchBox.value = ''; 
                 
                 applyFiltersAndRenderList();
-                renderSearchSuggestions([]); // 候補をクリア
+                renderSearchSuggestions([]); 
                 saveListControlsState();
                 
-                clearBtn.classList.add('hidden'); // 自分を隠す
+                clearBtn.classList.add('hidden'); 
                 
-                updateHeader('list'); // ヘッダーの●を更新
+                updateHeader('list'); 
                 
                 const statusElem = searchPopup.querySelector('#search-status-text'); 
                 if(statusElem) statusElem.textContent = '';
                 
-                searchBox.focus(); // 入力欄にフォーカスを戻す
+                searchBox.focus(); 
             });
 
             if (filterText) renderSearchSuggestions(getSearchSuggestions(filterText));
@@ -111,8 +103,6 @@ function renderSearchPopup() {
         }
     }, 0);
 }
-
-// (getSearchSuggestions は app.js に移動済み想定)
 
 function renderSearchSuggestions(suggestions) { 
     const box = searchPopup.querySelector('#search-suggestions'); if (!box) return; 
@@ -137,12 +127,11 @@ function selectSearchSuggestion(name) {
 function renderFilterPopup() { 
     const { filters, openFilterSection } = appState.listControls; const filterStatus = getFilterStatus(); 
     
-    // ★ 修正: 文言変更
     const filterSections = [
         { id: 'classification', title: '分類 (目)' }, { id: 'type', title: '種類' }, 
-        { id: 'season', title: '観察時期' }, // 「区分」 -> 「観察時期」
+        { id: 'season', title: '観察時期' }, 
         { id: 'habitat', title: '生息地' }, { id: 'size', title: '体サイズ' }, 
-        { id: 'edited', title: '図鑑の編集履歴' } // 「編集あり」 -> 「図鑑の編集履歴」
+        { id: 'edited', title: '図鑑の編集履歴' } 
     ];
     
     const createSelectButtons = (id) => `<div class="mt-3 pt-3 border-t border-gray-200 flex justify-end space-x-2"><button class="select-all-btn text-xs font-medium text-emerald-600 hover:text-emerald-800" data-section="${id}">全選択</button><button class="select-none-btn text-xs font-medium text-gray-500 hover:text-gray-700" data-section="${id}">全解除</button></div>`;
@@ -153,27 +142,15 @@ function renderFilterPopup() {
             case 'classification': isFiltered = filterStatus.isClassificationFiltered; break; case 'type': isFiltered = filterStatus.isTypeFiltered; break;
             case 'season': isFiltered = filterStatus.isSeasonFiltered; break; case 'habitat': isFiltered = filterStatus.isHabitatFiltered; break;
             case 'size': isFiltered = filterStatus.isSizeFiltered; break; 
-            case 'edited': isFiltered = filterStatus.isEditedFiltered || filterStatus.isLiferStatusFiltered; break; // ★ 修正: ライフリストも含む
+            case 'edited': isFiltered = filterStatus.isEditedFiltered || filterStatus.isLiferStatusFiltered; break; 
         }
         const filteredClass = isFiltered ? 'filtered' : ''; let contentHtml = '';
         switch (section.id) {
-            // ★ 修正: id と for を追加 (分類)
             case 'classification': contentHtml = `<div class="p-4"><div class="grid grid-cols-2 gap-2">` + allOrders.map(o => `<label for="filter_order_${o}" class="flex items-center space-x-2"><input type="checkbox" id="filter_order_${o}" name="classification_order" value="${o}" ${filters.classification.orders.includes(o)?'checked':''} class="form-checkbox text-emerald-600 rounded"><span>${o}</span></label>`).join('') + `</div>${createSelectButtons(section.id)}</div>`; break;
-            
-            // ★ 修正: id と for を追加 (種類)
             case 'type': contentHtml = `<div class="p-4"><div class="grid grid-cols-2 gap-2">` + filterableTypes.map(t => `<label for="filter_type_${t}" class="flex items-center space-x-2"><input type="checkbox" id="filter_type_${t}" name="type" value="${t}" ${filters.type.includes(t)?'checked':''} class="form-checkbox text-emerald-600 rounded"><span>${t}</span></label>`).join('') + `</div>${createSelectButtons(section.id)}</div>`; break;
-            
-            // ★ 修正: id と for を追加 (観察時期)
             case 'season': contentHtml = `<div class="p-4"><div class="grid grid-cols-2 gap-2">` + filterableSeasons.map(s => `<label for="filter_season_${s}" class="flex items-center space-x-2"><input type="checkbox" id="filter_season_${s}" name="season" value="${s}" ${filters.season.includes(s)?'checked':''} class="form-checkbox text-emerald-600 rounded"><span>${s}</span></label>`).join('') + `</div>${createSelectButtons(section.id)}</div>`; break;
-            
-            // ★ 修正: id と for を追加 (生息地)
             case 'habitat': contentHtml = `<div class="p-4"><div class="grid grid-cols-2 gap-2">` + habitatKeys.map(h => `<label for="filter_habitat_${h.key}" class="flex items-center space-x-2"><input type="checkbox" id="filter_habitat_${h.key}" name="habitat" value="${h.key}" ${filters.habitat.includes(h.key)?'checked':''} class="form-checkbox text-emerald-600 rounded"><span>${h.label}</span></label>`).join('') + `</div>${createSelectButtons(section.id)}</div>`; break;
-            
-            // ★ 修正: id と for を追加 (サイズ)
             case 'size': contentHtml = `<div class="p-4"><div class="grid grid-cols-2 gap-2">` + Object.entries(sizeRanges).map(([k,r]) => `<label for="filter_size_${k}" class="flex items-center space-x-2"><input type="checkbox" id="filter_size_${k}" name="size" value="${k}" ${filters.size.includes(k)?'checked':''} class="form-checkbox text-emerald-600 rounded"><span>${r.label}</span></label>`).join('') + `</div>${createSelectButtons(section.id)}</div>`; break;
-            
-            
-            // ★ 修正: 「図鑑の編集履歴」セクションのUI (id と for を追加)
             case 'edited': 
                 const liferFilters = [
                     { key: 'seen', label: '目視' },
@@ -210,11 +187,9 @@ function renderFilterPopup() {
         return `<div class="border-b border-gray-200"><button class="accordion-header w-full flex justify-between items-center p-4 text-left font-semibold text-gray-700 ${filteredClass}" data-section="${section.id}"><span>${section.title}</span><svg class="h-5 w-5 ${isOpen?'arrow-up':'arrow-down'}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg></button><div class="accordion-content bg-white" style="${isOpen?'max-height: 500px;':''}">${contentHtml}</div></div>`;
     }).join('');
 
-    // ★ 修正: DOMの描画が完了するのを待つ
     setTimeout(() => {
-
-        filterPopup.querySelectorAll('.accordion-header').forEach(btn => btn.addEventListener('click', (event) => { // ★ 1. (event) を追加
-            event.stopPropagation(); // ★ 2. この1行を追加して、イベントの伝播を止める
+        filterPopup.querySelectorAll('.accordion-header').forEach(btn => btn.addEventListener('click', (event) => { 
+            event.stopPropagation(); 
             const id = btn.dataset.section; appState.listControls.openFilterSection = (appState.listControls.openFilterSection === id) ? null : id; renderFilterPopup(); 
         }));
       
@@ -231,7 +206,6 @@ function renderFilterPopup() {
             }));
         });
         
-        // ★ 修正: 'edited' のラジオボタンリスナー
         ['edited'].forEach(name => { 
             filterPopup.querySelectorAll(`input[name="${name}"]`).forEach(radio => radio.addEventListener('change', (e) => {
                 appState.listControls.filters[name] = e.target.value; appState.listControls.currentPage = 1;
@@ -239,12 +213,11 @@ function renderFilterPopup() {
             }));
         });
         
-        // ★ 機能追加: ライフリストのセレクトボックスリスナー
         ['lifer_seen', 'lifer_heard', 'lifer_photo', 'lifer_video'].forEach(name => {
             const select = filterPopup.querySelector(`select[name="${name}"]`);
             if (select) {
                 select.addEventListener('change', (e) => {
-                    const key = name.split('_')[1]; // 'seen', 'heard', ...
+                    const key = name.split('_')[1]; 
                     appState.listControls.filters.lifer[key] = e.target.value;
                     appState.listControls.currentPage = 1;
                     applyFiltersAndRenderList(); saveListControlsState(); updateHeader('list');
@@ -271,7 +244,6 @@ function renderFilterPopup() {
 } 
 
 // --- ポップアップ描画 (図鑑: 表示切替) ---
-// (変更なし)
 function renderViewPopup() { 
     const { sort, viewMode } = appState.listControls;
     const sortOptions = [
@@ -281,7 +253,6 @@ function renderViewPopup() {
     ];
     const viewOptions = [ { value: 'tile', label: 'タイル表示 (写真あり)' }, { value: 'list', label: 'リスト表示 (名前のみ)' } ];
     
-    // ★ 修正: id と for を追加
     viewPopup.innerHTML = `<div class="p-4 space-y-4"><div><h3 class="text-sm font-semibold text-gray-500 mb-2">並び替え</h3><div class="space-y-2">${sortOptions.map(o => `<label for="sort_${o.value}" class="flex items-center space-x-2"><input type="radio" id="sort_${o.value}" name="sort" value="${o.value}" ${sort===o.value?'checked':''} class="form-radio text-emerald-600"><span>${o.label}</span></label>`).join('')}</div></div><div class="pt-4 border-t border-gray-200"><h3 class="text-sm font-semibold text-gray-500 mb-2">表示形式</h3><div class="space-y-2">${viewOptions.map(o => `<label for="view_${o.value}" class="flex items-center space-x-2"><input type="radio" id="view_${o.value}" name="viewMode" value="${o.value}" ${viewMode===o.value?'checked':''} class="form-radio text-emerald-600"><span>${o.label}</span></label>`).join('')}</div></div></div>`;
     
     setTimeout(() => {
@@ -325,7 +296,6 @@ function applyFiltersAndRenderList() {
                           filters.size.includes(birdSizeRange); 
         }
         
-        // ★ 修正: 「編集あり/なし」のロジック
         const isEdited = (typeof bird.photo_url === 'string' && bird.photo_url.startsWith('data:image')) ||
                          (typeof bird.voice_url === 'string' && bird.voice_url.startsWith('data:audio')) ||
                          (bird.description && bird.description.length > 0);
@@ -333,7 +303,6 @@ function applyFiltersAndRenderList() {
                               (filters.edited === 'yes' && isEdited) ||
                               (filters.edited === 'no' && !isEdited);
         
-        // ★ 機能追加: 「ライフリスト」のロジック (詳細版)
         const matchesLiferSeen = filters.lifer.seen === 'any' ||
                                  (filters.lifer.seen === 'yes' && bird.lifer_seen) ||
                                  (filters.lifer.seen === 'no' && !bird.lifer_seen);
@@ -352,7 +321,6 @@ function applyFiltersAndRenderList() {
                matchesLiferSeen && matchesLiferHeard && matchesLiferPhoto && matchesLiferVideo; 
     });
     
-    // (並び替えロジックは変更なし)
     const jaCollator = new Intl.Collator('ja'); 
     const getSizeNum = (sizeCm) => { const sizeString = String(sizeCm || ''); if (sizeString.includes('-')) { const numbers = sizeString.match(/(\d+(\.\d+)?)/g); if (numbers && numbers.length >= 2) { const num1 = parseFloat(numbers[0]); const num2 = parseFloat(numbers[1]); if (!isNaN(num1) && !isNaN(num2)) { return (num1 + num2) / 2; } } } const match = sizeString.match(/(\d+(\.\d+)?)/); const size = match ? parseFloat(match[1]) : NaN; return isNaN(size) ? Infinity : size; };
     const getRarityNum = (rarity) => { const r = parseInt(rarity, 10); return isNaN(r) ? 99 : r; };
@@ -381,13 +349,11 @@ function applyFiltersAndRenderList() {
         if (viewMode === 'tile') {
             listElement.className = 'grid grid-cols-2 gap-4';
             listElement.innerHTML = paginatedList.map(bird => {
-                // ★ 機能追加: ライフリスト勲章
                 const isLifer = bird.lifer_seen || bird.lifer_heard || bird.lifer_photo || bird.lifer_video;
                 const liferMedal = isLifer ? '<span class="lifer-medal" title="ライフリスト登録済み"></span>' : '';
             
                 const placeholderUrl = './favicon3.png';
                 const imageUrl = bird.photo_url || placeholderUrl;
-                // 画像がない場合は薄くするクラス(opacity-30)をつける
                 const opacityClass = bird.photo_url ? '' : 'opacity-30'; 
 
                 const seasonTag = getSeasonTag(bird.season);
@@ -413,7 +379,6 @@ function applyFiltersAndRenderList() {
         } else {
             listElement.className = 'bg-white rounded-lg shadow overflow-hidden divide-y divide-gray-200';
             listElement.innerHTML = paginatedList.map(bird => {
-                // ★ 機能追加: ライフリスト勲章
                 const isLifer = bird.lifer_seen || bird.lifer_heard || bird.lifer_photo || bird.lifer_video;
                 const liferMedal = isLifer ? '<span class="lifer-medal" title="ライフリスト登録済み"></span>' : '';
 
@@ -431,7 +396,6 @@ function applyFiltersAndRenderList() {
 }
 
 // --- ページネーション描画 ---
-// (変更なし)
 function renderPaginationControls(listContainer, totalItems, totalPages) { 
     const controlsElement = listContainer.querySelector('#pagination-controls');
     if (!controlsElement) {
@@ -491,7 +455,6 @@ function renderPaginationControls(listContainer, totalItems, totalPages) {
 }
 
 // --- 詳細画面 (閲覧) ---
-// (変更なし)
 function showDetailPage(birdId) { 
     appState.currentPage = 'detail'; appState.currentBirdId = birdId; appState.isEditing = false;
     const bird = birdDatabase.find(b => b.id === birdId); if (!bird) { showListPage(); return; } currentBird = bird; 
@@ -501,21 +464,16 @@ function showDetailPage(birdId) {
     const specialTags = (bird.special_notes || '').split(';').filter(Boolean).map(note => `<span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-100 text-red-700">${escapeHTML(note)}</span>`).join(' ');
     const placeholderUrl = './favicon3.png';
     const imageUrl = bird.photo_url || placeholderUrl;
-    // 画像がない場合は薄くするクラス(opacity-30)をつける
     const opacityClass = bird.photo_url ? '' : 'opacity-30';
 
-    // ★★★ 以下を丸ごと追加 (442行目〜450行目) ★★★
-    // (443行目)
     const isPlaceholder = !bird.photo_url;
     
-    // ★ 修正: 常にボタンを表示。アイコンをプレースホルダーか否かで変更
     const buttonIcon = isPlaceholder 
-        ? `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>` // 「+」アイコン
-        : `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z"></path></svg>`; // 「鉛筆」アイコン
+        ? `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>` 
+        : `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z"></path></svg>`; 
     
     const buttonTitle = isPlaceholder ? "写真を追加" : "写真を再編集";
     
-    // ★ 修正: if分岐を削除
     const editPhotoBtnHtml = `
         <button id="edit-photo-overlay-btn" class="absolute top-2 right-2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-colors" title="${buttonTitle}">
             ${buttonIcon}
@@ -552,7 +510,6 @@ function showDetailPage(birdId) {
 
     let voiceButtonHtml = '';
     if (bird.voice_url) {
-        // ★★★ 修正: アイコンを events.js と同じものに変更 ★★★
         voiceButtonHtml = `
             <button id="play-voice-btn" class="text-emerald-600 hover:text-emerald-800 p-2 rounded-full hover:bg-emerald-100">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
@@ -626,42 +583,36 @@ function showDetailPage(birdId) {
     updateHeader('detail', bird.name);
 
     setTimeout(() => {
-        // ★ 修正: 'editButton' -> 'edit-modal-open-btn'
         const editModalOpenBtn = document.getElementById('edit-modal-open-btn');
         if (editModalOpenBtn) {
-            // ★ 修正: 呼び出す関数名を変更
             editModalOpenBtn.onclick = () => renderDetailEditPageAsModal(birdId);
         } else {
             console.error("Edit modal open button not found on detail page.");
         }
 
-        // ★ 修正: 'edit-photo-overlay-btn' は常に存在するため、if(!isPlaceholder)を削除
         const editPhotoBtn = document.getElementById('edit-photo-overlay-btn');
         if (editPhotoBtn) {
             editPhotoBtn.onclick = () => {
                 
-                // 共通の保存コールバック関数
                 const saveCroppedImage = async (base64Image) => {
                     const idx = birdDatabase.findIndex(b => b.id === birdId);
                     if (idx > -1) {
                         birdDatabase[idx].photo_url = base64Image;
-                        await saveDatabase(); // DBに保存
-                        showDetailPage(birdId); // ページを再描画して反映
+                        await saveDatabase(); 
+                        showDetailPage(birdId); 
                     }
                 };
                 
-                // ★ 追加: 削除コールバック関数
                 const deleteCroppedImage = async () => {
                     const idx = birdDatabase.findIndex(b => b.id === birdId);
                     if (idx > -1) {
-                        birdDatabase[idx].photo_url = ''; // ★ 画像を削除
-                        await saveDatabase(); // DBに保存
-                        showDetailPage(birdId); // ページを再描画して反映
+                        birdDatabase[idx].photo_url = ''; 
+                        await saveDatabase(); 
+                        showDetailPage(birdId); 
                     }
                 };
 
                 if (isPlaceholder) {
-                    // 1. プレースホルダーの場合: ファイル選択をトリガー
                     const fileInput = document.createElement('input');
                     fileInput.type = 'file';
                     fileInput.accept = 'image/*';
@@ -669,24 +620,19 @@ function showDetailPage(birdId) {
                         const file = e.target.files[0];
                         if (!file) return;
                         
-                        // (pokedex.js/renderDetailEditPageAsModal からファイルサイズチェックをコピー)
-                        if (file.size > 5 * 1024 * 1024) { // 5MB 制限
+                        if (file.size > 5 * 1024 * 1024) { 
                             showCustomConfirm("画像サイズが5MBを超えています。5MB以下のファイルを選択してください。", "OK", true);
                             return;
                         }
                         
                         const reader = new FileReader();
                         reader.onload = (event) => {
-                            // 2. 読み込んだ画像をCropperに渡す
-                            // ★ 修正: 第3引数に null (削除なし) を渡す
                             showCropperModal(event.target.result, saveCroppedImage, null);
                         };
                         reader.readAsDataURL(file);
                     };
                     fileInput.click();
                 } else {
-                    // 1. 既存画像の場合: そのままCropperに渡す
-                    // ★ 修正: 第3引数に deleteCroppedImage (削除あり) を渡す
                     showCropperModal(bird.photo_url, saveCroppedImage, deleteCroppedImage);
                 }
             };
@@ -695,9 +641,6 @@ function showDetailPage(birdId) {
         if (bird.lastObservedEventId) {
             const latestEventLink = document.getElementById('latest-event-link');
             if (latestEventLink) {
-                // ★★★ 循環参照エラーの修正: handleGoToEvent は events.js に依存するため、
-                // この関数は events.js が読み込まれた後に呼び出す必要がある。
-                // (index.html の読み込み順で制御)
                 latestEventLink.onclick = () => handleGoToEvent(bird.lastObservedEventId);
             }
         }
@@ -721,32 +664,25 @@ function showDetailPage(birdId) {
 
 // --- 詳細画面 (編集 - モーダル版) ---
 function renderDetailEditPageAsModal(birdId) { 
-    // appState.currentPage = 'edit'; // メインページのStateは変更しない
-    // appState.isEditing = true;     // メインページのStateは変更しない
-
     const bird = birdDatabase.find(b => b.id === birdId); 
     if (!bird) { showListPage(); return; } 
-    currentBird = bird; // handleSave で参照するため
+    currentBird = bird; 
     
     let newBase64Image = null; 
     let newBase64Voice = null; 
     
-    // --- ★ 追加: モーダルのDOMを取得 ---
     const modal = document.getElementById('edit-form-modal');
     const modalContent = document.getElementById('edit-form-content-area');
     const modalTitle = document.getElementById('edit-form-title');
     const modalCancelBtn = document.getElementById('edit-form-cancel-btn');
-    const modalSaveBtn = document.getElementById('edit-form-save-btn'); // ヘッダーの保存ボタン
 
     if (!modal || !modalContent || !modalTitle || !modalCancelBtn) {
         console.error("Edit modal elements not found!");
         return;
     }
 
-    // モーダルヘッダーのタイトルを設定
     modalTitle.textContent = `編集: ${bird.name}`;
 
-    // --- (フォームのHTML定義) ---
     const rarityOptions = [ { value: '', label: '未設定' }, { value: '1', label: '★☆☆☆☆' }, { value: '2', label: '★★☆☆☆' }, { value: '3', label: '★★★☆☆' }, { value: '4', label: '★★★★☆' }, { value: '5', label: '★★★★★' } ];
     const placeholderUrl = './favicon3.png';
     const currentImageUrl = bird.photo_url || placeholderUrl;
@@ -792,7 +728,6 @@ function renderDetailEditPageAsModal(birdId) {
         </div>
     `;
 
-    // ★ 修正: modalContent.innerHTML にフォームを描画
     modalContent.innerHTML = `
         <div class="bg-white rounded-lg shadow p-4 space-y-4 m-2">
             <div class="space-y-2">
@@ -832,14 +767,11 @@ function renderDetailEditPageAsModal(birdId) {
         </div>
     `;
     
-    // スクロール位置をリセット
     modalContent.scrollTop = 0;
 
-    // ★ 修正: リスナー設定をモーダル内で行う
     setTimeout(() => {
         const editForm = document.getElementById('editForm');
         
-        // --- (ここから 713〜776行目 の音声リスナー設定をそのままコピー) ---
         const voiceInput = document.getElementById('edit_voice');
         const voicePreview = document.getElementById('voice_preview');
         const removeVoiceBtn = document.getElementById('remove_voice_btn');
@@ -852,7 +784,7 @@ function renderDetailEditPageAsModal(birdId) {
                     newBase64Voice = null;
                     return;
                 }
-                if (file.size > 10 * 1024 * 1024) { // 10MB 制限
+                if (file.size > 10 * 1024 * 1024) { 
                     showCustomConfirm("音声サイズが10MBを超えています。10MB以下のファイルを選択してください。", "OK", true); 
                     e.target.value = null;
                     newBase64Voice = null;
@@ -897,7 +829,6 @@ function renderDetailEditPageAsModal(birdId) {
             };
         }
         
-        // --- フォーム送信（保存）時の処理 ---
         const handleFormSubmit = async (event) => {
             if (event) event.preventDefault();
             await handleSave(editForm, newBase64Voice); 
@@ -907,32 +838,20 @@ function renderDetailEditPageAsModal(birdId) {
             editForm.onsubmit = handleFormSubmit;
         }
 
-        // --- ★ 追加: ヘッダーの「保存」ボタンと連携 ---
-        if (modalSaveBtn) {
-            // クローンしてリスナー重複防止
-            const newSaveBtn = modalSaveBtn.cloneNode(true);
-            modalSaveBtn.parentNode.replaceChild(newSaveBtn, modalSaveBtn);
-            newSaveBtn.onclick = () => handleFormSubmit(null); // nullを渡してイベントデフォルト防止をスキップ
-        }
-
     }, 0);
 
-    // ★ 追加: モーダルの「戻る」ボタンリスナー
-    // (リスナーが重複しないよう、毎回新しいノードで設定)
     const newCancelBtn = modalCancelBtn.cloneNode(true);
     modalCancelBtn.parentNode.replaceChild(newCancelBtn, modalCancelBtn);
     newCancelBtn.onclick = () => {
-        modal.classList.add('hidden'); // モーダルを閉じる
-        modalContent.innerHTML = '';    // 中身を掃除
+        modal.classList.add('hidden'); 
+        modalContent.innerHTML = '';    
     };
     
-    // ★ 追加: モーダルを表示
     modal.classList.remove('hidden');
 }
 
 // --- 編集保存 ---
-// ★ 修正: handleSave 関数を、モーダルを閉じるように修正
-async function handleSave(formElement, newBase64Voice) { // 引数を form 要素そのものに変更
+async function handleSave(formElement, newBase64Voice) { 
     
     const formData = new FormData(formElement);
     const birdId = appState.currentBirdId;
@@ -943,10 +862,8 @@ async function handleSave(formElement, newBase64Voice) { // 引数を form 要�
         return;
     }
 
-    // 1. メモリ上の birdDatabase 配列を更新
     LOCAL_COLUMNS.forEach(key => { 
         if (formData.has(key)) {
-            // ★ 修正: observed_date, observed_location, photo_url, voice_url, lifer_... 以外を保存
             if (key !== 'photo_url' && key !== 'voice_url' && 
                 key !== 'observed_date' && key !== 'observed_location' &&
                 !key.startsWith('lifer_')) {
@@ -956,13 +873,10 @@ async function handleSave(formElement, newBase64Voice) { // 引数を form 要�
     });
     
     
-    // 3. ★ 機能追加: 音声データを処理
     if (newBase64Voice !== null) {
         birdDatabase[idx]['voice_url'] = newBase64Voice;
     }
     
-    // 4. ★ 機能追加: ライフリストのチェックボックスの値を保存
-    // (formData.get() はチェックなしの場合 null になるため、.checked で見る)
     birdDatabase[idx]['lifer_seen'] = formElement.querySelector('#edit_lifer_seen').checked;
     birdDatabase[idx]['lifer_heard'] = formElement.querySelector('#edit_lifer_heard').checked;
     birdDatabase[idx]['lifer_photo'] = formElement.querySelector('#edit_lifer_photo').checked;
@@ -970,46 +884,35 @@ async function handleSave(formElement, newBase64Voice) { // 引数を form 要�
 
 
     try {
-        // 5. IndexedDB に保存
         await saveDatabase(); 
         
-        // ★ 修正: モーダルを閉じる
         const modal = document.getElementById('edit-form-modal');
         const modalContent = document.getElementById('edit-form-content-area');
         if (modal) modal.classList.add('hidden');
-        if (modalContent) modalContent.innerHTML = ''; // 掃除
+        if (modalContent) modalContent.innerHTML = ''; 
         
-        // 6. 詳細ページを再描画して反映
         showDetailPage(birdId);
         
     } catch (error) {
         console.error("Failed to save bird data:", error);
-        showCustomConfirm("データの保存に失敗しました。", "OK", true); // ★ アラート修正
+        showCustomConfirm("データの保存に失敗しました。", "OK", true); 
     }
 }
-/**
- * ★ 機能追加: IDからイベントを探して詳細ページに飛ぶ
- */
+
 function handleGoToEvent(eventId) {
     if (!eventId) return;
     
-    // 1. イベントIDから、birdEvents 配列内のインデックスを探す
     const eventIndex = birdEvents.findIndex(e => e.id === eventId);
     
     if (eventIndex > -1) {
-        // 2. タブを「イベント」に切り替える
         document.querySelectorAll('.tab-button').forEach(btn => btn.classList.replace('tab-active', 'tab-inactive'));
         const eventsTab = document.getElementById('tab-events');
         if (eventsTab) {
             eventsTab.classList.replace('tab-inactive', 'tab-active');
         }
         
-        // 3. イベント詳細ページを表示 (events.js の関数)
-        // ★★★ 循環参照エラーの修正: この関数は events.js が読み込まれた後に呼び出す必要がある。
-        // (index.html の読み込み順で制御)
         showEventDetail(eventIndex);
 
-        // 4. ページトップにスクロール
         window.scrollTo(0, 0); 
     } else {
         console.warn(`Event with ID ${eventId} not found.`);

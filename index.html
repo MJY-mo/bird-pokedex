@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>BLNCR鳥図鑑</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -32,7 +32,7 @@
 
 </head>
 
-<body class="flex flex-col h-dvh w-screen bg-gray-100 text-gray-900 overflow-hidden">
+<body class="flex flex-col fixed inset-0 h-dvh w-screen bg-gray-100 text-gray-900 overflow-hidden overscroll-none">
 
     <div id="background-overlay"></div>
 
@@ -62,7 +62,7 @@
         <div id="view-popup" class="popup-panel fixed top-16 z-10 w-full max-w-lg mx-auto bg-gray-50 border-t border-b border-gray-200 hidden overflow-y-auto" style="max-height: calc(100vh - 4rem);"></div>
     </header>
 
-    <main id="app" class="container mx-auto max-w-lg p-2 flex-1 overflow-y-auto"></main>
+    <main id="app" class="container mx-auto max-w-lg p-2 flex-1 overflow-y-auto overscroll-contain"></main>
 
     <nav class="bg-white border-t border-gray-200 flex-none w-full max-w-lg mx-auto h-16 flex justify-around items-center z-30">
         
@@ -124,11 +124,7 @@
                     &lt; 戻る
                 </button>
                 <h1 id="edit-form-title" class="text-xl font-bold text-gray-800 text-center flex-grow">編集</h1>
-                <div class="w-20 text-right">
-                    <button id="edit-form-save-btn" class="text-white bg-emerald-600 hover:bg-emerald-700 font-bold py-1 px-3 rounded-full shadow-sm text-sm">
-                        保存
-                    </button>
-                </div>
+                <div class="w-20 text-right"></div>
             </div>
         </header>
         
