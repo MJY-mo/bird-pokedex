@@ -5,11 +5,10 @@
 /* Interフォントをデフォルトに */
 body {
     font-family: 'Inter', sans-serif;
-    overscroll-behavior-y: none; /* iOSでのバウンススクロールを無効化 */
-    user-select: none; /* テキスト長押し選択を無効化（アプリっぽく） */
+    /* overscroll-behavior-y: none; を削除 */
+    user-select: none;
     -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
-    /* 背景色はJSで制御するため、ここでの指定は削除済み */
 }
 
 /* カスタムスクロールバー (Webkit) */
@@ -86,7 +85,7 @@ main#app {
 }
 
 /* ★追加: 絞り込み画面の最後の項目（編集履歴）が開いた時だけ下部に余白を作る */
-#filter-popup > div:last-child .accordion-content {
+#filter-popup > div:last-child .accordion-content > div {
     padding-bottom: 8rem; 
 }
 
