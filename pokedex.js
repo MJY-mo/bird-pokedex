@@ -9,7 +9,7 @@ function showListPage() {
         updateHeader('list', 'エラー'); 
         return;
     } else if (!birdDatabase || birdDatabase.length === 0) {
-         if (GITHUB_CSV_URL.includes('[YOUR_USERNAME]')) {
+         if (typeof GITHUB_CSV_URL !== 'undefined' && GITHUB_CSV_URL.includes('[YOUR_USERNAME]')) {
             app.innerHTML = `<div class="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded-lg shadow" role="alert"><strong class="font-bold">初期設定が必要です</strong><span class="block sm:inline">アプリのURL設定が完了していません。「設定」タブでURLを確認してください。</span></div>`;
         } else {
              app.innerHTML = `<div class="bg-white rounded-lg shadow p-6 text-center"><h2 class="text-xl font-semibold mb-4">ようこそ</h2><p class="text-gray-600">図鑑データが空です。「設定」タブから「今すぐ同期する」ボタンを押してください。</p></div>`;
@@ -21,7 +21,9 @@ function showListPage() {
     // ★★★ 修正点: p-4 を追加し、リストの外側に余白を戻す ★★★
     app.innerHTML = `<div id="pokedex-list-container" class="p-4"><div id="pokedex-list"></div><div id="pagination-controls" class="mt-6 flex justify-between items-center"></div></div>`;
 
-    app.style.paddingBottom = '12rem';
+    // 余白調整（フッターに隠れないように）
+    // Flexbox構成になったのでpaddingBottomは必須ではありませんが、念のため残しても害はありません
+    // app.style.paddingBottom = '12rem'; 
 
     updateHeader('list'); 
     
@@ -110,7 +112,7 @@ function renderSearchPopup() {
     }, 0);
 }
 
-// (getSearchSuggestions は app.js に移動済み)
+// (getSearchSuggestions は app.js に移動済み想定)
 
 function renderSearchSuggestions(suggestions) { 
     const box = searchPopup.querySelector('#search-suggestions'); if (!box) return; 
@@ -385,7 +387,7 @@ function applyFiltersAndRenderList() {
             
                 const placeholderUrl = './favicon3.png';
                 const imageUrl = bird.photo_url || placeholderUrl;
-// 画像がない場合は薄くするクラス(opacity-30)をつける
+                // 画像がない場合は薄くするクラス(opacity-30)をつける
                 const opacityClass = bird.photo_url ? '' : 'opacity-30'; 
 
                 const seasonTag = getSeasonTag(bird.season);
@@ -499,11 +501,11 @@ function showDetailPage(birdId) {
     const specialTags = (bird.special_notes || '').split(';').filter(Boolean).map(note => `<span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-100 text-red-700">${escapeHTML(note)}</span>`).join(' ');
     const placeholderUrl = './favicon3.png';
     const imageUrl = bird.photo_url || placeholderUrl;
-// 画像がない場合は薄くするクラス(opacity-30)をつける
+    // 画像がない場合は薄くするクラス(opacity-30)をつける
     const opacityClass = bird.photo_url ? '' : 'opacity-30';
 
     // ★★★ 以下を丸ごと追加 (442行目〜450行目) ★★★
-// (443行目)
+    // (443行目)
     const isPlaceholder = !bird.photo_url;
     
     // ★ 修正: 常にボタンを表示。アイコンをプレースホルダーか否かで変更
@@ -633,7 +635,7 @@ function showDetailPage(birdId) {
             console.error("Edit modal open button not found on detail page.");
         }
 
-// ★ 修正: 'edit-photo-overlay-btn' は常に存在するため、if(!isPlaceholder)を削除
+        // ★ 修正: 'edit-photo-overlay-btn' は常に存在するため、if(!isPlaceholder)を削除
         const editPhotoBtn = document.getElementById('edit-photo-overlay-btn');
         if (editPhotoBtn) {
             editPhotoBtn.onclick = () => {
@@ -689,7 +691,7 @@ function showDetailPage(birdId) {
                 }
             };
         }
-     
+      
         if (bird.lastObservedEventId) {
             const latestEventLink = document.getElementById('latest-event-link');
             if (latestEventLink) {
@@ -717,10 +719,7 @@ function showDetailPage(birdId) {
     }, 0);
 }
 
-// --- 詳細画面 (編集) ---
-// (変更なし)
-// --- 詳細画面 (編集) ---
-// ★★★ 修正: ページ全体を書き換えるのではなく、モーダルとして表示する関数に変更 ★★★
+// --- 詳細画面 (編集 - モーダル版) ---
 function renderDetailEditPageAsModal(birdId) { 
     // appState.currentPage = 'edit'; // メインページのStateは変更しない
     // appState.isEditing = true;     // メインページのStateは変更しない
@@ -737,6 +736,7 @@ function renderDetailEditPageAsModal(birdId) {
     const modalContent = document.getElementById('edit-form-content-area');
     const modalTitle = document.getElementById('edit-form-title');
     const modalCancelBtn = document.getElementById('edit-form-cancel-btn');
+    const modalSaveBtn = document.getElementById('edit-form-save-btn'); // ヘッダーの保存ボタン
 
     if (!modal || !modalContent || !modalTitle || !modalCancelBtn) {
         console.error("Edit modal elements not found!");
@@ -746,7 +746,7 @@ function renderDetailEditPageAsModal(birdId) {
     // モーダルヘッダーのタイトルを設定
     modalTitle.textContent = `編集: ${bird.name}`;
 
-    // --- (フォームのHTML定義は、元の関数からそのままコピー) ---
+    // --- (フォームのHTML定義) ---
     const rarityOptions = [ { value: '', label: '未設定' }, { value: '1', label: '★☆☆☆☆' }, { value: '2', label: '★★☆☆☆' }, { value: '3', label: '★★★☆☆' }, { value: '4', label: '★★★★☆' }, { value: '5', label: '★★★★★' } ];
     const placeholderUrl = './favicon3.png';
     const currentImageUrl = bird.photo_url || placeholderUrl;
@@ -791,12 +791,10 @@ function renderDetailEditPageAsModal(birdId) {
             </div>
         </div>
     `;
-    // --- (コピーここまで) ---
 
-    // ★ 修正: app.innerHTML ではなく、modalContent.innerHTML にフォームを描画
+    // ★ 修正: modalContent.innerHTML にフォームを描画
     modalContent.innerHTML = `
         <div class="bg-white rounded-lg shadow p-4 space-y-4 m-2">
-            <h2 class="text-xl font-bold text-gray-900 mb-2">情報の編集</h2>
             <div class="space-y-2">
                 <div><p class="block text-sm font-medium text-gray-500">名前</p><p class="readonly-field">${escapeHTML(bird.name)}</p></div>
                 <div><p class="block text-sm font-medium text-gray-500">分類</p><p class="readonly-field">${escapeHTML(bird.classification)}</p></div>
@@ -828,22 +826,20 @@ function renderDetailEditPageAsModal(birdId) {
                 </div>
 
                 <div><label for="edit_desc" class="block text-sm font-medium text-gray-700">説明文</label><textarea id="edit_desc" name="description" rows="5" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="特徴や鳴き声など...">${escapeHTML(bird.description || '')}</textarea></div>
+                
                 <button type="submit" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-emerald-700 transition-colors">保存する</button>
             </form>
         </div>
     `;
     
-    // ★ 修正: updateHeader() は呼び出さない
-    
+    // スクロール位置をリセット
+    modalContent.scrollTop = 0;
+
     // ★ 修正: リスナー設定をモーダル内で行う
     setTimeout(() => {
         const editForm = document.getElementById('editForm');
         
-        // --- (ここから 713〜776行目 の写真・音声リスナー設定をそのままコピー) ---
-        const photoInput = document.getElementById('edit_photo');
-        const photoPreview = document.getElementById('photo_preview');
-        const removePhotoBtn = document.getElementById('remove_photo_btn');
-        const photoMessage = document.getElementById('photo_message');
+        // --- (ここから 713〜776行目 の音声リスナー設定をそのままコピー) ---
         const voiceInput = document.getElementById('edit_voice');
         const voicePreview = document.getElementById('voice_preview');
         const removeVoiceBtn = document.getElementById('remove_voice_btn');
@@ -857,7 +853,7 @@ function renderDetailEditPageAsModal(birdId) {
                     return;
                 }
                 if (file.size > 10 * 1024 * 1024) { // 10MB 制限
-                    showCustomConfirm("音声サイズが10MBを超えています。10MB以下のファイルを選択してください。", "OK", true); // ★ アラート修正
+                    showCustomConfirm("音声サイズが10MBを超えています。10MB以下のファイルを選択してください。", "OK", true); 
                     e.target.value = null;
                     newBase64Voice = null;
                     voicePreview.src = bird.voice_url || '';
@@ -877,7 +873,7 @@ function renderDetailEditPageAsModal(birdId) {
                 };
                 reader.onerror = (error) => {
                     console.error("File reading error:", error);
-                    showCustomConfirm("音声の読み込みに失敗しました。", "OK", true); // ★ アラート修正
+                    showCustomConfirm("音声の読み込みに失敗しました。", "OK", true); 
                     newBase64Voice = null;
                 };
                 reader.readAsDataURL(file);
@@ -900,18 +896,28 @@ function renderDetailEditPageAsModal(birdId) {
                 }
             };
         }
-        // --- (リスナーのコピーここまで) ---
-
+        
         // --- フォーム送信（保存）時の処理 ---
+        const handleFormSubmit = async (event) => {
+            if (event) event.preventDefault();
+            await handleSave(editForm, newBase64Voice); 
+        };
+
         if (editForm) {
-            editForm.onsubmit = async (event) => {
-                event.preventDefault();
-                await handleSave(event, newBase64Voice); // ★ 修正: newBase64Image を削除
-            };
+            editForm.onsubmit = handleFormSubmit;
         }
+
+        // --- ★ 追加: ヘッダーの「保存」ボタンと連携 ---
+        if (modalSaveBtn) {
+            // クローンしてリスナー重複防止
+            const newSaveBtn = modalSaveBtn.cloneNode(true);
+            modalSaveBtn.parentNode.replaceChild(newSaveBtn, modalSaveBtn);
+            newSaveBtn.onclick = () => handleFormSubmit(null); // nullを渡してイベントデフォルト防止をスキップ
+        }
+
     }, 0);
 
-    // ★ 追加: モーダルの「中止」ボタンリスナー
+    // ★ 追加: モーダルの「戻る」ボタンリスナー
     // (リスナーが重複しないよう、毎回新しいノードで設定)
     const newCancelBtn = modalCancelBtn.cloneNode(true);
     modalCancelBtn.parentNode.replaceChild(newCancelBtn, modalCancelBtn);
@@ -926,10 +932,9 @@ function renderDetailEditPageAsModal(birdId) {
 
 // --- 編集保存 ---
 // ★ 修正: handleSave 関数を、モーダルを閉じるように修正
-async function handleSave(event, newBase64Voice) { // ★ 修正: newBase64Image を削除
+async function handleSave(formElement, newBase64Voice) { // 引数を form 要素そのものに変更
     
-    const formData = new FormData(event.target);
-    const form = event.target; // ★ フォーム要素自体
+    const formData = new FormData(formElement);
     const birdId = appState.currentBirdId;
     
     const idx = birdDatabase.findIndex(b => b.id === birdId); 
@@ -958,10 +963,10 @@ async function handleSave(event, newBase64Voice) { // ★ 修正: newBase64Image
     
     // 4. ★ 機能追加: ライフリストのチェックボックスの値を保存
     // (formData.get() はチェックなしの場合 null になるため、.checked で見る)
-    birdDatabase[idx]['lifer_seen'] = form.querySelector('#edit_lifer_seen').checked;
-    birdDatabase[idx]['lifer_heard'] = form.querySelector('#edit_lifer_heard').checked;
-    birdDatabase[idx]['lifer_photo'] = form.querySelector('#edit_lifer_photo').checked;
-    birdDatabase[idx]['lifer_video'] = form.querySelector('#edit_lifer_video').checked;
+    birdDatabase[idx]['lifer_seen'] = formElement.querySelector('#edit_lifer_seen').checked;
+    birdDatabase[idx]['lifer_heard'] = formElement.querySelector('#edit_lifer_heard').checked;
+    birdDatabase[idx]['lifer_photo'] = formElement.querySelector('#edit_lifer_photo').checked;
+    birdDatabase[idx]['lifer_video'] = formElement.querySelector('#edit_lifer_video').checked;
 
 
     try {
