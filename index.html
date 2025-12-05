@@ -32,11 +32,11 @@
 
 </head>
 
-<body class="">
+<body class="flex flex-col h-dvh w-screen bg-gray-100 text-gray-900 overflow-hidden">
 
     <div id="background-overlay"></div>
 
-    <header id="header" class="bg-white shadow-md fixed top-0 z-20 w-full max-w-lg mx-auto">
+    <header id="header" class="bg-white shadow-md flex-none z-20 w-full max-w-lg mx-auto">
         <div class="container mx-auto px-4 py-3 flex items-center justify-between h-16">
             <button id="backButton" class="hidden text-emerald-700 bg-emerald-50 hover:bg-emerald-100 font-bold py-1 px-3 rounded-full border border-emerald-200 transition-colors shadow-sm text-sm">
                 &lt; 戻る
@@ -60,10 +60,11 @@
         <div id="search-popup" class="popup-panel fixed top-16 z-10 w-full max-w-lg mx-auto bg-white border-t border-gray-200 p-4 hidden"></div>
         <div id="filter-popup" class="popup-panel fixed top-16 z-10 w-full max-w-lg mx-auto bg-gray-50 border-t border-b border-gray-200 hidden overflow-y-auto" style="max-height: calc(100vh - 4rem);"></div>
         <div id="view-popup" class="popup-panel fixed top-16 z-10 w-full max-w-lg mx-auto bg-gray-50 border-t border-b border-gray-200 hidden overflow-y-auto" style="max-height: calc(100vh - 4rem);"></div>
+    </header>
 
-    <main id="app" class="container mx-auto max-w-lg p-2"></main>
+    <main id="app" class="container mx-auto max-w-lg p-2 flex-1 overflow-y-auto"></main>
 
-    <nav class="bg-white border-t border-gray-200 fixed bottom-0 left-0 right-0 max-w-lg mx-auto h-16 flex justify-around items-center z-30">
+    <nav class="bg-white border-t border-gray-200 flex-none w-full max-w-lg mx-auto h-16 flex justify-around items-center z-30">
         
         <button id="tab-pokedex" class="tab-button flex-1 flex flex-col items-center justify-center h-full text-sm font-medium tab-active">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mb-1">
@@ -121,7 +122,7 @@
             <div class="container mx-auto px-4 py-3 flex items-center justify-between h-16">
                 <button id="edit-form-cancel-btn" class="text-emerald-700 bg-emerald-50 hover:bg-emerald-100 font-bold py-1 px-3 rounded-full border border-emerald-200 transition-colors shadow-sm text-sm">
                     &lt; 中止
-            </button>
+                </button>
             <h1 id="edit-form-title" class="text-xl font-bold text-gray-800 text-center flex-grow">編集</h1>
             <div class="w-20 text-right">
                     </div>
