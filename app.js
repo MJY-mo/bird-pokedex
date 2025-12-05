@@ -1,4 +1,4 @@
-// app.js (修正済み完全版)
+// app.js (元ファイルをベースにした修正済み完全版)
 
 // --- GitHub Pages URL設定 ---
 const GITHUB_CSV_URL = 'https://mjy-mo.github.io/bird-pokedex/bird-list.csv';
@@ -741,141 +741,6 @@ function applyFontSize(size) {
     }
 }
 
-// --- ★修正: ヘッダーボタン連動設定 ---
-// ボタンクリック時に、既存の togglePopup 関数を呼び出すように変更
-function setupHeaderActions() {
-    const actions = [
-        { btnId: 'search-toggle-button', popupName: 'search' },
-        { btnId: 'filter-toggle-button', popupName: 'filter' },
-        { btnId: 'view-toggle-button', popupName: 'view' }
-    ];
-
-    actions.forEach(({ btnId, popupName }) => {
-        const btn = document.getElementById(btnId);
-        if (btn) {
-            btn.onclick = (e) => {
-                e.stopPropagation(); // 親要素への伝播を防ぐ
-                togglePopup(popupName); // 正規のポップアップ切り替え関数を呼ぶ
-            };
-        }
-    });
-}
-
-
-// --- ★修正: タブ切り替え ---
-function setupTabs() { 
-    const tabs = [ 
-        { id: 'tab-pokedex', page: showListPage }, 
-        { id: 'tab-events', page: showEventsPage }, 
-        { id: 'tab-manual', page: showManualPage },
-        { id: 'tab-settings', page: showSettingsPage } 
-    ];
-    tabs.forEach(tab => {
-        const button = document.getElementById(tab.id);
-        if (button) { 
-            button.addEventListener('click', (e) => {
-                // ★変更: スクロール領域である main#app を取得して、そこを一番上に戻す
-                const mainApp = document.getElementById('app');
-                if (mainApp) {
-                    mainApp.scrollTo(0, 0);
-                }
-
-                // 全タブを非アクティブ化
-                tabs.forEach(t => {
-                    const btn = document.getElementById(t.id);
-                    if (btn) {
-                        btn.classList.remove('tab-active');
-                        btn.classList.add('tab-inactive');
-                    }
-                });
-                
-                // クリックされたタブをアクティブ化
-                if (e.currentTarget) {
-                    e.currentTarget.classList.remove('tab-inactive');
-                    e.currentTarget.classList.add('tab-active');
-                }
-
-                // ポップアップとヘッダーボタンをリセット
-                const headerBtns = ['search-toggle-button', 'filter-toggle-button', 'view-toggle-button'];
-                const activeBtnClasses = ['bg-emerald-100', 'text-emerald-700', 'fill-current'];
-                headerBtns.forEach(id => {
-                    const btn = document.getElementById(id);
-                    if(btn) {
-                        btn.classList.remove(...activeBtnClasses);
-                        btn.classList.add('text-gray-600');
-                    }
-                });
-                document.getElementById('search-popup').classList.add('hidden');
-                document.getElementById('filter-popup').classList.add('hidden');
-                document.getElementById('view-popup').classList.add('hidden');
-                
-                tab.page();
-            });
-        }
-    });
-}
-
-
-// --- カスタム確認モーダル（クッション） ---
-async function showCustomConfirm(text, okLabel = 'OK', hideCancel = false) {
-    return new Promise((resolve) => {
-        const modal = document.getElementById('custom-confirm-modal');
-        const modalText = document.getElementById('confirm-modal-text');
-        const okButton = document.getElementById('confirm-btn-ok');
-        const cancelButton = document.getElementById('confirm-btn-cancel');
-
-        if (!modal || !modalText || !okButton || !cancelButton) {
-            console.error("Custom confirm modal elements not found.");
-            resolve(false); 
-            return;
-        }
-
-        modalText.innerHTML = escapeHTML(text).replace(/\n/g, '<br>');
-        okButton.textContent = okLabel;
-
-        cancelButton.classList.toggle('hidden', hideCancel);
-        
-        okButton.classList.remove('bg-red-600', 'hover:bg-red-700', 'bg-emerald-600', 'hover:bg-emerald-700');
-        
-        if (okLabel.includes('削除') || okLabel.includes('リセット') || okLabel.includes('インポート') || okLabel.includes('上書き')) {
-            okButton.classList.add('bg-red-600', 'hover:bg-red-700');
-        } else {
-            okButton.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
-        }
-
-        modal.classList.remove('hidden');
-
-        const newOkButton = okButton.cloneNode(true);
-        okButton.parentNode.replaceChild(newOkButton, okButton);
-        
-        const newCancelButton = cancelButton.cloneNode(true);
-        cancelButton.parentNode.replaceChild(newCancelButton, cancelButton);
-
-        newOkButton.onclick = () => {
-            hideCustomConfirm();
-            resolve(true);
-        };
-
-        newCancelButton.onclick = () => {
-            hideCustomConfirm();
-            resolve(false);
-        };
-        
-        modal.onclick = (e) => {
-            if (e.target.id === 'custom-confirm-modal') {
-                // (何もしない。モーダル背景クリックで閉じないようにする)
-            }
-        };
-    });
-}
-function hideCustomConfirm() {
-    const modal = document.getElementById('custom-confirm-modal');
-    if (modal) {
-        modal.classList.add('hidden');
-    }
-}
-
-
 // --- 背景設定 ---
 function applyBackgroundSettings() {
     const defaultSettings = {
@@ -1060,43 +925,134 @@ function showCropperModal(imageUrl, onSave, onDelete = null) {
     };
 }
 
-// --- アプリの起動（初期化処理） ---
-document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        // 1. データベースの準備
-        await initializeDatabase();
-        
-        // 2. 設定（フィルタ等）の読み込み
-        loadListControlsState();
+// --- カスタム確認モーダル（クッション） ---
+async function showCustomConfirm(text, okLabel = 'OK', hideCancel = false) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('custom-confirm-modal');
+        const modalText = document.getElementById('confirm-modal-text');
+        const okButton = document.getElementById('confirm-btn-ok');
+        const cancelButton = document.getElementById('confirm-btn-cancel');
 
-        // 3. 画面の初期表示（一覧画面）
-        showListPage();
-        
-        // 4. 背景設定の適用
-        applyBackgroundSettings();
-
-        // 5. タブ切り替えのリスナー設定
-        setupTabs(); 
-
-        // 6. ★ ヘッダーボタン連動のリスナー設定
-        setupHeaderActions();
-
-        // 7. グローバルなフォントサイズ適用
-        if (appState.settings.fontSize) {
-            applyFontSize(appState.settings.fontSize);
+        if (!modal || !modalText || !okButton || !cancelButton) {
+            console.error("Custom confirm modal elements not found.");
+            resolve(false); 
+            return;
         }
 
-        // 8. ポップアップ外クリックの監視
-        // (setupHeaderActions内でもclick監視を追加していますが、念のため既存ロジックも残すならここ)
-        // ただし setupHeaderActions で document click を監視しているので、衝突しないよう注意。
-        // closePopupsOnMainTap は activePopup 変数を使っているため、共存させても問題ありません。
-        document.body.addEventListener('click', closePopupsOnMainTap);
+        modalText.innerHTML = escapeHTML(text).replace(/\n/g, '<br>');
+        okButton.textContent = okLabel;
 
+        cancelButton.classList.toggle('hidden', hideCancel);
+        
+        okButton.classList.remove('bg-red-600', 'hover:bg-red-700', 'bg-emerald-600', 'hover:bg-emerald-700');
+        
+        if (okLabel.includes('削除') || okLabel.includes('リセット') || okLabel.includes('インポート') || okLabel.includes('上書き')) {
+            okButton.classList.add('bg-red-600', 'hover:bg-red-700');
+        } else {
+            okButton.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
+        }
+
+        modal.classList.remove('hidden');
+
+        const newOkButton = okButton.cloneNode(true);
+        okButton.parentNode.replaceChild(newOkButton, okButton);
+        
+        const newCancelButton = cancelButton.cloneNode(true);
+        cancelButton.parentNode.replaceChild(newCancelButton, cancelButton);
+
+        newOkButton.onclick = () => {
+            hideCustomConfirm();
+            resolve(true);
+        };
+
+        newCancelButton.onclick = () => {
+            hideCustomConfirm();
+            resolve(false);
+        };
+        
+        modal.onclick = (e) => {
+            if (e.target.id === 'custom-confirm-modal') {
+                // (何もしない。モーダル背景クリックで閉じないようにする)
+            }
+        };
+    });
+}
+function hideCustomConfirm() {
+    const modal = document.getElementById('custom-confirm-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+// --- ★修正: ヘッダーボタン連動 ---
+function setupHeaderActions() {
+    const actions = [
+        { btnId: 'search-toggle-button', popupName: 'search' },
+        { btnId: 'filter-toggle-button', popupName: 'filter' },
+        { btnId: 'view-toggle-button', popupName: 'view' }
+    ];
+    actions.forEach(({ btnId, popupName }) => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                togglePopup(popupName);
+            };
+        }
+    });
+}
+
+// --- ★修正: タブ切り替え ---
+function setupTabs() {
+    const tabs = [
+        { id: 'tab-pokedex', page: showListPage },
+        { id: 'tab-events', page: showEventsPage },
+        { id: 'tab-manual', page: showManualPage },
+        { id: 'tab-settings', page: showSettingsPage }
+    ];
+    tabs.forEach(tab => {
+        const button = document.getElementById(tab.id);
+        if (button) {
+            button.addEventListener('click', (e) => {
+                // window.scrollTo(0, 0) で標準スクロール位置をリセット
+                window.scrollTo(0, 0);
+
+                tabs.forEach(t => {
+                    const btn = document.getElementById(t.id);
+                    if (btn) {
+                        btn.classList.remove('tab-active');
+                        btn.classList.add('tab-inactive');
+                    }
+                });
+                if (e.currentTarget) {
+                    e.currentTarget.classList.remove('tab-inactive');
+                    e.currentTarget.classList.add('tab-active');
+                }
+
+                // ポップアップを閉じる
+                appState.listControls.activePopup = null;
+                updateHeader(tab.id === 'tab-pokedex' ? 'list' : 'other');
+
+                tab.page();
+            });
+        }
+    });
+}
+
+// --- 初期化 ---
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        await initializeDatabase();
+        loadListControlsState();
+        showListPage();
+        applyBackgroundSettings();
+        setupTabs(); 
+        setupHeaderActions(); 
+        if (appState.settings.fontSize) applyFontSize(appState.settings.fontSize);
+        document.body.addEventListener('click', closePopupsOnMainTap);
     } catch (e) {
         console.error("App initialization failed:", e);
         const app = document.getElementById('app');
-        if (app) {
-            app.innerHTML = `<div class="p-4 text-red-600 font-bold">アプリの起動に失敗しました。<br>${e.message}</div>`;
-        }
+        if (app) app.innerHTML = `<div class="p-4 text-red-600 font-bold">アプリの起動に失敗しました。<br>${e.message}</div>`;
     }
 });

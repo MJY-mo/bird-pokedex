@@ -1,60 +1,49 @@
-/* 注意: ここには @tailwind や @apply を絶対に書かないでください。
-   ローカル環境(libs/tailwindcss.js)ではそれらが機能せず、ファイル全体が無視される原因になります。
-*/
+/* --- 純粋な標準CSSのみで記述 --- */
 
-/* --- 1. 基本設定 --- */
-html, body {
-    /* 標準的なスクロール設定に戻す */
+/* 1. 基本設定（スクロール阻害要因を排除） */
+html {
     height: 100%;
+}
+body {
+    font-family: 'Inter', sans-serif;
+    min-height: 100%;
     margin: 0;
     padding: 0;
-    font-family: 'Inter', sans-serif;
-    /* iOSでのタップハイライトを消す */
-    -webkit-tap-highlight-color: transparent;
-    /* テキスト選択を無効化（アプリ感） */
-    user-select: none;
-    -webkit-user-select: none;
-}
-
-/* --- 2. メインエリアとスクロール --- */
-/* アプリのように、ヘッダー/フッターは固定し、ここだけスクロールさせる設定 */
-main#app {
-    /* 画面全体の高さ */
-    height: 100%;
-    /* 縦スクロールを許可 */
+    /* スクロールを許可 */
     overflow-y: auto;
-    /* iOSで滑らかにスクロールさせる */
     -webkit-overflow-scrolling: touch;
     
-    /* ヘッダー(64px)とフッター(64px)の裏に隠れないよう余白を確保 */
-    /* style.cssが効いていれば、ここで「一体化」問題が解決します */
-    padding-top: 4rem;    
-    padding-bottom: 8rem; 
-    
-    /* 横幅設定 */
+    /* アプリらしい挙動の設定 */
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* 2. メインエリア（ヘッダー・フッターとの重なり防止） */
+main#app {
+    padding-top: 4rem;    /* ヘッダーの高さ */
+    padding-bottom: 12rem; /* フッター + 余白 */
     width: 100%;
-    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
-/* --- 3. タブの見た目 --- */
+/* 3. タブの見た目 */
 .tab-active {
-    color: #047857;           /* emerald-700 */
-    background-color: #ecfdf5; /* emerald-50 */
-    border-top: 3px solid #059669; /* emerald-600 */
+    color: #047857;           /* text-emerald-700 */
+    background-color: #ecfdf5; /* bg-emerald-50 */
+    border-top: 3px solid #059669; /* border-emerald-600 */
 }
-
 .tab-inactive {
-    color: #6b7280;           /* gray-500 */
+    color: #6b7280;           /* text-gray-500 */
     background-color: transparent;
     border-top: 3px solid transparent; 
 }
 
-/* --- 4. ヘッダーボタンの強調 --- */
+/* 4. ヘッダーボタンの強調 */
 .header-action-button {
     border: 2px solid transparent;
     transition: all 0.2s ease;
 }
-/* 強制的にスタイルを適用 (!important) */
 .header-action-button.active {
     background-color: #ecfdf5 !important;
     color: #047857 !important;
@@ -63,7 +52,7 @@ main#app {
     box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
 }
 
-/* --- 5. アコーディオン設定 --- */
+/* 5. アコーディオン設定 */
 .accordion-content {
     max-height: 0;
     overflow: hidden;
@@ -72,22 +61,16 @@ main#app {
 .arrow-down { transform: rotate(0deg); transition: transform 0.3s ease-in-out; }
 .arrow-up { transform: rotate(180deg); transition: transform 0.3s ease-in-out; }
 
-/* 絞り込み画面の余白確保（アコーディオン展開時用） */
+/* 絞り込み画面の最後の項目（編集履歴）の内部に余白をつける */
 #filter-popup > div:last-child .accordion-content > div {
     padding-bottom: 8rem;
 }
 
-/* --- 6. その他ユーティリティ (標準CSS化) --- */
+/* 6. その他パーツ（@applyを展開して記述） */
 .readonly-field {
-    display: block;
-    width: 100%;
-    margin-top: 0.25rem;
-    padding: 0.5rem 0.75rem;
-    background-color: #f3f4f6;
-    color: #4b5563;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.375rem;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    display: block; width: 100%; margin-top: 0.25rem; padding: 0.5rem 0.75rem;
+    background-color: #f3f4f6; color: #4b5563; border: 1px solid #e5e7eb;
+    border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 .pagination-button:disabled {
@@ -98,69 +81,47 @@ main#app {
 /* 絞り込み中マーク */
 .accordion-header.filtered > span::after,
 .accordion-tab.filtered > span::after {
-    content: '';
-    display: inline-block;
-    width: 0.5rem;
-    height: 0.5rem;
-    background-color: #22c55e;
-    border-radius: 9999px;
-    margin-left: 0.5rem;
-    vertical-align: middle;
+    content: ''; display: inline-block; width: 0.5rem; height: 0.5rem;
+    background-color: #22c55e; border-radius: 9999px; margin-left: 0.5rem; vertical-align: middle;
 }
 
-/* イベントサジェストリスト */
+/* イベントサジェスト */
 .event-suggestion-list {
-    position: absolute;
-    z-index: 10;
-    width: 100%;
-    margin-top: 0.25rem;
-    background-color: white;
-    border: 1px solid #d1d5db;
-    border-radius: 0.375rem;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    max-height: 10rem;
-    overflow-y: auto;
+    position: absolute; z-index: 10; width: 100%; margin-top: 0.25rem;
+    background-color: white; border: 1px solid #d1d5db; border-radius: 0.375rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); max-height: 10rem; overflow-y: auto;
 }
 .event-suggestion-item {
-    padding: 0.5rem;
-    font-size: 0.875rem;
-    color: #374151;
-    cursor: pointer;
+    padding: 0.5rem; font-size: 0.875rem; color: #374151; cursor: pointer;
 }
 .event-suggestion-item:hover {
     background-color: #f3f4f6;
 }
 
-/* 背景設定用 */
+@keyframes modal-fade-in {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* 背景設定 */
 #background-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: -20;
-    background-size: cover;
-    background-position: center center;
-    background-repeat: no-repeat;
-    opacity: 0.1;
-    transition: background-image 0.3s ease-in-out, opacity 0.3s ease-in-out;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -20;
+    background-size: cover; background-position: center center; background-repeat: no-repeat;
+    opacity: 0.1; transition: background-image 0.3s ease-in-out, opacity 0.3s ease-in-out;
+    pointer-events: none; /* 重要: これがないと背景がクリックを奪ってスクロールできなくなる場合がある */
 }
 
 /* ライフリスト勲章 */
 .lifer-medal {
-    display: inline-block;
-    width: 1rem;
-    height: 1rem;
-    margin-right: 0.25rem;
-    vertical-align: -0.125em;
-    background-color: #f59e0b;
+    display: inline-block; width: 1rem; height: 1rem; margin-right: 0.25rem;
+    vertical-align: -0.125em; background-color: #f59e0b;
     clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
 }
 
 #custom-confirm-modal { z-index: 9999 !important; }
 .cropper-container { max-height: 70vh; }
 
-@keyframes modal-fade-in {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
-}
+/* カスタムスクロールバー */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }

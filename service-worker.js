@@ -1,5 +1,5 @@
 // ★変更: キャッシュ名を変更して更新をトリガー (v8 -> v9)
-const CACHE_NAME = 'bird-pokedex-cache-v13';
+const CACHE_NAME = 'bird-pokedex-cache-v14';
 
 const URLS_TO_CACHE = [
   './',
