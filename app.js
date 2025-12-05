@@ -774,7 +774,11 @@ function setupTabs() {
         const button = document.getElementById(tab.id);
         if (button) { 
             button.addEventListener('click', (e) => {
-                window.scrollTo(0, 0);
+                // ★変更: スクロール領域である main#app を取得して、そこを一番上に戻す
+                const mainApp = document.getElementById('app');
+                if (mainApp) {
+                    mainApp.scrollTo(0, 0);
+                }
 
                 // 全タブを非アクティブ化
                 tabs.forEach(t => {
