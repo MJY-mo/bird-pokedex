@@ -742,55 +742,22 @@ function applyFontSize(size) {
 }
 
 // --- ★修正: ヘッダーボタン連動設定 ---
+// ボタンクリック時に、既存の togglePopup 関数を呼び出すように変更
 function setupHeaderActions() {
     const actions = [
-        { btnId: 'search-toggle-button', panelId: 'search-popup' },
-        { btnId: 'filter-toggle-button', panelId: 'filter-popup', onOpen: typeof renderFilterPanel !== 'undefined' ? renderFilterPanel : null },
-        { btnId: 'view-toggle-button', panelId: 'view-popup', onOpen: typeof renderViewSettings !== 'undefined' ? renderViewSettings : null }
+        { btnId: 'search-toggle-button', popupName: 'search' },
+        { btnId: 'filter-toggle-button', popupName: 'filter' },
+        { btnId: 'view-toggle-button', popupName: 'view' }
     ];
 
-    const activeBtnClasses = ['bg-emerald-100', 'text-emerald-700', 'fill-current'];
-
-    actions.forEach(({ btnId, panelId, onOpen }) => {
+    actions.forEach(({ btnId, popupName }) => {
         const btn = document.getElementById(btnId);
-        const panel = document.getElementById(panelId);
-
-        if (!btn || !panel) return;
-
-        btn.onclick = (e) => {
-            e.stopPropagation();
-            
-            const isOpening = panel.classList.contains('hidden');
-
-            // Close all
-            actions.forEach(action => {
-                document.getElementById(action.panelId).classList.add('hidden');
-                const b = document.getElementById(action.btnId);
-                b.classList.remove(...activeBtnClasses);
-                b.classList.add('text-gray-600'); 
-            });
-
-            // Open target
-            if (isOpening) {
-                panel.classList.remove('hidden');
-                btn.classList.remove('text-gray-600');
-                btn.classList.add(...activeBtnClasses);
-                if (onOpen) onOpen();
-            }
-        };
-
-        panel.onclick = (e) => {
-            e.stopPropagation();
-        };
-    });
-
-    document.addEventListener('click', () => {
-        actions.forEach(action => {
-            document.getElementById(action.panelId).classList.add('hidden');
-            const b = document.getElementById(action.btnId);
-            b.classList.remove(...activeBtnClasses);
-            b.classList.add('text-gray-600');
-        });
+        if (btn) {
+            btn.onclick = (e) => {
+                e.stopPropagation(); // 親要素への伝播を防ぐ
+                togglePopup(popupName); // 正規のポップアップ切り替え関数を呼ぶ
+            };
+        }
     });
 }
 

@@ -72,7 +72,8 @@ main#app {
 }
 
 .header-action-button.active {
-    @apply text-emerald-600 bg-emerald-50 rounded-lg;
+    /* 背景と文字色を少し濃くし、内側に影をつけて「押されている感」を出しました */
+    @apply text-emerald-700 bg-emerald-100 rounded-lg shadow-inner;
 }
 
 .event-suggestion-list {
