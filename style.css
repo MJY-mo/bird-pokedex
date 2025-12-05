@@ -71,9 +71,23 @@ main#app {
     vertical-align: middle;
 }
 
+.header-action-button {
+    border: 2px solid transparent; /* ガタつき防止 */
+    transition: all 0.2s ease;
+}
+
 .header-action-button.active {
-    /* 背景と文字色を少し濃くし、内側に影をつけて「押されている感」を出しました */
-    @apply text-emerald-700 bg-emerald-100 rounded-lg shadow-inner;
+    /* HTML側のクラスに負けないよう !important を付与 */
+    background-color: #ecfdf5 !important; /* bg-emerald-50 */
+    color: #047857 !important;           /* text-emerald-700 */
+    border-color: #059669 !important;    /* border-emerald-600 */
+    border-radius: 0.5rem;               /* rounded-lg */
+    box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+}
+
+/* ★追加: 絞り込み画面の最後の項目（編集履歴）が開いた時だけ下部に余白を作る */
+#filter-popup > div:last-child .accordion-content {
+    padding-bottom: 8rem; 
 }
 
 .event-suggestion-list {
