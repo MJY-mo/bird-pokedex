@@ -269,7 +269,7 @@ const myCard = appState.settings; // birderName, birderPhoto を含む
             <h2 class="text-xl font-semibold mb-4 text-red-700">データのインポート</h2>
             <p class="text-gray-600 mb-4">
                 エクスポートしたバックアップファイル（.json）を選択してください。<br>
-                <strong class="font-medium text-red-600">注意: 現在のすべてのデータ（設定含む）は、ファイルの内容で上書きされます。</strong>
+                <strong class="font-medium text-red-600">注意: 図鑑データはPC版の内容で上書きされますが、スマホのイベント履歴は保持されます（マージされます）。</strong>
             </p>
             
             <label for="import-data-file" class="sr-only">バックアップファイルを選択</label>
@@ -301,8 +301,8 @@ const myCard = appState.settings; // birderName, birderPhoto を含む
     `;
 
 
-    // --- 画面全体の描画 (アコーディオン化) ---
-    app.innerHTML = `
+    // --- 画面全体の描画 (アコーディオン化) ---
+    app.innerHTML = `
         <div class="space-y-2 p-2">
             
             <div class="bg-white rounded-lg shadow overflow-hidden">
@@ -777,12 +777,12 @@ async function handleExportData() {
 }
 
 
-// --- データのインポート処理 ---
+// --- データのインポート処理（修正版: イベントはマージする） ---
 async function handleImportData(file) {
     if (!file) return;
 
     const confirmed = await showCustomConfirm(
-        '本当にインポートしますか？\n現在のすべてのデータ（設定含む）は、ファイルの内容で上書きされます。この操作は元に戻せません。',
+        '本当にインポートしますか？\n\n・図鑑データ（写真・説明）はファイルの内容で【上書き】されます。\n・イベント履歴は、スマホにある記録を残したまま、ファイル内の新しい記録を【追加】します。',
         'インポート実行'
     );
 
@@ -813,20 +813,30 @@ async function handleImportData(file) {
             }
 
             const db = await openBirdDB();
-            await db.clear(STORE_BIRDS);
-            await db.clear(STORE_EVENTS);
-            // ★★★ もらったカードもクリアする ★★★
-            await db.clear(STORE_CARDS);
             
+            // 1. 図鑑データ（Birds）: PCマスターなので全削除して上書き
+            await db.clear(STORE_BIRDS);
             const birdTx = db.transaction(STORE_BIRDS, 'readwrite');
             await Promise.all(backupData.birds.map(bird => birdTx.store.put(bird)));
             await birdTx.done;
             
+            // 2. イベントデータ（Events）: スマホ記録重視なので全削除しない（マージ）
+            // STORE_EVENTS はクリアしません。
             const eventTx = db.transaction(STORE_EVENTS, 'readwrite');
-            await Promise.all(backupData.events.map(ev => eventTx.store.put(ev)));
+            for (const ev of backupData.events) {
+                // 同じIDのイベントが既にスマホにあるか確認
+                const existing = await eventTx.store.get(ev.id);
+                if (!existing) {
+                    // スマホに無いイベントだけを追加
+                    await eventTx.store.add(ev);
+                }
+                // 既にある場合は何もしない（スマホ版を優先）
+            }
             await eventTx.done;
             
-            // ★★★ もらったカードもインポート（古い形式のバックアップファイル対応） ★★★
+            // 3. もらったカード: バックアップにあれば上書き（全削除して入れ替え）
+            // カードはコレクションなので、重複管理より入れ替えの方がシンプルで安全
+            await db.clear(STORE_CARDS);
             if (backupData.receivedCards && Array.isArray(backupData.receivedCards)) {
                  const cardTx = db.transaction(STORE_CARDS, 'readwrite');
                  await Promise.all(backupData.receivedCards.map(card => cardTx.store.put(card)));
@@ -852,9 +862,7 @@ async function handleImportData(file) {
             
             applyBackgroundSettings(); 
             
-            // ★★★ 循環参照エラーの修正: settings.js が pokedex.js に依存しているため、
-            // この関数は pokedex.js が読み込まれた後に呼び出す必要がある。
-            // (index.html の読み込み順で制御)
+            // ★★★ 循環参照エラーの修正
             showListPage(); 
             
             if (importFile) importFile.value = null;
@@ -864,14 +872,13 @@ async function handleImportData(file) {
             }
             
             await showCustomConfirm(
-                'データのインポートが完了しました。',
+                'データのインポートが完了しました。\n（イベント履歴は統合されました）',
                 'OK',
                 true 
             );
 
         } catch (error) {
             console.error('インポート処理中にエラーが発生しました:', error);
-            // ★★★ 循環参照エラーの修正
             showListPage(); 
             
             await showCustomConfirm(
