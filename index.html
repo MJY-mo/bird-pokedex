@@ -36,7 +36,7 @@
 
     <div id="background-overlay"></div>
 
-    <header id="header" class="bg-white shadow-md flex-none z-20 w-full max-w-lg md:max-w-7xl mx-auto">
+    <header id="header" class="bg-white shadow-md flex-none z-20 w-full max-w-lg md:max-w-none mx-auto">
         <div class="container mx-auto px-4 py-3 flex items-center justify-between h-16">
             <button id="backButton" class="hidden text-emerald-700 bg-emerald-50 hover:bg-emerald-100 font-bold py-1 px-3 rounded-full border border-emerald-200 transition-colors shadow-sm text-sm">
                 &lt; 戻る
@@ -57,14 +57,14 @@
             </div>
         </div>
         
-        <div id="search-popup" class="popup-panel fixed top-16 z-10 w-full max-w-lg md:max-w-7xl mx-auto bg-white border-t border-gray-200 p-4 hidden"></div>
-        <div id="filter-popup" class="popup-panel fixed top-16 z-10 w-full max-w-lg md:max-w-7xl mx-auto bg-gray-50 border-t border-b border-gray-200 hidden overflow-y-auto" style="max-height: calc(100vh - 4rem);"></div>
-        <div id="view-popup" class="popup-panel fixed top-16 z-10 w-full max-w-lg md:max-w-7xl mx-auto bg-gray-50 border-t border-b border-gray-200 hidden overflow-y-auto" style="max-height: calc(100vh - 4rem);"></div>
+        <div id="search-popup" class="popup-panel fixed top-16 z-10 w-full max-w-lg md:max-w-none mx-auto bg-white border-t border-gray-200 p-4 hidden"></div>
+        <div id="filter-popup" class="popup-panel fixed top-16 z-10 w-full max-w-lg md:max-w-none mx-auto bg-gray-50 border-t border-b border-gray-200 hidden overflow-y-auto" style="max-height: calc(100vh - 4rem);"></div>
+        <div id="view-popup" class="popup-panel fixed top-16 z-10 w-full max-w-lg md:max-w-none mx-auto bg-gray-50 border-t border-b border-gray-200 hidden overflow-y-auto" style="max-height: calc(100vh - 4rem);"></div>
     </header>
 
-    <main id="app" class="container mx-auto max-w-lg md:max-w-7xl p-2 flex-1 overflow-y-auto overscroll-contain"></main>
+    <main id="app" class="container mx-auto max-w-lg md:max-w-none p-2 flex-1 overflow-y-auto overscroll-contain"></main>
 
-    <nav class="bg-white border-t border-gray-200 flex-none w-full max-w-lg md:max-w-7xl mx-auto h-16 flex justify-around items-center z-30">
+    <nav class="bg-white border-t border-gray-200 flex-none w-full max-w-lg md:max-w-none mx-auto h-16 flex justify-around items-center z-30">
         
         <button id="tab-pokedex" class="tab-button flex-1 flex flex-col items-center justify-center h-full text-sm font-medium tab-active">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mb-1">
@@ -117,7 +117,7 @@
         </div>
     </div>
 
-    <div id="edit-form-modal" class="hidden fixed inset-0 z-[100] bg-gray-100 max-w-lg md:max-w-2xl mx-auto flex flex-col">
+    <div id="edit-form-modal" class="hidden fixed inset-0 z-[100] bg-gray-100 max-w-lg md:max-w-3xl mx-auto flex flex-col">
         <header class="bg-white shadow-md flex-none w-full border-b border-gray-200">
             <div class="container mx-auto px-4 py-3 flex items-center justify-between h-16">
                 <button id="edit-form-cancel-btn" class="text-emerald-700 bg-emerald-50 hover:bg-emerald-100 font-bold py-1 px-3 rounded-full border border-emerald-200 transition-colors shadow-sm text-sm">

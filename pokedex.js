@@ -269,11 +269,15 @@ function applyFiltersAndRenderList() {
 
     // ★ 追加: 画面幅に応じて表示件数を自動調整
     const width = window.innerWidth;
-    if (width >= 1280) { // xl (大型PC)
+    if (width >= 2000) { // 超ワイド (2000px以上)
+        appState.listControls.itemsPerPage = 120;
+    } else if (width >= 1536) { // 2xl (1536px以上)
+        appState.listControls.itemsPerPage = 100;
+    } else if (width >= 1280) { // xl (1280px以上)
         appState.listControls.itemsPerPage = 80;
-    } else if (width >= 1024) { // lg (小型PC)
+    } else if (width >= 1024) { // lg (1024px以上)
         appState.listControls.itemsPerPage = 60;
-    } else if (width >= 768) { // md (タブレット)
+    } else if (width >= 768) { // md (768px以上)
         appState.listControls.itemsPerPage = 40;
     } else { // スマホ (デフォルト)
         appState.listControls.itemsPerPage = 30;
@@ -359,8 +363,8 @@ function applyFiltersAndRenderList() {
     if (paginatedList.length === 0) { listElement.className = ''; listElement.innerHTML = `<p class="text-gray-500 text-center col-span-2">鳥が見つかりません。</p>`; } 
     else {
         if (viewMode === 'tile') {
-            // ★ 修正: PCで最大8列表示にするクラス (xl:grid-cols-8) を追加
-            listElement.className = 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4';
+            // ★ 修正: PCで最大12列まで拡張 (xl:grid-cols-8 2xl:grid-cols-10 min-[2000px]:grid-cols-12)
+            listElement.className = 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 min-[2000px]:grid-cols-12 gap-4';
             listElement.innerHTML = paginatedList.map(bird => {
                 const isLifer = bird.lifer_seen || bird.lifer_heard || bird.lifer_photo || bird.lifer_video;
                 const liferMedal = isLifer ? '<span class="lifer-medal" title="ライフリスト登録済み"></span>' : '';
