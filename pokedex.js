@@ -347,7 +347,8 @@ function applyFiltersAndRenderList() {
     if (paginatedList.length === 0) { listElement.className = ''; listElement.innerHTML = `<p class="text-gray-500 text-center col-span-2">鳥が見つかりません。</p>`; } 
     else {
         if (viewMode === 'tile') {
-            listElement.className = 'grid grid-cols-2 gap-4';
+            // ★ 修正: PCで多列表示にするクラス (md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6) を追加
+            listElement.className = 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4';
             listElement.innerHTML = paginatedList.map(bird => {
                 const isLifer = bird.lifer_seen || bird.lifer_heard || bird.lifer_photo || bird.lifer_video;
                 const liferMedal = isLifer ? '<span class="lifer-medal" title="ライフリスト登録済み"></span>' : '';
