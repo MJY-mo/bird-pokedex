@@ -599,9 +599,9 @@ function updateHeader(mode, title = "鳥図鑑") {
         
         // --- ★ 修正: 操作対象のIDを変更 (header-container, nav-container) ---
         const layoutElements = [
-            document.getElementById('header-container'), // 外枠ではなく中身を操作
+            document.getElementById('header-container'),
             document.getElementById('app'),
-            document.getElementById('nav-container')     // 外枠ではなく中身を操作
+            // document.getElementById('nav-container') // 削除: フッターは広げない
         ];
 
         // 検索ポップアップなども幅調整対象にするため取得
