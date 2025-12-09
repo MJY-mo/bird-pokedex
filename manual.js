@@ -1,3 +1,5 @@
+// manual.js
+
 // --- 説明書ページ ---
 function showManualPage() { 
     // appState や app, updateHeader は app.js で定義されているグローバル変数・関数
@@ -6,13 +8,16 @@ function showManualPage() {
     appState.isEditing = false;
     
     // --- 1. アプリの使い方 ---
-    // ★ 修正: 「最も重要な注意点」セクション(101行目〜136行目)を削除
     const usageHtml = `
         <div class="bg-white rounded-lg shadow p-4 space-y-4">
             <h2 class="text-xl font-semibold mb-4">ようこそ！</h2>
             <p class="text-sm text-gray-600">
                 これは、あなたの野鳥観察を記録・管理するために作られた「鳥類図鑑PWA（プログレッシブ・ウェブアプリ）」です。
                 見た鳥を「図鑑」で管理し、「イベント」で日々の観察を記録しましょう。
+            </p>
+            <p class="text-sm text-gray-600 border-l-4 border-emerald-400 pl-3 py-1 bg-emerald-50">
+                <strong>PCでも便利に：</strong><br>
+                PCの大画面で開くと、図鑑が多列表示になり一覧性が向上します。写真の整理や編集作業がより快適に行えます。
             </p>
 
             <section class="space-y-3">
@@ -29,7 +34,7 @@ function showManualPage() {
                     <li><strong>情報編集:</strong>
                         詳細画面の「情報を編集する」ボタンから、以下の情報をあなた専用にカスタマイズできます。
                         <ul class="list-inside list-disc ml-4 mt-1 text-xs text-gray-600">
-                            <li>写真（5MBまで）の追加・削除</li>
+                            <li><strong>写真の追加・編集:</strong> お持ちの写真を登録できます（5MBまで）。登録時には、拡大・縮小や回転をして、見やすいように<strong>トリミング（切り抜き）</strong>が可能です。</li>
                             <li>鳴き声（音声、10MBまで）の追加・削除</li>
                             <li>「区分（観察時期）」や「レア度」の変更</li>
                             <li>自由な「説明文」の追加</li>
@@ -122,16 +127,28 @@ function showManualPage() {
             </section>
                 
             <section class="space-y-3">
-                <h3 class="text-lg font-semibold pt-4 border-t border-red-200 text-yellow-800">3. インポートは「上書き」です</h3>
+                <h3 class="text-lg font-semibold pt-4 border-t border-red-200 text-yellow-800">3. データのインポート（統合）について</h3>
                 <p class="text-sm text-yellow-700">
-                    「データのインポート」を実行すると、現在のデータは**すべて消去**され、ファイルの内容で**完全に上書き**されます。ご注意ください。
+                    「データのインポート」を実行すると、PCで編集したデータをスマホに取り込んだり、バックアップを復元したりできます。
+                    <br>データは以下のルールで賢く**統合（マージ）**されます。
                 </p>
+                <div class="bg-white p-3 rounded border border-yellow-200 mt-2 text-sm text-gray-700 space-y-2">
+                    <p><strong>🐦 図鑑データ（写真・説明など）</strong><br>
+                    基本的にはファイルの内容で上書きされますが、<br>
+                    <span class="text-red-600 font-bold">ファイル側の項目が「空」で、今のアプリに「データがある」場合、今のデータが維持されます。</span><br>
+                    （例：PCで編集していない鳥の写真は、スマホで撮影したものがそのまま残ります）
+                    </p>
+                    <hr class="border-yellow-100">
+                    <p><strong>📅 イベント履歴</strong><br>
+                    今のアプリにある記録はそのまま残り、ファイルに含まれる新しい記録が**追加**されます。<br>
+                    （スマホで記録したイベントが消えることはありません）
+                    </p>
+                </div>
             </section>
         </div>
     `;
 
-    // --- 3. 観察時の注意 (素案) ---
-    // ★ 修正: 「野鳥観察の基本」のみに分離
+    // --- 3. 観察時の注意 (野鳥観察の基本) ---
     const precautionsHtml = `
         <div class="bg-white rounded-lg shadow p-4 space-y-4">
             <h2 class="text-xl font-semibold mb-4">野鳥観察の基本</h2>
@@ -143,7 +160,7 @@ function showManualPage() {
             <ul class="list-disc list-inside space-y-2 text-sm text-gray-600">
                 <li><strong>距離を保つ:</strong> 鳥が警戒したり、逃げたりしないよう、十分な距離を保ちましょう。特に巣やヒナには絶対に近づかないでください。巣立ち雛は親から餌をもらっている時期なので、見つけてもそとしておきましょう。持ち去ると誘拐にあたり、法にも違反します。もし野鳥が野生生物に襲われていても、介入してはいけません（外来生物による被害を除く）。</li>
                 <li><strong>ストレスを与えない:</strong> しつこく追いかけ回したり、大声を出したりしないでください。</li>
-                <li><strong>餌を与えない:</strong> 人間の食べ物は鳥にとって有害であり、生態系のバランスを崩す原因となります。人や鳥の感染症が広がる、行動の変化により生存が難しくなる（本来の食物を得る事ができなくなる）、農作物の食害や人への攻撃行動を増加させ駆D除される恐れがある、人への警戒心が薄れ密猟や事故を助長する、等の影響を想像できるようになりましょう。</li>
+                <li><strong>餌を与えない:</strong> 人間の食べ物は鳥にとって有害であり、生態系のバランスを崩す原因となります。人や鳥の感染症が広がる、行動の変化により生存が難しくなる（本来の食物を得る事ができなくなる）、農作物の食害や人への攻撃行動を増加させ駆除される恐れがある、人への警戒心が薄れ密猟や事故を助長する、等の影響を想像できるようになりましょう。</li>
                 <li><strong>録音音声の再生:</strong> 鳥の鳴き声（録音）を再生すると、鳥を混乱させたり、過度な警戒や縄張り防衛行動（体力の消耗）を強いたりする可能性があります。特に繁殖期は控えましょう。</li>
             </ul>
 
@@ -164,7 +181,6 @@ function showManualPage() {
     `;
     
     // --- 画面全体の描画 (アコーディオン化) ---
-    // ★ 修正: 3つのアコーディオンを描画
     app.innerHTML = `
         <div class="space-y-2 p-2">
             
@@ -217,10 +233,10 @@ function showManualPage() {
     
     updateHeader('manual', '説明書'); // app.js の関数
 
-    // --- ★★★ リスナー設定 (アコーディオンロジックを追加) ★★★ ---
+    // --- リスナー設定 ---
     setTimeout(() => {
         try {
-            // 汎用アコーディオン開閉関数 (settings.js から拝借)
+            // 汎用アコーディオン開閉関数
             const toggleAccordion = (contentId, arrowId) => {
                 const content = document.getElementById(contentId);
                 const arrow = document.getElementById(arrowId);
@@ -236,9 +252,9 @@ function showManualPage() {
                     content.style.maxHeight = '0px';
                     arrow.classList.remove('arrow-up');
                 } else {
-                    // 開く (scrollHeight が 0 の場合のフォールバック を追加)
-                    // 説明書は長いので、フォールバックを 1000px に増やしておく
-                    content.style.maxHeight = (content.scrollHeight > 0 ? content.scrollHeight : 1000) + 'px';
+                    // 開く (scrollHeight が 0 の場合のフォールバック)
+                    // 説明書は長いので、フォールバックを 2000px に増やしておく
+                    content.style.maxHeight = (content.scrollHeight > 0 ? content.scrollHeight : 2000) + 'px';
                     arrow.classList.add('arrow-up');
                 }
             };
@@ -249,7 +265,6 @@ function showManualPage() {
                 usageToggle.onclick = () => toggleAccordion('accordion-content-usage', 'accordion-arrow-usage');
             }
             
-            // ★ 修正: 新しい「使用上の注意！」リスナーを追加
             const dataPrecautionsToggle = document.getElementById('accordion-toggle-data-precautions');
             if (dataPrecautionsToggle) {
                 dataPrecautionsToggle.onclick = () => toggleAccordion('accordion-content-data-precautions', 'accordion-arrow-data-precautions');
