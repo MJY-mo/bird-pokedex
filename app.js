@@ -1,4 +1,4 @@
-// app.js (レイアウト幅自動調整版)
+// app.js (トリミング枠の移動修正版)
 
 // --- GitHub Pages URL設定 ---
 const GITHUB_CSV_URL = 'https://mjy-mo.github.io/bird-pokedex/bird-list.csv';
@@ -509,11 +509,7 @@ function loadListControlsState() {
         birderName: '',
         birderPhoto: '',
         socialLinks: {
-            hp: '',
-            x: '',
-            bluesky: '',
-            instagram: '',
-            threads: ''
+            hp: '', x: '', bluesky: '', instagram: '', threads: ''
         },
         birderComment: '',
         fontSize: 16 
@@ -926,13 +922,13 @@ function showCropperModal(imageUrl, onSave, onDelete = null) {
             aspectRatio: NaN, 
             viewMode: 1,    
             dragMode: 'move',
-            autoCropArea: 1.0,
+            autoCropArea: 0.9, // 修正：少し余裕を持たせる
             restore: false,
             guides: true,
             center: true,
             highlight: false,
-            cropBoxMovable: false, 
-            cropBoxResizable: false, 
+            cropBoxMovable: true, // 修正：true (移動可能)
+            cropBoxResizable: true, // 修正：true (リサイズ可能)
             toggleDragModeOnDblclick: false,
         });
     };
