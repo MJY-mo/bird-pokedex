@@ -562,8 +562,11 @@ function showDetailPage(birdId) {
             <div class="bg-gray-200 rounded-lg shadow overflow-hidden relative">
                 <img src="${imageUrl}" alt="${escapeHTML(bird.name)}" 
                      onerror="this.onerror=null; this.src='${placeholderUrl}';" 
-                     class="w-full h-56 object-cover ${opacityClass}">
-                ${editPhotoBtnHtml} </div>            <div class="bg-white rounded-lg shadow overflow-hidden">
+                     class="w-full h-64 object-contain bg-gray-900 ${opacityClass}">
+                ${editPhotoBtnHtml} 
+            </div>
+            
+            <div class="bg-white rounded-lg shadow overflow-hidden">
                 <div class="p-4">
                     <div class="flex flex-wrap gap-2 mb-3">${seasonTag}${rarityTag}${specialTags}</div>
                     

@@ -1,4 +1,4 @@
-// app.js (元ファイルをベースにした修正済み完全版)
+// app.js (レイアウト幅自動調整版)
 
 // --- GitHub Pages URL設定 ---
 const GITHUB_CSV_URL = 'https://mjy-mo.github.io/bird-pokedex/bird-list.csv';
@@ -103,7 +103,12 @@ const appState = {
     settings: {
         autoUpdateLiferList: true,
         birderName: '',
-        birderPhoto: '' 
+        birderPhoto: '',
+        socialLinks: {
+            hp: '', x: '', bluesky: '', instagram: '', threads: ''
+        },
+        birderComment: '',
+        fontSize: 16
     }
 };
 
@@ -353,7 +358,7 @@ async function checkAndUpdateData() {
         const parsedResult = Papa.parse(csvText, { header: true, skipEmptyLines: true, trimHeaders: true });
         if (parsedResult.errors.length > 0) {
              console.warn('PapaParse Errors on merge:', parsedResult.errors);
-              if (parsedResult.errors.some(err => err.code === 'MissingHeaders' || err.code === 'IncorrectHeaders')) {
+             if (parsedResult.errors.some(err => err.code === 'MissingHeaders' || err.code === 'IncorrectHeaders')) {
                  throw new Error(`CSV Parsing failed during merge due to header issues: ${parsedResult.errors[0].message}`);
              }
         }
@@ -588,7 +593,7 @@ function getFilterStatus() {
 } 
 
 
-// --- ヘッダー更新 ---
+// --- ヘッダー更新 & ★レイアウト幅の自動調整 ---
 function updateHeader(mode, title = "鳥図鑑") { 
     try { 
         if (!headerTitle || !backButton || !headerActions || !searchPopup || !filterPopup || !viewPopup || !app || !searchToggleButton || !filterToggleButton || !viewToggleButton || !filterActiveDot) {
@@ -596,6 +601,52 @@ function updateHeader(mode, title = "鳥図鑑") {
             return;
         }
         
+        // --- ★ 追加: PC表示時の横幅制御ロジック ---
+        const layoutElements = [
+            document.getElementById('header'),
+            document.getElementById('app'),
+            document.querySelector('nav')
+        ];
+
+        // 検索ポップアップなども幅調整対象にするため取得
+        const popupElements = [
+            document.getElementById('search-popup'),
+            document.getElementById('filter-popup'),
+            document.getElementById('view-popup')
+        ];
+
+        if (mode === 'list') {
+            // 図鑑リスト: PCでは全幅 (md:max-w-none)
+            layoutElements.forEach(el => {
+                if (el) {
+                    el.classList.remove('md:max-w-2xl');
+                    el.classList.add('md:max-w-none');
+                }
+            });
+            popupElements.forEach(el => {
+                if (el) {
+                    el.classList.remove('md:max-w-2xl');
+                    el.classList.add('md:max-w-none');
+                }
+            });
+        } else {
+            // それ以外（詳細、設定、イベント等）: PCでは幅制限 (md:max-w-2xl)
+            layoutElements.forEach(el => {
+                if (el) {
+                    el.classList.remove('md:max-w-none');
+                    el.classList.add('md:max-w-2xl');
+                }
+            });
+            // ポップアップはリスト画面以外では出ないが念のため
+             popupElements.forEach(el => {
+                if (el) {
+                    el.classList.remove('md:max-w-none');
+                    el.classList.add('md:max-w-2xl');
+                }
+            });
+        }
+        // ------------------------------------------
+
         headerTitle.textContent = title;
         backButton.classList.add('hidden');
         headerActions.classList.add('hidden'); 
@@ -838,7 +889,7 @@ function showCropperModal(imageUrl, onSave, onDelete = null) {
 
     const modal = document.createElement('div');
     modal.id = 'cropper-modal';
-    modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4';
+    modal.className = 'fixed inset-0 z-[200] flex items-center justify-center bg-black bg-opacity-75 p-4';
     
     const deleteBtnHtml = onDelete 
         ? `<button id="cropper-delete-btn" class="text-red-500 hover:text-red-400 font-bold px-4 py-2">写真を削除</button>` 
@@ -872,7 +923,7 @@ function showCropperModal(imageUrl, onSave, onDelete = null) {
     image.onload = () => {
         image.style.opacity = 1;
         cropper = new Cropper(image, {
-            aspectRatio: 1, 
+            aspectRatio: NaN, 
             viewMode: 1,    
             dragMode: 'move',
             autoCropArea: 1.0,
@@ -894,8 +945,9 @@ function showCropperModal(imageUrl, onSave, onDelete = null) {
     if (onDelete) {
         const deleteBtn = document.getElementById('cropper-delete-btn');
         if (deleteBtn) {
-            deleteBtn.onclick = () => {
-                if (confirm('本当にこの写真を削除しますか？')) {
+            deleteBtn.onclick = async () => {
+                const confirmed = await showCustomConfirm('本当にこの写真を削除しますか？', '削除');
+                if (confirmed) {
                     onDelete();
                     document.body.removeChild(modal);
                 }
@@ -915,7 +967,7 @@ function showCropperModal(imageUrl, onSave, onDelete = null) {
             imageSmoothingQuality: 'high',
         });
         
-        const base64Image = canvas.toDataURL('image/jpeg', 0.7);
+        const base64Image = canvas.toDataURL('image/jpeg', 0.85); // 圧縮率0.85
         
         if (onSave) {
             onSave(base64Image);
@@ -1031,6 +1083,7 @@ function setupTabs() {
 
                 // ポップアップを閉じる
                 appState.listControls.activePopup = null;
+                // updateHeader でモードを渡してレイアウト制御させる
                 updateHeader(tab.id === 'tab-pokedex' ? 'list' : 'other');
 
                 tab.page();
