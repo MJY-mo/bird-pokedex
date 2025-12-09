@@ -36,8 +36,8 @@
 
     <div id="background-overlay"></div>
 
-    <header id="header" class="bg-white shadow-md flex-none z-20 w-full max-w-lg md:max-w-none mx-auto transition-all duration-300">
-        <div class="w-full px-4 py-3 flex items-center justify-between h-16">
+    <header id="header" class="bg-white shadow-md flex-none z-20 w-full transition-all duration-300">
+        <div id="header-container" class="w-full max-w-lg md:max-w-none mx-auto px-4 py-3 flex items-center justify-between h-16">
             <button id="backButton" class="hidden text-emerald-700 bg-emerald-50 hover:bg-emerald-100 font-bold py-1 px-3 rounded-full border border-emerald-200 transition-colors shadow-sm text-sm">
                 &lt; 戻る
             </button>
@@ -64,34 +64,36 @@
 
     <main id="app" class="container mx-auto max-w-lg md:max-w-none p-2 flex-1 overflow-y-auto overscroll-contain transition-all duration-300"></main>
 
-    <nav class="bg-white border-t border-gray-200 flex-none w-full max-w-lg md:max-w-none mx-auto h-16 flex justify-around items-center z-30 transition-all duration-300">
-        
-        <button id="tab-pokedex" class="tab-button flex-1 flex flex-col items-center justify-center h-full text-sm font-medium tab-active">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mb-1">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-            </svg>
-            図鑑
-        </button>
-        
-        <button id="tab-events" class="tab-button flex-1 flex flex-col items-center justify-center h-full text-sm font-medium tab-inactive">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-            イベント
-        </button>
-        
-        <button id="tab-manual" class="tab-button flex-1 flex flex-col items-center justify-center h-full text-sm font-medium tab-inactive">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0-2.062.18 3 .512v14.25A8.987 8.987 0 0018 18c-2.305 0-4.408.867-6 2.292m0-14.25v14.25" />
-            </svg>
-            説明書
-        </button>
-        
-        <button id="tab-settings" class="tab-button flex-1 flex flex-col items-center justify-center h-full text-sm font-medium tab-inactive">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mb-1">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75a4.5 4.5 0 0 1-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 1 1-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 0 1 6.336-4.486l-3.276 3.276a3.004 3.004 0 0 0 2.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852Z" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4.867 19.125h.008v.008h-.008v-.008Z" />
-            </svg>
-            設定
-        </button>
+    <nav class="bg-white border-t border-gray-200 flex-none w-full z-30 transition-all duration-300">
+        <div id="nav-container" class="w-full max-w-lg md:max-w-none mx-auto h-16 flex justify-around items-center">
+            
+            <button id="tab-pokedex" class="tab-button flex-1 flex flex-col items-center justify-center h-full text-sm font-medium tab-active">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mb-1">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                </svg>
+                図鑑
+            </button>
+            
+            <button id="tab-events" class="tab-button flex-1 flex flex-col items-center justify-center h-full text-sm font-medium tab-inactive">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                イベント
+            </button>
+            
+            <button id="tab-manual" class="tab-button flex-1 flex flex-col items-center justify-center h-full text-sm font-medium tab-inactive">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0-2.062.18 3 .512v14.25A8.987 8.987 0 0018 18c-2.305 0-4.408.867-6 2.292m0-14.25v14.25" />
+                </svg>
+                説明書
+            </button>
+            
+            <button id="tab-settings" class="tab-button flex-1 flex flex-col items-center justify-center h-full text-sm font-medium tab-inactive">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mb-1">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75a4.5 4.5 0 0 1-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 1 1-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 0 1 6.336-4.486l-3.276 3.276a3.004 3.004 0 0 0 2.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852Z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.867 19.125h.008v.008h-.008v-.008Z" />
+                </svg>
+                設定
+            </button>
+        </div>
     </nav>
 
     <div id="custom-confirm-modal" class="hidden fixed inset-0 w-full h-full flex items-center justify-center z-60"

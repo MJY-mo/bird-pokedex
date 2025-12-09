@@ -597,11 +597,11 @@ function updateHeader(mode, title = "鳥図鑑") {
             return;
         }
         
-        // --- ★ 追加: PC表示時の横幅制御ロジック ---
+        // --- ★ 修正: 操作対象のIDを変更 (header-container, nav-container) ---
         const layoutElements = [
-            document.getElementById('header'),
+            document.getElementById('header-container'), // 外枠ではなく中身を操作
             document.getElementById('app'),
-            document.querySelector('nav')
+            document.getElementById('nav-container')     // 外枠ではなく中身を操作
         ];
 
         // 検索ポップアップなども幅調整対象にするため取得
@@ -633,7 +633,6 @@ function updateHeader(mode, title = "鳥図鑑") {
                     el.classList.add('md:max-w-2xl');
                 }
             });
-            // ポップアップはリスト画面以外では出ないが念のため
              popupElements.forEach(el => {
                 if (el) {
                     el.classList.remove('md:max-w-none');
