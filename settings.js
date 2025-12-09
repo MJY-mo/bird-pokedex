@@ -17,7 +17,7 @@ function showSettingsPage() {
     });
 
     // --- 2. ★★★ 自分のバーダーカード（編集機能付き） ★★★ ---
-const myCard = appState.settings; // birderName, birderPhoto を含む
+    const myCard = appState.settings; // birderName, birderPhoto を含む
     const myPhotoUrl = myCard.birderPhoto || './favicon3.png';
 
     // ★ 修正: pokedex.js と同じロジックを適用
@@ -269,7 +269,11 @@ const myCard = appState.settings; // birderName, birderPhoto を含む
             <h2 class="text-xl font-semibold mb-4 text-red-700">データのインポート</h2>
             <p class="text-gray-600 mb-4">
                 エクスポートしたバックアップファイル（.json）を選択してください。<br>
-                <strong class="font-medium text-red-600">注意: 図鑑データはPC版の内容で上書きされますが、スマホのイベント履歴は保持されます（マージされます）。</strong>
+                <strong class="font-medium text-red-600">注意: </strong>
+                <ul class="list-disc list-inside text-sm text-gray-600 ml-2">
+                    <li>図鑑データ（写真・説明）: 空欄でない限り、ファイルの内容で上書きされます。</li>
+                    <li>イベント履歴: スマホの記録を残したまま、ファイルの内容を統合（マージ）します。</li>
+                </ul>
             </p>
             
             <label for="import-data-file" class="sr-only">バックアップファイルを選択</label>
@@ -403,9 +407,7 @@ const myCard = appState.settings; // birderName, birderPhoto を含む
 
 // --- マイ・バーダーカードのリスナー ---
             const nameInput = document.getElementById('birder-name-input');
-            // const photoInput = document.getElementById('birder-photo-input'); // ★ 削除
             const photoPreview = document.getElementById('birder-photo-preview');
-            // const removePhotoBtn = document.getElementById('birder-remove-photo-btn'); // ★ 削除
             const shareCardBtn = document.getElementById('share-card-btn');
             
             const adjustBirderPhotoBtn = document.getElementById('adjust-birder-photo-btn');
@@ -417,8 +419,6 @@ const myCard = appState.settings; // birderName, birderPhoto を含む
                 };
             }
             
-            // ★ 修正: photoInput と removePhotoBtn のリスナーを削除
-
             // ★ 修正: adjustBirderPhotoBtn のロジックを pokedex.js と同様に更新
             if (adjustBirderPhotoBtn && photoPreview) {
                 adjustBirderPhotoBtn.onclick = () => {
@@ -777,12 +777,12 @@ async function handleExportData() {
 }
 
 
-// --- データのインポート処理（修正版: イベントはマージする） ---
+// --- データのインポート処理（スマートマージ版） ---
 async function handleImportData(file) {
     if (!file) return;
 
     const confirmed = await showCustomConfirm(
-        '本当にインポートしますか？\n\n・図鑑データ（写真・説明）はファイルの内容で【上書き】されます。\n・イベント履歴は、スマホにある記録を残したまま、ファイル内の新しい記録を【追加】します。',
+        '本当にインポートしますか？\n\n・図鑑データ（写真・説明等）: インポート元が空でなければ上書き、空なら既存データを維持します。\n・ライフリスト: インポート元の内容で上書きされます。\n・イベント履歴: 統合（マージ）されます。',
         'インポート実行'
     );
 
@@ -790,7 +790,6 @@ async function handleImportData(file) {
     const importBtn = document.getElementById('import-data-btn');
 
     if (!confirmed) {
-        console.log('インポートがキャンセルされました。');
         if (importFile) importFile.value = null;
         if (importBtn) {
             importBtn.disabled = true;
@@ -809,33 +808,46 @@ async function handleImportData(file) {
             const backupData = JSON.parse(jsonString);
 
             if (!backupData || !Array.isArray(backupData.birds) || !Array.isArray(backupData.events)) {
-                throw new Error('バックアップファイルの形式が無効です。（鳥またはイベントのデータがありません）');
+                throw new Error('バックアップファイルの形式が無効です。');
             }
 
             const db = await openBirdDB();
             
-            // 1. 図鑑データ（Birds）: PCマスターなので全削除して上書き
-            await db.clear(STORE_BIRDS);
+            // 1. 図鑑データ（Birds）: スマートマージ
+            // db.clear() はしません
             const birdTx = db.transaction(STORE_BIRDS, 'readwrite');
-            await Promise.all(backupData.birds.map(bird => birdTx.store.put(bird)));
+            
+            for (const importBird of backupData.birds) {
+                const existingBird = await birdTx.store.get(importBird.id);
+                
+                if (existingBird) {
+                    // ★ スマートマージ処理 ★
+                    // 以下の項目は、インポートデータが空なら既存データを維持する
+                    const preserveKeys = ['photo_url', 'voice_url', 'description', 'observed_date', 'observed_location', 'special_notes'];
+                    preserveKeys.forEach(key => {
+                        if (!importBird[key] && existingBird[key]) {
+                            importBird[key] = existingBird[key];
+                        }
+                    });
+                    // ライフリストなどのBoolean値は、表の通りPC版(Import版)で上書きされるため何もしない（importBirdの値をそのまま使う）
+                }
+                
+                // 更新または新規追加
+                await birdTx.store.put(importBird);
+            }
             await birdTx.done;
             
-            // 2. イベントデータ（Events）: スマホ記録重視なので全削除しない（マージ）
-            // STORE_EVENTS はクリアしません。
+            // 2. イベントデータ（Events）: マージ
             const eventTx = db.transaction(STORE_EVENTS, 'readwrite');
             for (const ev of backupData.events) {
-                // 同じIDのイベントが既にスマホにあるか確認
                 const existing = await eventTx.store.get(ev.id);
                 if (!existing) {
-                    // スマホに無いイベントだけを追加
                     await eventTx.store.add(ev);
                 }
-                // 既にある場合は何もしない（スマホ版を優先）
             }
             await eventTx.done;
             
-            // 3. もらったカード: バックアップにあれば上書き（全削除して入れ替え）
-            // カードはコレクションなので、重複管理より入れ替えの方がシンプルで安全
+            // 3. もらったカード: 全削除して入れ替え
             await db.clear(STORE_CARDS);
             if (backupData.receivedCards && Array.isArray(backupData.receivedCards)) {
                  const cardTx = db.transaction(STORE_CARDS, 'readwrite');
@@ -843,26 +855,18 @@ async function handleImportData(file) {
                  await cardTx.done;
             }
 
+            // 設定の復元
             if (backupData.settings) {
                 localStorage.setItem('birdListControls', JSON.stringify(backupData.settings));
-            } else {
-                localStorage.removeItem('birdListControls'); 
             }
-            
             if (backupData.backgroundSettings) {
                 localStorage.setItem('birdAppBackground', JSON.stringify(backupData.backgroundSettings));
-            } else {
-                localStorage.removeItem('birdAppBackground'); 
             }
 
-            console.log('インポートが完了しました。アプリを再読み込みします...');
-            
+            console.log('インポート完了。再読み込みします...');
             await initializeDatabase(); 
             loadListControlsState();    
-            
             applyBackgroundSettings(); 
-            
-            // ★★★ 循環参照エラーの修正
             showListPage(); 
             
             if (importFile) importFile.value = null;
@@ -871,367 +875,159 @@ async function handleImportData(file) {
                  importBtn.classList.add('opacity-50', 'cursor-not-allowed');
             }
             
-            await showCustomConfirm(
-                'データのインポートが完了しました。\n（イベント履歴は統合されました）',
-                'OK',
-                true 
-            );
+            await showCustomConfirm('データのインポート（統合）が完了しました。', 'OK', true);
 
         } catch (error) {
-            console.error('インポート処理中にエラーが発生しました:', error);
+            console.error('インポートエラー:', error);
             showListPage(); 
-            
-            await showCustomConfirm(
-                `インポートに失敗しました。\nエラー: ${error.message}\n\nファイルが破損していないか、正しいバックアップファイルか確認してください。`,
-                'OK',
-                true 
-            );
+            await showCustomConfirm(`インポートに失敗しました。\nエラー: ${error.message}`, 'OK', true);
         }
     };
-    
-    reader.onerror = async (error) => {
-        console.error('ファイルの読み込みに失敗しました:', error);
-        await showCustomConfirm(
-            'ファイルの読み込みに失敗しました。',
-            'OK',
-            true 
-        );
-    };
-
     reader.readAsText(file);
 }
-
 
 // --- 観察記録CSVのエクスポート ---
 async function handleExportCsvData() {
     console.log('CSVエクスポート処理を開始します...');
-    
     const headers = [
         "EventID", "EventName", "EventDateTime", "EventWeather", "EventLocation", "EventCompanions", "EventMemo",
         "ObservedBirdName", "ObservedCount", "ObservedSeen", "ObservedHeard", "ObservedPhoto", "ObservedVideo"
     ];
-    
     const csvData = [headers];
-    
     try {
         if (!birdEvents || birdEvents.length === 0) {
             await showCustomConfirm("エクスポートするイベントがありません。", "OK", true);
             return;
         }
-
         for (const event of birdEvents) {
             const eventBase = [
-                event.id || '',
-                event.name || '',
-                event.dateTime || '',
-                event.weather || '',
-                event.location || '',
-                event.companions || '',
-                (event.memo || '').replace(/\n/g, ' '), 
+                event.id || '', event.name || '', event.dateTime || '', event.weather || '', event.location || '', event.companions || '', (event.memo || '').replace(/\n/g, ' '), 
             ];
-            
             if (event.observedBirds && event.observedBirds.length > 0) {
                 for (const bird of event.observedBirds) {
-                    const birdData = [
-                        bird.name || '',
-                        bird.count || 1,
-                        bird.seen || false,
-                        bird.heard || false,
-                        bird.photo || false,
-                        bird.video || false
-                    ];
-                    csvData.push([...eventBase, ...birdData]);
+                    csvData.push([...eventBase, bird.name || '', bird.count || 1, bird.seen || false, bird.heard || false, bird.photo || false, bird.video || false]);
                 }
             } else {
-                // 鳥の記録がないイベント
                 csvData.push([...eventBase, "", "", "", "", "", ""]);
             }
         }
-
         const csvString = Papa.unparse(csvData);
-        
         const bom = new Uint8Array([0xEF, 0xBB, 0xBF]); 
         const blob = new Blob([bom, csvString], { type: 'text/csv;charset=utf-8;' });
-        
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        
         const dateStr = new Date().toISOString().split('T')[0];
         a.download = `bird-observations-export-${dateStr}.csv`;
-        
         document.body.appendChild(a);
         a.click();
-        
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        
-        console.log('CSVエクスポートが完了しました。');
-
     } catch (error) {
-        console.error('CSVエクスポートに失敗しました:', error);
-        await showCustomConfirm(
-            `CSVエクスポートに失敗しました。\nエラー: ${error.message}`,
-            'OK',
-            true 
-        );
+        await showCustomConfirm(`CSVエクスポート失敗: ${error.message}`, 'OK', true);
     }
 }
 
-
 // --- ライフリスト再集計 ---
 async function handleRescanLiferList() {
-    const confirmed = await showCustomConfirm(
-        'イベント履歴全体からライフリストを再集計しますか？\n（手動でOFFにした項目も、履歴にあればONに更新されます）',
-        '再集計を実行'
-    );
+    const confirmed = await showCustomConfirm('イベント履歴全体からライフリストを再集計しますか？', '実行');
     if (!confirmed) return;
-
-    console.log('ライフリストの再集計を開始...');
-    showLoadingMessage("ライフリストを再集計中...");
-
-    let updatedCount = 0;
-    let birdDataNeedsSave = false;
-
+    showLoadingMessage("再集計中...");
     try {
+        let updatedCount = 0;
+        let birdDataNeedsSave = false;
         for (const event of birdEvents) {
             for (const observedBird of event.observedBirds) {
                 const birdInDB = birdDatabase.find(b => b.name === observedBird.name);
                 if (birdInDB) {
                     let updated = false;
-                    if (observedBird.seen && !birdInDB.lifer_seen) {
-                        birdInDB.lifer_seen = true;
-                        updated = true;
-                    }
-                    if (observedBird.heard && !birdInDB.lifer_heard) {
-                        birdInDB.lifer_heard = true;
-                        updated = true;
-                    }
-                    if (observedBird.photo && !birdInDB.lifer_photo) {
-                        birdInDB.lifer_photo = true;
-                        updated = true;
-                    }
-                    if (observedBird.video && !birdInDB.lifer_video) {
-                        birdInDB.lifer_video = true;
-                        updated = true;
-                    }
-                    if(updated) {
-                        birdDataNeedsSave = true;
-                        updatedCount++;
-                    }
+                    if (observedBird.seen && !birdInDB.lifer_seen) { birdInDB.lifer_seen = true; updated = true; }
+                    if (observedBird.heard && !birdInDB.lifer_heard) { birdInDB.lifer_heard = true; updated = true; }
+                    if (observedBird.photo && !birdInDB.lifer_photo) { birdInDB.lifer_photo = true; updated = true; }
+                    if (observedBird.video && !birdInDB.lifer_video) { birdInDB.lifer_video = true; updated = true; }
+                    if(updated) { birdDataNeedsSave = true; updatedCount++; }
                 }
             }
         }
-
-        if (birdDataNeedsSave) {
-            await saveDatabase();
-            console.log(`ライフリストの再集計が完了。${updatedCount}件の鳥データが更新されました。`);
-        } else {
-            console.log('ライフリストの再集計が完了。更新はありませんでした。');
-        }
-        
+        if (birdDataNeedsSave) await saveDatabase();
         showSettingsPage();
-        
-        await showCustomConfirm(
-            'ライフリストの再集計が完了しました。',
-            'OK',
-            true
-        );
-
+        await showCustomConfirm(`完了。${updatedCount}件更新されました。`, 'OK', true);
     } catch (error) {
-        console.error('ライフリストの再集計中にエラー:', error);
         showSettingsPage(); 
-        await showCustomConfirm(
-            `再集計中にエラーが発生しました。\n${error.message}`,
-            'OK',
-            true
-        );
+        await showCustomConfirm(`エラー: ${error.message}`, 'OK', true);
     }
 }
 
-
-// --- ★★★ 修正: カードの写真変更ハンドラ (Cropper.js を起動) ★★★ ---
-
-// --- ★★★ カードを共有（またはエクスポート）するハンドラ ★★★ ---
+// --- カード共有・インポート関連 ---
 async function handleShareMyCard(liferTotals) {
-    
-    // ★ 修正: バージョン情報を追加
     const myCardData = {
-        type: 'BirdPokedexCard', 
-        version: 1, 
+        type: 'BirdPokedexCard', version: 1, 
         name: appState.settings.birderName || '名無しのバーダー',
-        photo: appState.settings.birderPhoto || '', // Base64
+        photo: appState.settings.birderPhoto || '',
         totals: liferTotals,
-        // ★ 修正: SNSリンクとコメントを追加
         socialLinks: appState.settings.socialLinks || {},
         comment: appState.settings.birderComment || '',
         exportedDate: new Date().toISOString()
     };
-    
     const jsonString = JSON.stringify(myCardData);
-    // ファイル拡張子を .bcard にする (専用ファイルっぽく)
     const fileName = `birder-card-${(appState.settings.birderName || 'user').replace(/[^a-zA-Z0-9]/g, '_')}.bcard`;
     const file = new File([jsonString], fileName, { type: 'application/json' });
 
-    // 1. Web Share API (navigator.share) が使えるか試す
     if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
-            await navigator.share({
-                title: '私のバーダーカード',
-                text: `${myCardData.name}さんのバーダーカードです。`,
-                files: [file]
-            });
-            console.log('カードが正常に共有されました。');
+            await navigator.share({ title: '私のバーダーカード', text: `${myCardData.name}さんのバーダーカードです。`, files: [file] });
         } catch (error) {
-            if (error.name !== 'AbortError') {
-                console.error('共有エラー:', error);
-                // 共有が失敗したら、フォールバックとしてダウンロードを実行
-                handleExportMyCardFallback(file);
-            } else {
-                console.log('共有がキャンセルされました。');
-            }
+            if (error.name !== 'AbortError') handleExportMyCardFallback(file);
         }
     } else {
-        // 2. 共有機能が使えないブラウザ（PCなど）の場合は、ダウンロードにフォールバック
-        console.log('Web Share API (Files)非対応。ダウンロードにフォールバックします。');
         handleExportMyCardFallback(file);
     }
 }
 
-// --- ★★★ カード共有のフォールバック（ダウンロード） ★★★ ---
 function handleExportMyCardFallback(file) {
     const url = URL.createObjectURL(file);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = file.name;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    a.href = url; a.download = file.name;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    console.log('カードをファイルとしてダウンロードしました。');
 }
 
-// --- ★★★ 新設: もらったカードの移行（マイグレーション）関数 ★★★ ---
-/**
- * インポートしたカードデータを、現在のアプリが期待する構造に変換する
- */
 function migrateReceivedCardData(cardData) {
-    const version = cardData.version || 1; // バージョンがなければV1とみなす
-    
-    // V1のデフォルト構造
     const defaultV1Card = {
-        name: '（名前なし）',
-        photo: '',
-        totals: { seen: 0, heard: 0, photo: 0, video: 0, any: 0 },
-        // ★ 修正: デフォルト値を追加
-        socialLinks: { hp: '', x: '', bluesky: '', instagram: '', threads: '' },
-        comment: ''
+        name: '（名前なし）', photo: '', totals: { seen: 0, heard: 0, photo: 0, video: 0, any: 0 },
+        socialLinks: { hp: '', x: '', bluesky: '', instagram: '', threads: '' }, comment: ''
     };
-
-    let migratedData = {};
-
-    if (version === 1) {
-        migratedData = {
-            name: cardData.name || defaultV1Card.name,
-            photo: cardData.photo || defaultV1Card.photo,
-            totals: cardData.totals || defaultV1Card.totals,
-            // ★ 修正: 読み込み処理を追加
-            socialLinks: cardData.socialLinks || defaultV1Card.socialLinks,
-            comment: cardData.comment || defaultV1Card.comment
-        };
-    }
-    // else if (version === 2) {
-    //   // V2の移行ロジック
-    // }
-    
-    // 不足している可能性のあるキーを、デフォルトで上書きマージする
-    return { ...defaultV1Card, ...migratedData };
+    return { ...defaultV1Card, ...cardData };
 }
 
-
-// --- ★★★ もらったカードを読み込むハンドラ ★★★ ---
 async function handleImportReceivedCard(event) {
     const file = event.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = async (e) => {
         try {
-            const jsonString = e.target.result;
-            const cardData = JSON.parse(jsonString);
-
-            // データのバリデーション (totalsのチェックは緩める)
-            if (!cardData || cardData.type !== 'BirdPokedexCard') {
-                throw new Error('これは有効なバーダーカードファイルではありません。');
-            }
-            
-            // ★ 修正: 移行関数を通す
-            const migratedCard = migrateReceivedCardData(cardData);
-
-            // スナップショットとして保存（ユニークIDと受信日を追加）
-            const newCard = {
-                ...migratedCard, // ★ 移行後のデータを使用
-                id: `card_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`, // ユニークID
-                receivedDate: new Date().toISOString()
-            };
-
-            // グローバル変数とDBに追加
+            const cardData = JSON.parse(e.target.result);
+            if (!cardData || cardData.type !== 'BirdPokedexCard') throw new Error('無効なファイルです。');
+            const newCard = { ...migrateReceivedCardData(cardData), id: `card_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`, receivedDate: new Date().toISOString() };
             receivedCards.push(newCard);
-            await saveReceivedCards(); // app.js の関数
-            
-            console.log('カードを読み込みました:', newCard);
-            await showCustomConfirm(
-                `${escapeHTML(newCard.name)}さんのカードを読み込みました！`,
-                'OK',
-                true
-            );
-            
-            // 設定画面を再描画して一覧に反映
+            await saveReceivedCards();
             showSettingsPage();
-
+            await showCustomConfirm(`${escapeHTML(newCard.name)}さんのカードを読み込みました！`, 'OK', true);
         } catch (error) {
-            console.error('カードの読み込みに失敗しました:', error);
-            await showCustomConfirm(
-                `カードの読み込みに失敗しました。\nエラー: ${error.message}`,
-                'OK',
-                true
-            );
-        } finally {
-            // ファイル選択をリセット
-            event.target.value = null;
-        }
-    };
-    reader.onerror = async () => {
-        await showCustomConfirm('ファイルの読み取りに失敗しました。', 'OK', true);
-        event.target.value = null;
+            await showCustomConfirm(`読み込み失敗: ${error.message}`, 'OK', true);
+        } finally { event.target.value = null; }
     };
     reader.readAsText(file);
 }
 
-// --- ★★★ もらったカードを削除するハンドラ ★★★ ---
 async function handleDeleteReceivedCard(cardId) {
     if (!cardId) return;
-    
     const cardIndex = receivedCards.findIndex(c => c.id === cardId);
-    if (cardIndex === -1) {
-        console.error('削除対象のカードが見つかりません。');
-        return;
-    }
-    
-    const cardName = receivedCards[cardIndex].name || '（名前なし）';
-
-    const confirmed = await showCustomConfirm(
-        `${escapeHTML(cardName)}さんのカードを削除しますか？`,
-        '削除'
-    );
-    
+    if (cardIndex === -1) return;
+    const confirmed = await showCustomConfirm(`${escapeHTML(receivedCards[cardIndex].name)}さんのカードを削除しますか？`, '削除');
     if (confirmed) {
-        receivedCards.splice(cardIndex, 1); // 配列から削除
-        await saveReceivedCards(); // DBを更新
-        showSettingsPage(); // 画面を再描画
+        receivedCards.splice(cardIndex, 1);
+        await saveReceivedCards();
+        showSettingsPage();
     }
 }
-
-
-// --- ★★★ 修正: この関数 (showCropperModal) は app.js に移動しました ★★★ ---
-// (ここにあった 649〜716行目 を削除)
