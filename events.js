@@ -1,3 +1,5 @@
+// events.js
+
 // ★ 機能追加: イベントリストの1ページあたりの表示件数
 const EVENT_ITEMS_PER_PAGE = 10;
 
@@ -20,7 +22,8 @@ function showEventsPage() {
     const currentFilterType = appState.eventControls.filterObservedType;
     
     const searchHtmlContent = `
-        <div class="p-4 space-y-3"> <div>
+        <div class="p-4 space-y-3"> 
+            <div>
                 <label for="event-filter-name" class="block text-sm font-medium text-gray-700">観察した鳥</label>
                 <input type="search" id="event-filter-name" value="${escapeHTML(currentFilterName)}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="例: スズメ">
             </div>
@@ -47,14 +50,22 @@ function showEventsPage() {
         { value: 'name_desc', label: '名前 (降順)' }
     ];
     const sortKey = appState.eventControls.listSort;
-    const sortSelectHtml = `
-        <div class="mt-4">
-            <label for="event-list-sort" class="block text-sm font-medium text-gray-500 mb-1">並び替え</label>
-            <select id="event-list-sort" class="block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500">
-                ${sortOptions.map(opt => 
-                    `<option value="${opt.value}" ${opt.value === sortKey ? 'selected' : ''}>${opt.label}</option>`
-                ).join('')}
-            </select>
+    
+    // ★ 修正: 並び替えUIを、他の部分と統一した「白背景のカード」の中に配置し、セレクトボックスのデザインを調整
+    const controlsHtml = `
+        <div class="bg-white rounded-lg shadow p-4 mb-4">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-bold text-gray-800">並び替え設定</h2>
+                
+                <div class="flex items-center space-x-2">
+                    <label for="event-list-sort" class="text-sm font-medium text-gray-600 whitespace-nowrap sr-only">並び替え</label>
+                    <select id="event-list-sort" class="block w-full pl-2 pr-8 py-1.5 text-sm bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 text-gray-700">
+                        ${sortOptions.map(opt => 
+                            `<option value="${opt.value}" ${opt.value === sortKey ? 'selected' : ''}>${opt.label}</option>`
+                        ).join('')}
+                    </select>
+                </div>
+            </div>
         </div>
     `;
 
@@ -63,24 +74,17 @@ function showEventsPage() {
     const typeFilter = currentFilterType;
     
     const filteredEvents = birdEvents.filter(event => {
-        // フィルターが両方とも「なし」なら、すべて通す
         if (!hiraganaFilter && typeFilter === 'any') {
             return true;
         }
-        
-        // event.observedBirds の中に、条件に合う鳥が1羽でもいるか探す
         return event.observedBirds.some(bird => {
-            // 1. 名前の条件
             const nameMatch = !hiraganaFilter ? true : toHiragana(bird.name).includes(hiraganaFilter);
-            // 2. タイプの条件
             const typeMatch = typeFilter === 'any' ? true : bird[typeFilter] === true;
-            
-            // 両方の条件を満たす場合に true
             return nameMatch && typeMatch;
         });
     });
 
-    // --- 並び替えロジック (フィルター済みのリストに適用) ---
+    // --- 並び替えロジック ---
     let sortedEvents = [...filteredEvents];
     switch (sortKey) {
         case 'dateTime_asc':
@@ -104,13 +108,13 @@ function showEventsPage() {
     let currentPage = appState.eventControls.currentPage;
     if (currentPage < 1) currentPage = 1; 
     else if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
-    appState.eventControls.currentPage = currentPage; // 補正したページ番号をstateに反映
+    appState.eventControls.currentPage = currentPage; 
 
     const startIndex = (currentPage - 1) * EVENT_ITEMS_PER_PAGE;
     const endIndex = startIndex + EVENT_ITEMS_PER_PAGE;
     const paginatedEvents = sortedEvents.slice(startIndex, endIndex);
 
-    // --- リストHTML生成 (ページネーション適用済み) ---
+    // --- リストHTML生成 ---
     const formatDate = (dateStr) => { 
         if (!dateStr) return '日時未設定';
         try {
@@ -125,9 +129,9 @@ function showEventsPage() {
         paginatedEvents.map((ev) => {
             const originalIndex = birdEvents.findIndex(e => e.id === ev.id); 
             if (originalIndex === -1) return ''; 
-            // ★ 修正: イベント削除ボタンを追加
-            return `<div class="p-4 border-b border-gray-200 flex justify-between items-center">
-                        <div class="flex-1 cursor-pointer hover:bg-gray-50 -ml-4 -my-4 pl-4 py-4" data-index="${originalIndex}" data-action="view"> <h3 class="font-semibold text-gray-800">${escapeHTML(ev.name || '無題のイベント')}</h3>
+            
+            return `<div class="p-4 border-b border-gray-200 flex justify-between items-center bg-white hover:bg-gray-50 transition-colors first:rounded-t-lg last:rounded-b-lg">
+                        <div class="flex-1 cursor-pointer -ml-4 -my-4 pl-4 py-4" data-index="${originalIndex}" data-action="view"> <h3 class="font-semibold text-gray-800">${escapeHTML(ev.name || '無題のイベント')}</h3>
                             <p class="text-sm text-gray-500">${escapeHTML(formatDate(ev.dateTime))}</p>
                         </div>
                         <button type="button" data-index="${originalIndex}" data-action="delete" class="event-delete-btn text-red-400 hover:text-red-600 p-2 rounded-lg -mr-2 flex-shrink-0">
@@ -137,7 +141,6 @@ function showEventsPage() {
         }).join('');
         
      // --- 画面全体の描画 ---
-     // ★★★ 修正点: 外側のdivに p-2 を追加 ★★★
      const searchAccordionHtml = `
         <div class="bg-white rounded-lg shadow overflow-hidden">
             <button id="accordion-toggle-search" class="accordion-toggle w-full flex justify-between items-center p-4 text-left">
@@ -153,14 +156,22 @@ function showEventsPage() {
         </div>
      `;
 
+     // ★ 修正: レイアウト調整 (controlsHtml を追加し、リスト部分は個別のカードではなく一覧カードの中に)
      app.innerHTML = `
         <div class="space-y-4 p-2">
              <button id="newEventButton" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-blue-700 transition-colors">新規イベント作成</button>
-             ${searchAccordionHtml} ${sortSelectHtml} <div class="bg-white rounded-lg shadow overflow-hidden">
+             
+             ${searchAccordionHtml} 
+             
+             ${controlsHtml} 
 
-                <h2 class="text-xl font-semibold p-4 border-b border-gray-200">イベント履歴</h2>
-                <div id="event-list">${listHtml}</div>
+             <div class="bg-white rounded-lg shadow overflow-hidden">
+                <h2 class="text-xl font-semibold p-4 border-b border-gray-200 bg-gray-50">イベント履歴</h2>
+                <div id="event-list" class="divide-y divide-gray-200">
+                    ${listHtml}
+                </div>
              </div>
+             
              <div id="event-pagination-controls" class="mt-6 flex justify-between items-center"></div>
         </div>`;
 
@@ -168,39 +179,31 @@ function showEventsPage() {
 
     updateHeader('events', 'イベント');
 
-    // ★ ページネーションUIを描画
     renderEventPaginationControls(totalItems, totalPages);
 
     // --- リスナー設定 ---
     setTimeout(() => {
         const newEventBtn = document.getElementById('newEventButton');
         if (newEventBtn) {
-// (185行目)
             newEventBtn.onclick = showNewEventForm; 
-        } else {
-            console.error("New event button not found");
         }
         
-        // ★★★ ここから追加 ★★★
         const searchAccordionToggle = document.getElementById('accordion-toggle-search');
         if (searchAccordionToggle) {
-            // events.js の 597行目にある toggleAccordion 関数を呼び出す
             searchAccordionToggle.onclick = () => toggleAccordion('accordion-content-search', 'accordion-arrow-search');
         }
-        // ★★★ 追加ここまで ★★★
         
         const sortSelect = document.getElementById('event-list-sort');
 
         if (sortSelect) {
             sortSelect.addEventListener('change', (e) => {
                 appState.eventControls.listSort = e.target.value;
-                appState.eventControls.currentPage = 1; // ソート変更時は1ページ目に戻る
+                appState.eventControls.currentPage = 1; 
                 saveListControlsState(); 
                 showEventsPage(); 
             });
         }
         
-        // ★ 機能追加: 検索ボタンのリスナー
         const searchBtn = document.getElementById('event-search-button');
         if (searchBtn) {
             searchBtn.onclick = () => {
@@ -209,14 +212,13 @@ function showEventsPage() {
                 
                 appState.eventControls.filterBirdName = nameInput.value;
                 appState.eventControls.filterObservedType = typeInput.value;
-                appState.eventControls.currentPage = 1; // 検索時は1ページ目に戻る
+                appState.eventControls.currentPage = 1; 
                 
                 saveListControlsState();
                 showEventsPage();
             };
         }
         
-        // ★ 機能追加: クリアボタンのリスナー
         const clearBtn = document.getElementById('event-clear-button');
         if (clearBtn) {
             clearBtn.onclick = () => {
@@ -229,7 +231,6 @@ function showEventsPage() {
             };
         }
         
-        // ★ 修正: イベントリストのクリック処理（イベント委任）
         const eventList = document.getElementById('event-list');
         if (eventList) {
             eventList.addEventListener('click', (e) => {
@@ -244,7 +245,7 @@ function showEventsPage() {
                 if (action === 'view') {
                     showEventDetail(index);
                 } else if (action === 'delete') {
-                    handleDeleteEvent(index); // ★ 新しい削除関数を呼ぶ
+                    handleDeleteEvent(index); 
                 }
             });
         }
@@ -269,9 +270,8 @@ function showNewEventForm() {
         memo: '' 
     };
     
-    // ★★★ 修正点: 外側のdivに p-2 を追加 ★★★
     app.innerHTML = `
-    <form id="newEventForm" class="bg-white rounded-lg shadow p-4 space-y-4 p-2">
+    <form id="newEventForm" class="bg-white rounded-lg shadow p-4 space-y-4 p-2 m-2">
         <h2 class="text-xl font-bold text-gray-900 mb-2">新規イベント作成</h2>
         <div class="space-y-3">
             <div>
@@ -373,11 +373,8 @@ function renderObservedBirdsTable() {
     const sortKey = appState.eventControls.detailSort;
     let sortedBirds = [...event.observedBirds]; 
     
-    // ★★★ 修正点: レア度ソートのためのヘルパー関数 ★★★
-    // (pokedex.js からロジックを拝借)
     const getRarityNum = (rarity) => { const r = parseInt(rarity, 10); return isNaN(r) ? 99 : r; };
     const getBirdRarity = (birdName) => {
-        // birdDatabase は app.js で定義されたグローバル変数
         const birdInDB = birdDatabase.find(b => b.name === birdName);
         return birdInDB ? birdInDB.rarity : '';
     };
@@ -398,7 +395,6 @@ function renderObservedBirdsTable() {
         case 'type_video':
             sortedBirds.sort((a, b) => (b.video ? 1 : 0) - (a.video ? 1 : 0));
             break;
-        // ★★★ 修正点: レア度ソートを追加 ★★★
         case 'rarity_asc':
             sortedBirds.sort((a, b) => getRarityNum(getBirdRarity(a.name)) - getRarityNum(getBirdRarity(b.name)));
             break;
@@ -415,7 +411,6 @@ function renderObservedBirdsTable() {
      }
      
      const iconSeen = `<svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>`;
-     // ★ 修正: スピーカーアイコンに変更 (Heroicons: speaker-wave)
      const iconHeard = `<svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z"></path></svg>`;
      const iconPhoto = `<svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>`;
      const iconVideo = `<svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M4 5h10a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V7a2 2 0 012-2z"></path></svg>`;
@@ -466,7 +461,6 @@ function showEventDetail(originalIndex) {
 
 
      const details = [
-         // ★ 修正: 「イベント名」の編集欄を追加
          { label: 'イベント名', name: 'name', value: event.name || '', type: 'text', placeholder: '例: 週末の探鳥会' },
          { label: '日時', name: 'dateTime', value: event.dateTime || '', type: 'datetime-local', placeholder: defaultDateTime },
          { label: '天気', name: 'weather', value: event.weather || '', type: 'text', placeholder: '例: 晴れ' },
@@ -517,7 +511,6 @@ function showEventDetail(originalIndex) {
      
      // --- 2. 鳥追加アコーディオン ---
      const iconSeen = `<svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>`;
-     // ★ 修正: スピーカーアイコンに変更 (Heroicons: speaker-wave)
      const iconHeard = `<svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z"></path></svg>`;
      const iconPhoto = `<svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>`;
      const iconVideo = `<svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M4 5h10a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V7a2 2 0 012-2z"></path></svg>`;
@@ -561,7 +554,6 @@ function showEventDetail(originalIndex) {
      const birdSortOptions = [
         { value: 'added_asc', label: '追加順' },
         { value: 'name_asc', label: '名前順' },
-        // ★★★ 修正点: レア度ソートを追加 ★★★
         { value: 'rarity_desc', label: 'レア度 (高い順)' },
         { value: 'rarity_asc', label: 'レア度 (低い順)' },
         { value: 'type_seen', label: '目視' },
@@ -626,7 +618,6 @@ function showEventDetail(originalIndex) {
      `;
      
      // --- 全体描画 ---
-     // ★★★ 修正点: 外側のdivに p-2 を追加 ★★★
      app.innerHTML = `
         <div class="space-y-4 p-2">
             <h2 class="text-2xl font-bold text-gray-900">${escapeHTML(event.name || '無題のイベント')}</h2>
@@ -822,8 +813,6 @@ async function handleAddBirdToEvent() {
             
             // 2. ★ ライフリスト自動更新 (設定がONの場合のみ)
             if (appState.settings.autoUpdateLiferList) {
-                // ユーザーの設計:「手動を優先し、その後にイベントで該当種を観察した場合、上書きされる」
-                // → 自動更新がONなら、イベントは常に手動設定（false）を上書き（trueに）する
                 if (seen) birdInDB.lifer_seen = true;
                 if (heard) birdInDB.lifer_heard = true;
                 if (photo) birdInDB.lifer_photo = true;
@@ -867,7 +856,6 @@ async function handleAddBirdToEvent() {
 }
 
 // --- イベントから鳥を削除する処理 ---
-// ★ 修正: async に変更し、カスタムモーダルを使用
 async function handleRemoveBirdFromEvent(birdIndex) {
     const event = birdEvents[currentEventIndex];
     if (!event || !event.observedBirds[birdIndex]) {
@@ -877,7 +865,6 @@ async function handleRemoveBirdFromEvent(birdIndex) {
 
     const birdName = event.observedBirds[birdIndex].name;
     
-    // ★ 修正: カスタム確認モーダル(showCustomConfirm)を使用
     const confirmed = await showCustomConfirm(
         `「${escapeHTML(birdName)}」をリストから削除しますか？`,
         '削除'
@@ -887,10 +874,9 @@ async function handleRemoveBirdFromEvent(birdIndex) {
         console.log(`「${escapeHTML(birdName)}」をリストから削除します。`);
         
         event.observedBirds.splice(birdIndex, 1); 
-        await saveEventsData(); // ★ await
+        await saveEventsData(); 
 
         // ★★★ 修正: データ不整合を解消するため、お掃除関数を呼び出す ★★★
-        // (app.js で定義されたグローバル関数)
         await rescanLatestEventForBirds([birdName]);
 
         const tableBody = document.getElementById('observed-birds-table');
@@ -917,32 +903,26 @@ async function handleSaveEventDetails(e) {
     event.location = formData.get('location');
     event.companions = formData.get('companions');
     
-    // ★ 機能追加: このイベントに登録されている鳥の情報を、図鑑側でも更新
     let birdDataNeedsSave = false;
-    // ★★★ 修正: お掃除関数を呼ぶために、影響を受ける鳥のリストを収集 ★★★
     const birdNamesToRescan = []; 
     
     for (const observedBird of event.observedBirds) {
-        birdNamesToRescan.push(observedBird.name); // このイベントの鳥は全員再スキャン
+        birdNamesToRescan.push(observedBird.name); 
         
         const birdInDB = birdDatabase.find(b => b.name === observedBird.name);
         if (birdInDB && birdInDB.lastObservedEventId === event.id) {
-            // このイベントが最新の観察記録である鳥だけ、情報を更新
             birdInDB.observed_date = event.dateTime;
             birdInDB.observed_location = event.location;
             birdDataNeedsSave = true;
         }
     }
     
-    // 両方のDBを保存
     await saveEventsData(); 
     if (birdDataNeedsSave) {
         await saveDatabase();
         console.log("イベント情報変更に伴い、図鑑データを更新しました。");
     }
     
-    // ★★★ 修正: 変更したイベントの日付/場所が最新の場合に備え、再スキャン ★★★
-    // (saveDatabaseの *後* で呼び出す)
     await rescanLatestEventForBirds(birdNamesToRescan);
 
     setEventEditMode(false);
@@ -990,7 +970,6 @@ async function handleDeleteEvent(eventIndex) {
     const event = birdEvents[eventIndex];
     const eventName = event.name || '無題のイベント';
 
-    // ★ 修正: カスタム確認モーダル(showCustomConfirm)を使用
     const confirmed = await showCustomConfirm(
         `イベント「${escapeHTML(eventName)}」を本当に削除しますか？\nこのイベントの全ての観察記録（鳥、メモ）が失われます。`,
         'イベントを削除'
@@ -999,16 +978,13 @@ async function handleDeleteEvent(eventIndex) {
     if (confirmed) {
         console.log(`イベント「${escapeHTML(eventName)}」を削除します。`);
         
-        // ★★★ 修正: 削除する前に、影響を受ける鳥のリストを取得 ★★★
         const birdNamesToRescan = event.observedBirds.map(b => b.name);
         
-        birdEvents.splice(eventIndex, 1); // 配列から削除
-        await saveEventsData(); // DBに保存
+        birdEvents.splice(eventIndex, 1); 
+        await saveEventsData(); 
 
-        // ★★★ 修正: データ不整合を解消するため、お掃除関数を呼び出す ★★★
         await rescanLatestEventForBirds(birdNamesToRescan);
 
-        // ページ番号がリストの範囲外になったかチェック
         const totalItems = birdEvents.length;
         const totalPages = Math.ceil(totalItems / EVENT_ITEMS_PER_PAGE);
         if (appState.eventControls.currentPage > totalPages && totalPages > 0) {
@@ -1016,7 +992,6 @@ async function handleDeleteEvent(eventIndex) {
             saveListControlsState();
         }
 
-        // イベントリストを再描画
         showEventsPage();
     }
 }
@@ -1056,7 +1031,6 @@ function renderEventPaginationControls(totalItems, totalPages) {
 
     controlsElement.innerHTML = `${prevButton} ${pageInfo} ${nextButton}`;
     
-    // ★ 修正: リスナーをここで設定（DOM描画後）
     setTimeout(() => {
         const prevBtn = document.getElementById('event-prev-page');
         const nextBtn = document.getElementById('event-next-page');
@@ -1065,7 +1039,7 @@ function renderEventPaginationControls(totalItems, totalPages) {
             prevBtn.addEventListener('click', () => {
                 if (appState.eventControls.currentPage > 1) {
                     appState.eventControls.currentPage--;
-                    showEventsPage(); // ページ全体を再描画
+                    showEventsPage(); 
                     window.scrollTo(0, 0); 
                 }
             });
@@ -1074,7 +1048,7 @@ function renderEventPaginationControls(totalItems, totalPages) {
             nextBtn.addEventListener('click', () => {
                 if (appState.eventControls.currentPage < totalPages) {
                     appState.eventControls.currentPage++;
-                    showEventsPage(); // ページ全体を再描画
+                    showEventsPage(); 
                     window.scrollTo(0, 0); 
                 }
             });
