@@ -124,7 +124,7 @@ function showSettingsPage() {
             <div>
                 <label for="import-card-file" class="w-full text-center block bg-gray-50 text-gray-700 font-bold py-3 px-4 rounded-lg shadow-inner hover:bg-gray-100 transition-colors cursor-pointer">
                     カードを読み込む (.json)
-                    <input type="file" id="import-card-file" accept=".json, application/json" class="hidden">
+                    <input type="file" id="import-card-file" accept=".json, .bcard, application/json" class="hidden">
                 </label>
                 <p class="text-xs text-gray-500 mt-2">受信したカードデータ (.json) を選択してください。</p>
             </div>
