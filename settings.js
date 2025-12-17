@@ -1,3 +1,5 @@
+// settings.js
+
 // --- 設定画面 ---
 function showSettingsPage() { 
     appState.currentPage = 'settings'; appState.isEditing = false;
@@ -20,7 +22,6 @@ function showSettingsPage() {
     const myCard = appState.settings; // birderName, birderPhoto を含む
     const myPhotoUrl = myCard.birderPhoto || './favicon3.png';
 
-    // ★ 修正: pokedex.js と同じロジックを適用
     const isPlaceholder = !myCard.birderPhoto;
     const buttonIcon = isPlaceholder 
         ? `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>` // 「+」アイコン
@@ -28,7 +29,6 @@ function showSettingsPage() {
     
     const buttonTitle = isPlaceholder ? "写真を追加" : "写真を再編集";
 
-    // (余白・はみ出し修正済みのHTML)
     const myBirderCardHtml = `
         <div class="bg-white rounded-lg shadow p-4">
             <h2 class="text-xl font-semibold mb-3">マイ・バーダーカード</h2>
@@ -116,17 +116,17 @@ function showSettingsPage() {
     `;
 
 
-    // --- 3. ★★★ もらったカード ★★★ ---
+    // --- 3. ★★★ もらったカード (.json対応) ★★★ ---
     const receivedCardsHtml = `
         <div class="bg-white rounded-lg shadow p-4">
             <h2 class="text-xl font-semibold mb-4">もらったカード</h2>
             
             <div>
                 <label for="import-card-file" class="w-full text-center block bg-gray-50 text-gray-700 font-bold py-3 px-4 rounded-lg shadow-inner hover:bg-gray-100 transition-colors cursor-pointer">
-                    カードを読み込む (.bcard)
-                    <input type="file" id="import-card-file" accept=".bcard, application/json" class="hidden">
+                    カードを読み込む (.json)
+                    <input type="file" id="import-card-file" accept=".json, application/json" class="hidden">
                 </label>
-                <p class="text-xs text-gray-500 mt-2">受信した '.bcard' ファイルを選択してください。</p>
+                <p class="text-xs text-gray-500 mt-2">受信したカードデータ (.json) を選択してください。</p>
             </div>
             
             <hr class="my-6 border-gray-100 px-4">
@@ -271,7 +271,7 @@ function showSettingsPage() {
                 エクスポートしたバックアップファイル（.json）を選択してください。<br>
                 <strong class="font-medium text-red-600">注意: </strong>
                 <ul class="list-disc list-inside text-sm text-gray-600 ml-2">
-                    <li>図鑑データ（写真・説明）: 空欄でない限り、ファイルの内容で上書きされます。</li>
+                    <li>図鑑データ（写真・説明等）: インポート元が空でなければ上書き、空なら既存データを維持します。</li>
                     <li>イベント履歴: スマホの記録を残したまま、ファイルの内容を統合（マージ）します。</li>
                 </ul>
             </p>
@@ -384,7 +384,7 @@ function showSettingsPage() {
                     content.style.maxHeight = '0px';
                     arrow.classList.remove('arrow-up');
                 } else {
-                    // 開く (scrollHeight が 0 の場合のフォールバック を追加)
+                    // 開く
                     content.style.maxHeight = (content.scrollHeight > 0 ? content.scrollHeight : 500) + 'px';
                     arrow.classList.add('arrow-up');
                 }
@@ -419,7 +419,6 @@ function showSettingsPage() {
                 };
             }
             
-            // ★ 修正: adjustBirderPhotoBtn のロジックを pokedex.js と同様に更新
             if (adjustBirderPhotoBtn && photoPreview) {
                 adjustBirderPhotoBtn.onclick = () => {
                     
@@ -450,7 +449,6 @@ function showSettingsPage() {
 
                     if (currentImage) {
                         // 1. 既存画像の場合: そのままCropperに渡す
-                        // ★ 修正: 第3引数に deleteCroppedImage (削除あり) を渡す
                         showCropperModal(currentImage, saveCroppedImage, deleteCroppedImage);
                     } else {
                         // 2. プレースホルダーの場合: ファイル選択をトリガー
@@ -469,7 +467,6 @@ function showSettingsPage() {
                             const reader = new FileReader();
                             reader.onload = (event) => {
                                 // 3. 読み込んだ画像をCropperに渡す
-                                // ★ 修正: 第3引数に null (削除なし) を渡す
                                 showCropperModal(event.target.result, saveCroppedImage, null);
                             };
                             reader.readAsDataURL(file);
@@ -482,7 +479,6 @@ function showSettingsPage() {
                 shareCardBtn.onclick = () => handleShareMyCard(liferTotals);
             }
 
-            // --- ★ 修正: SNS・コメント入力欄のリスナーを追加 ---
             const socialInputs = [
                 { id: 'birder-link-hp', key: 'hp' },
                 { id: 'birder-link-x', key: 'x' },
@@ -559,30 +555,25 @@ function showSettingsPage() {
                 };
             }
 
-                    // --- ★★★ 追加: 安全対策済みの更新ボタン処理 ★★★ ---
             const forceUpdateBtn = document.getElementById('force-update-btn');
             if (forceUpdateBtn) {
                 forceUpdateBtn.onclick = async () => {
-                    // 【安全装置1】 オフラインなら即座に止める
                     if (!navigator.onLine) {
                         await showCustomConfirm("エラー：インターネットに接続されていません。\n\nオフラインの状態でこの操作を行うと、アプリが起動しなくなります。\n電波の良い場所で再度お試しください。", "OK", true);
                         return;
                     }
 
-                    // 【安全装置2】 強い警告メッセージ
                     const confirmed = await showCustomConfirm(
                         "【重要】インターネット接続は安定していますか？\n\nアプリの修復を行います。一時的にキャッシュ（保存されたプログラム）を削除し、サーバーから最新版をダウンロードします。\n\n・電波の悪い場所で行うと、アプリが開かなくなる可能性があります。\n・登録済みの写真や記録データは消えません。\n\n実行しますか？",
                         "更新を実行"
                     );
                     if (!confirmed) return;
 
-                    // 【安全装置3】 ボタンを無効化して連打防止＆「処理中」表示
                     forceUpdateBtn.disabled = true;
                     forceUpdateBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>更新処理中...`;
                     forceUpdateBtn.classList.add('opacity-50', 'cursor-not-allowed');
 
                     try {
-                        // 1. Service Worker の登録解除
                         if ('serviceWorker' in navigator) {
                             const registrations = await navigator.serviceWorker.getRegistrations();
                             for (const registration of registrations) {
@@ -590,23 +581,19 @@ function showSettingsPage() {
                             }
                         }
 
-                        // 2. キャッシュストレージの全削除
                         const cacheKeys = await caches.keys();
                         for (const key of cacheKeys) {
                             await caches.delete(key);
                         }
 
-                        // 3. 完了メッセージと強制リロード
                         await showCustomConfirm("キャッシュを削除しました。\nOKを押すとアプリを再読み込みします。", "OK", true);
                         
-                        // キャッシュを無視してサーバーから取得
                         window.location.reload(true);
 
                     } catch (error) {
                         console.error("Update failed:", error);
                         await showCustomConfirm("更新に失敗しました。ページを手動で再読み込みしてください。", "OK", true);
                         
-                        // 失敗したらボタンを元に戻す
                         forceUpdateBtn.disabled = false;
                         forceUpdateBtn.textContent = "最新バージョンに更新";
                         forceUpdateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -678,10 +665,9 @@ function showSettingsPage() {
                 };
             }
 
-// --- ★★★ ここから追加 ★★★ ---
             const fontSlider = document.getElementById('font-size-slider');
             const fontValue = document.getElementById('font-size-value');
-            const fontAccordionToggle = document.getElementById('accordion-toggle-font'); // 新しいアコーディオンのToggle
+            const fontAccordionToggle = document.getElementById('accordion-toggle-font'); 
 
             if (fontSlider && fontValue) {
                 fontSlider.oninput = (e) => {
@@ -691,7 +677,6 @@ function showSettingsPage() {
                 };
             }
 
-            // 新しいアコーディオン(font)のリスナー
             if (fontAccordionToggle) {
                 fontAccordionToggle.onclick = () => toggleAccordion('accordion-content-font', 'accordion-arrow-font');
             }
@@ -732,7 +717,6 @@ async function handleExportData() {
         
         const birds = await db.getAll(STORE_BIRDS);
         const events = await db.getAll(STORE_EVENTS);
-        // ★★★ もらったカードもエクスポートに含める ★★★
         const receivedCardsData = await db.getAll(STORE_CARDS);
         
         const settings = JSON.parse(localStorage.getItem('birdListControls') || '{}');
@@ -741,7 +725,7 @@ async function handleExportData() {
         const backupData = {
             birds: birds,
             events: events,
-            receivedCards: receivedCardsData, // ★ 追加
+            receivedCards: receivedCardsData, 
             settings: settings, 
             backgroundSettings: backgroundSettings, 
             exportDate: new Date().toISOString()
@@ -814,25 +798,19 @@ async function handleImportData(file) {
             const db = await openBirdDB();
             
             // 1. 図鑑データ（Birds）: スマートマージ
-            // db.clear() はしません
             const birdTx = db.transaction(STORE_BIRDS, 'readwrite');
             
             for (const importBird of backupData.birds) {
                 const existingBird = await birdTx.store.get(importBird.id);
                 
                 if (existingBird) {
-                    // ★ スマートマージ処理 ★
-                    // 以下の項目は、インポートデータが空なら既存データを維持する
                     const preserveKeys = ['photo_url', 'voice_url', 'description', 'observed_date', 'observed_location', 'special_notes'];
                     preserveKeys.forEach(key => {
                         if (!importBird[key] && existingBird[key]) {
                             importBird[key] = existingBird[key];
                         }
                     });
-                    // ライフリストなどのBoolean値は、表の通りPC版(Import版)で上書きされるため何もしない（importBirdの値をそのまま使う）
                 }
-                
-                // 更新または新規追加
                 await birdTx.store.put(importBird);
             }
             await birdTx.done;
@@ -970,7 +948,9 @@ async function handleShareMyCard(liferTotals) {
         exportedDate: new Date().toISOString()
     };
     const jsonString = JSON.stringify(myCardData);
-    const fileName = `birder-card-${(appState.settings.birderName || 'user').replace(/[^a-zA-Z0-9]/g, '_')}.bcard`;
+    
+    // ★ 修正: 拡張子を .json に変更
+    const fileName = `birder-card-${(appState.settings.birderName || 'user').replace(/[^a-zA-Z0-9]/g, '_')}.json`;
     const file = new File([jsonString], fileName, { type: 'application/json' });
 
     if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
