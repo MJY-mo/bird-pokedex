@@ -472,6 +472,7 @@ function renderPaginationControls(listContainer, totalItems, totalPages) {
 }
 
 // --- 詳細画面 (閲覧) ---
+// ★修正: 画像エリア背景白、下線追加
 function showDetailPage(birdId) { 
     appState.currentPage = 'detail'; appState.currentBirdId = birdId; appState.isEditing = false;
     const bird = birdDatabase.find(b => b.id === birdId); if (!bird) { showListPage(); return; } currentBird = bird; 
@@ -559,10 +560,10 @@ function showDetailPage(birdId) {
 
     app.innerHTML = `
         <div class="space-y-4 p-2"> 
-            <div class="bg-gray-200 rounded-lg shadow overflow-hidden relative">
+            <div class="bg-white rounded-lg shadow overflow-hidden relative border-b border-gray-200">
                 <img src="${imageUrl}" alt="${escapeHTML(bird.name)}" 
                      onerror="this.onerror=null; this.src='${placeholderUrl}';" 
-                     class="w-full h-64 object-contain bg-gray-900 ${opacityClass}">
+                     class="w-full h-64 object-contain bg-white ${opacityClass}">
                 ${editPhotoBtnHtml} 
             </div>
             
