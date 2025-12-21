@@ -6,10 +6,11 @@ const GITHUB_VERSION_URL = 'https://mjy-mo.github.io/bird-pokedex/version.txt';
 
 // --- IndexedDB データベース設定 ---
 const DB_NAME = 'BirdPokedexDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_BIRDS = 'birdDatabase';
 const STORE_EVENTS = 'events';
 const STORE_CARDS = 'receivedCards';
+const STORE_SETTINGS = 'settings';
 
 /**
  * IndexedDB データベースを開き、ストア（テーブル）を作成する
@@ -25,6 +26,9 @@ async function openBirdDB() {
             }
             if (!db.objectStoreNames.contains(STORE_CARDS)) {
                 db.createObjectStore(STORE_CARDS, { keyPath: 'id' });
+            }
+            if (!db.objectStoreNames.contains(STORE_SETTINGS)) {
+                db.createObjectStore(STORE_SETTINGS);
             }
         },
     });
@@ -787,34 +791,61 @@ function applyFontSize(size) {
     }
 }
 
-// --- 背景設定 ---
-function applyBackgroundSettings() {
+// --- 背景設定 (IndexedDB対応 & 強制スタイル適用) ---
+// ★ 修正: async に変更し、IndexedDBから画像を読み込む
+async function applyBackgroundSettings() {
     const defaultSettings = {
         bgColor: '#f3f4f6', 
-        bgImage: '',
         bgOpacity: 0.1
     };
     
-    let settings;
+    let settings = defaultSettings;
+    let bgImage = null;
+
     try {
+        // 1. 基本設定（色・透明度）はLocalStorageから取得
         const storedSettings = localStorage.getItem('birdAppBackground');
-        settings = storedSettings ? { ...defaultSettings, ...JSON.parse(storedSettings) } : defaultSettings;
+        if (storedSettings) {
+            settings = { ...defaultSettings, ...JSON.parse(storedSettings) };
+        }
+
+        // 2. 画像データはIndexedDBから取得
+        const db = await openBirdDB();
+        bgImage = await db.get(STORE_SETTINGS, 'bgImage');
+
     } catch (e) {
-        console.error("Failed to parse background settings:", e);
-        settings = defaultSettings;
+        console.error("Failed to load background settings:", e);
     }
 
     const body = document.body;
-    const overlay = document.getElementById('background-overlay');
+    let overlay = document.getElementById('background-overlay');
 
-    if (!body || !overlay) {
-        return;
+    if (!body) return;
+
+    // overlayが無ければ強制作成
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'background-overlay';
+        overlay.className = 'fixed inset-0 w-full h-full bg-cover bg-center bg-no-repeat pointer-events-none z-0';
+        body.prepend(overlay);
     }
+
+    // ★ 修正: スタイルをJSで強制適用して表示を保証する
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100vw'; // 画面幅いっぱい
+    overlay.style.height = '100vh'; // 画面高さいっぱい
+    overlay.style.backgroundSize = 'cover';
+    overlay.style.backgroundPosition = 'center';
+    overlay.style.backgroundRepeat = 'no-repeat';
+    overlay.style.pointerEvents = 'none';
+    overlay.style.zIndex = '0'; // 最背面
 
     body.style.backgroundColor = settings.bgColor;
 
-    if (settings.bgImage && settings.bgImage.startsWith('data:image')) {
-        overlay.style.backgroundImage = `url(${settings.bgImage})`;
+    if (bgImage) {
+        overlay.style.backgroundImage = `url(${bgImage})`;
         overlay.style.opacity = settings.bgOpacity;
     } else {
         overlay.style.backgroundImage = 'none';
@@ -921,13 +952,13 @@ function showCropperModal(imageUrl, onSave, onDelete = null) {
             aspectRatio: NaN, 
             viewMode: 1,    
             dragMode: 'move',
-            autoCropArea: 0.9, // 修正：少し余裕を持たせる
+            autoCropArea: 0.9, 
             restore: false,
             guides: true,
             center: true,
             highlight: false,
-            cropBoxMovable: true, // 修正：true (移動可能)
-            cropBoxResizable: true, // 修正：true (リサイズ可能)
+            cropBoxMovable: true, 
+            cropBoxResizable: true, 
             toggleDragModeOnDblclick: false,
         });
     };
@@ -1093,7 +1124,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await initializeDatabase();
         loadListControlsState();
         showListPage();
-        applyBackgroundSettings();
+        await applyBackgroundSettings(); // ★ async関数なので await を追加 (必須ではないが推奨)
         setupTabs(); 
         setupHeaderActions(); 
         if (appState.settings.fontSize) applyFontSize(appState.settings.fontSize);
