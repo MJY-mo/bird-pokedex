@@ -58,7 +58,7 @@ function showManualPage() {
                         作成したイベントの詳細画面で、「観察した鳥」（名前、数、確認方法）を無制限に追加できます。
                     </li>
                     <li><strong>図鑑との連携 (重要):</strong>
-                        イベントに鳥を登録すると、図鑑アプリが以下の処理を**自動で**行います。
+                        イベントに鳥を登録すると、図鑑アプリが以下の処理を自動で行います。
                         <ul class="list-inside list-disc ml-4 mt-1 text-xs text-gray-600">
                             <li>図鑑側の「最新の観察日」「最新の観察場所」をこのイベントの情報で更新します。</li>
                             <li>「設定」で自動更新がONの場合、確認方法（目視、声など）に応じて図鑑側のライフリストも自動でONにします。</li>
@@ -103,15 +103,15 @@ function showManualPage() {
             <section class="space-y-3">
                 <h3 class="text-lg font-semibold text-red-800">1. データは「あなたのブラウザ」にのみ保存されます</h3>
                 <p class="text-sm text-red-700">
-                    このアプリはサーバーと通信していません。あなたの観察記録、写真、設定は**すべて、今お使いのデバイス（スマホやPC）のブラウザ内**に保存されています。
+                    このアプリはサーバーと通信していません。あなたの観察記録、写真、設定はすべて、今お使いのデバイス（スマホやPC）のブラウザ内に保存されています。
                 </p>
                 <p class="text-sm text-red-700">
-                    機種変更をした場合や、以下の操作を行うと、**データはすべて消え、復元できません。**
+                    機種変更をした場合や、以下の操作を行うと、データはすべて消え、復元できません。
                 </p>
                 
                 <ul class="list-disc list-inside space-y-2 text-sm text-red-700 pl-2">
-                    <li>ブラウザ（Chrome/Safari）の**「閲覧履歴データの削除」**で「キャッシュ」や**「サイトデータ」**を削除する。</li>
-                    <li>ホーム画面の「BLNCR鳥図鑑」アイコンを**「アンインストール」**（または「Appを削除」）する。</li>
+                    <li>ブラウザ（Chrome/Safari）の「閲覧履歴データの削除」で「キャッシュ」や「サイトデータ」を削除する。</li>
+                    <li>ホーム画面の「BLNCR鳥図鑑」アイコンを「アンインストール」（または「Appを削除」）する。</li>
                     <li>ブラウザ（Chrome/Safari）自体をスマホから削除する。</li>
                     <li>スマホの「ストレージ クリーンアップ」機能でブラウザのデータを削除する。</li>
                 </ul>
@@ -120,7 +120,7 @@ function showManualPage() {
             <section class="space-y-3">
                 <h3 class="text-lg font-semibold pt-4 border-t border-red-200 text-blue-800">2. 解決策：必ずバックアップを！</h3>
                 <p class="text-sm text-blue-700">
-                    データを守るため、**定期的（例：月に一度）に「設定」タブ →「データ管理」にある「データのエクスポート」を実行してください。**
+                    データを守るため、定期的（例：月に一度）に「設定」タブ →「データ管理」にある「データのエクスポート」を実行してください。
                 </p>
                 <p class="text-sm text-blue-700">
                     'bird-pokedex-backup-xxxx.json' というファイルがダウンロードされます。これさえあれば、万が一データが消えても「データのインポート」から復元できます。
@@ -131,7 +131,7 @@ function showManualPage() {
                 <h3 class="text-lg font-semibold pt-4 border-t border-red-200 text-yellow-800">3. データのインポート（統合）について</h3>
                 <p class="text-sm text-yellow-700">
                     「データのインポート」を実行すると、PCで編集したデータをスマホに取り込んだり、バックアップを復元したりできます。
-                    <br>データは以下のルールで賢く**統合（マージ）**されます。
+                    <br>データは以下のルールで賢く統合（マージ）されます。
                 </p>
                 <div class="bg-white p-3 rounded border border-yellow-200 mt-2 text-sm text-gray-700 space-y-2">
                     <p><strong>🐦 図鑑データ（写真・説明など）</strong><br>
@@ -141,7 +141,7 @@ function showManualPage() {
                     </p>
                     <hr class="border-yellow-100">
                     <p><strong>📅 イベント履歴</strong><br>
-                    今のアプリにある記録はそのまま残り、ファイルに含まれる新しい記録が**追加**されます。<br>
+                    今のアプリにある記録はそのまま残り、ファイルに含まれる新しい記録が追加されます。<br>
                     （スマホで記録したイベントが消えることはありません）
                     </p>
                 </div>
