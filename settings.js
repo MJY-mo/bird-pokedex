@@ -1,5 +1,39 @@
 // settings.js (フォントサイズ変更時の高さ自動調整版)
 
+// --- 画像圧縮用ヘルパー関数 ---
+function compressImage(file, maxWidth, quality) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                // 指定サイズより大きければ縮小
+                if (width > maxWidth) {
+                    height *= maxWidth / width;
+                    width = maxWidth;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // JPEG形式で圧縮 (quality: 0.1〜1.0)
+                const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                resolve(dataUrl);
+            };
+            img.onerror = (error) => reject(error);
+        };
+        reader.onerror = (error) => reject(error);
+    });
+}
+
 // --- 設定画面 ---
 function showSettingsPage() { 
     appState.currentPage = 'settings'; appState.isEditing = false;
@@ -527,21 +561,39 @@ function showSettingsPage() {
                     }
                 };
             }
-            if (bgImageInput) {
-                bgImageInput.onchange = (e) => {
+           if (bgImageInput) {
+                bgImageInput.onchange = async (e) => { // async を追加
                     const file = e.target.files[0];
                     if (!file) return;
-                    if (file.size > 5 * 1024 * 1024) { 
-                        showCustomConfirm("画像サイズが5MBを超えています。", "OK", true);
-                        e.target.value = null;
-                        return;
+
+                    // 読み込み中であることを表示（ボタンを無効化など）
+                    // bgImageInput.disabled = true; 
+
+                    try {
+                        // ★ 画像を圧縮 (幅1280px, 画質0.6 に縮小)
+                        // これで数MBの画像も数百KB程度になります
+                        const compressedImage = await compressImage(file, 1280, 0.6);
+                        
+                        // 圧縮後のデータを保存
+                        saveBackgroundSettings({ bgImage: compressedImage });
+                        
+                        // 削除ボタンを表示
+                        if (bgRemoveBtn) bgRemoveBtn.classList.remove('hidden');
+                        
+                        // 成功メッセージ（必要なら）
+                        // showCustomConfirm("背景画像を設定しました。", "OK", true);
+
+                    } catch (error) {
+                        console.error("Image save failed:", error);
+                        if (error.name === 'QuotaExceededError') {
+                            showCustomConfirm("容量オーバーです。さらに小さい画像を選んでください。", "OK", true);
+                        } else {
+                            showCustomConfirm("画像の処理に失敗しました。", "OK", true);
+                        }
+                    } finally {
+                        // bgImageInput.disabled = false;
+                        e.target.value = null; // 入力をリセット（同じ画像を再選択できるように）
                     }
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        saveBackgroundSettings({ bgImage: event.target.result }); 
-                        bgRemoveBtn.classList.remove('hidden');
-                    };
-                    reader.readAsDataURL(file);
                 };
             }
 
