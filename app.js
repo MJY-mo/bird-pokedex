@@ -1,4 +1,4 @@
-// app.js (背景画像の重なり順修正版)
+// app.js (背景画像の重なり順・最終修正版)
 
 // --- GitHub Pages URL設定 ---
 const GITHUB_CSV_URL = 'https://mjy-mo.github.io/bird-pokedex/bird-list.csv';
@@ -792,7 +792,7 @@ function applyFontSize(size) {
 }
 
 // --- 背景設定 (IndexedDB対応 & 強制スタイル適用) ---
-// ★ 修正: async に変更し、IndexedDBから画像を読み込む
+// ★ async関数
 async function applyBackgroundSettings() {
     const defaultSettings = {
         bgColor: '#f3f4f6', 
@@ -826,7 +826,7 @@ async function applyBackgroundSettings() {
     if (!overlay) {
         overlay = document.createElement('div');
         overlay.id = 'background-overlay';
-        overlay.className = 'fixed inset-0 w-full h-full bg-cover bg-center bg-no-repeat pointer-events-none z-0';
+        overlay.className = 'fixed inset-0 w-full h-full bg-cover bg-center bg-no-repeat pointer-events-none';
         body.prepend(overlay);
     }
 
@@ -840,8 +840,8 @@ async function applyBackgroundSettings() {
     overlay.style.backgroundPosition = 'center';
     overlay.style.backgroundRepeat = 'no-repeat';
     overlay.style.pointerEvents = 'none';
-    // ★ 修正: z-indexを -1 に設定して最背面に回す
-    overlay.style.zIndex = '-1'; 
+    // ★★★ 修正: 背景を 0 に
+    overlay.style.zIndex = '0'; 
 
     body.style.backgroundColor = settings.bgColor;
 
@@ -851,6 +851,12 @@ async function applyBackgroundSettings() {
     } else {
         overlay.style.backgroundImage = 'none';
         overlay.style.opacity = 0;
+    }
+
+    // ★★★ 修正: コンテンツエリア(#app)の順位を 1 に (バーは50なのでOK)
+    if (app) {
+        app.style.position = 'relative';
+        app.style.zIndex = '1'; 
     }
 }
 
