@@ -1,4 +1,4 @@
-// app.js (トリミング枠の移動修正版)
+// app.js (背景画像の重なり順修正版)
 
 // --- GitHub Pages URL設定 ---
 const GITHUB_CSV_URL = 'https://mjy-mo.github.io/bird-pokedex/bird-list.csv';
@@ -840,7 +840,8 @@ async function applyBackgroundSettings() {
     overlay.style.backgroundPosition = 'center';
     overlay.style.backgroundRepeat = 'no-repeat';
     overlay.style.pointerEvents = 'none';
-    overlay.style.zIndex = '0'; // 最背面
+    // ★ 修正: z-indexを -1 に設定して最背面に回す
+    overlay.style.zIndex = '-1'; 
 
     body.style.backgroundColor = settings.bgColor;
 
@@ -1124,7 +1125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await initializeDatabase();
         loadListControlsState();
         showListPage();
-        await applyBackgroundSettings(); // ★ async関数なので await を追加 (必須ではないが推奨)
+        await applyBackgroundSettings(); // ★ async関数なので await を追加
         setupTabs(); 
         setupHeaderActions(); 
         if (appState.settings.fontSize) applyFontSize(appState.settings.fontSize);
