@@ -267,19 +267,18 @@ function applyFiltersAndRenderList() {
     const listElement = listContainer.querySelector('#pokedex-list');
     if (!listElement) return; 
 
-    // ★ 追加: 画面幅に応じて表示件数を自動調整
     const width = window.innerWidth;
-    if (width >= 2000) { // 超ワイド (2000px以上)
+    if (width >= 2000) { 
         appState.listControls.itemsPerPage = 120;
-    } else if (width >= 1536) { // 2xl (1536px以上)
+    } else if (width >= 1536) { 
         appState.listControls.itemsPerPage = 100;
-    } else if (width >= 1280) { // xl (1280px以上)
+    } else if (width >= 1280) { 
         appState.listControls.itemsPerPage = 80;
-    } else if (width >= 1024) { // lg (1024px以上)
+    } else if (width >= 1024) { 
         appState.listControls.itemsPerPage = 60;
-    } else if (width >= 768) { // md (768px以上)
+    } else if (width >= 768) { 
         appState.listControls.itemsPerPage = 40;
-    } else { // スマホ (デフォルト)
+    } else { 
         appState.listControls.itemsPerPage = 30;
     }
     
@@ -363,7 +362,6 @@ function applyFiltersAndRenderList() {
     if (paginatedList.length === 0) { listElement.className = ''; listElement.innerHTML = `<p class="text-gray-500 text-center col-span-2">鳥が見つかりません。</p>`; } 
     else {
         if (viewMode === 'tile') {
-            // ★ 修正: PCで最大12列まで拡張 (xl:grid-cols-8 2xl:grid-cols-10 min-[2000px]:grid-cols-12)
             listElement.className = 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 min-[2000px]:grid-cols-12 gap-4';
             listElement.innerHTML = paginatedList.map(bird => {
                 const isLifer = bird.lifer_seen || bird.lifer_heard || bird.lifer_photo || bird.lifer_video;
@@ -472,7 +470,6 @@ function renderPaginationControls(listContainer, totalItems, totalPages) {
 }
 
 // --- 詳細画面 (閲覧) ---
-// ★修正: 画像エリア背景白、下線追加
 function showDetailPage(birdId) { 
     appState.currentPage = 'detail'; appState.currentBirdId = birdId; appState.isEditing = false;
     const bird = birdDatabase.find(b => b.id === birdId); if (!bird) { showListPage(); return; } currentBird = bird; 
@@ -641,8 +638,9 @@ function showDetailPage(birdId) {
                         const file = e.target.files[0];
                         if (!file) return;
                         
-                        if (file.size > 5 * 1024 * 1024) { 
-                            showCustomConfirm("画像サイズが5MBを超えています。5MB以下のファイルを選択してください。", "OK", true);
+                        // ★修正: サイズ制限を30MBに緩和
+                        if (file.size > 30 * 1024 * 1024) { 
+                            showCustomConfirm("画像サイズが30MBを超えています。30MB以下のファイルを選択してください。", "OK", true);
                             return;
                         }
                         
@@ -939,4 +937,87 @@ function handleGoToEvent(eventId) {
         console.warn(`Event with ID ${eventId} not found.`);
         console.warn("エラー: 該当のイベントが見つかりませんでした。");
     }
+}
+
+// --- Cropper.js のモーダル制御 (高画質対応) ---
+function showCropperModal(imageUrl, onSave, onDelete = null) { 
+    const existingModal = document.getElementById('cropper-modal');
+    if (existingModal) document.body.removeChild(existingModal);
+
+    const modal = document.createElement('div');
+    modal.id = 'cropper-modal';
+    modal.className = 'fixed inset-0 z-[200] flex items-center justify-center bg-black bg-opacity-75 p-4';
+    const deleteBtnHtml = onDelete ? `<button id="cropper-delete-btn" class="text-red-500 hover:text-red-400 font-bold px-4 py-2">写真を削除</button>` : '';
+
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-gray-200 flex justify-between items-center"><h3 class="text-lg font-semibold text-gray-800">画像のトリミング</h3><button id="cropper-cancel-btn" class="text-gray-500 hover:text-gray-700"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div>
+            <div class="flex-grow relative bg-gray-100 h-96 sm:h-[500px]"><img id="cropper-image" src="${imageUrl}" class="max-w-full max-h-full block" style="opacity: 0;"></div>
+            <div class="p-4 border-t border-gray-200 flex justify-between items-center"><div>${deleteBtnHtml}</div><button id="cropper-save-btn" class="bg-emerald-600 text-white font-bold py-2 px-6 rounded-lg shadow hover:bg-emerald-700 transition-colors">保存する</button></div>
+        </div>`;
+    document.body.appendChild(modal);
+
+    const image = document.getElementById('cropper-image');
+    let cropper = null;
+    image.onload = () => {
+        image.style.opacity = 1;
+        cropper = new Cropper(image, { aspectRatio: NaN, viewMode: 1, dragMode: 'move', autoCropArea: 0.9, restore: false, guides: true, center: true, highlight: false, cropBoxMovable: true, cropBoxResizable: true, toggleDragModeOnDblclick: false });
+    };
+    
+    const cancelBtn = document.getElementById('cropper-cancel-btn');
+    cancelBtn.onclick = () => document.body.removeChild(modal);
+    
+    if (onDelete) {
+        const deleteBtn = document.getElementById('cropper-delete-btn');
+        if (deleteBtn) deleteBtn.onclick = async () => { if (await showCustomConfirm('写真を削除しますか？', '削除')) { onDelete(); document.body.removeChild(modal); } };
+    }
+
+    const saveCroppedBtn = document.getElementById('cropper-save-btn');
+    saveCroppedBtn.onclick = () => {
+        if (!cropper) return;
+
+        // プラットフォーム判定
+        const isElectron = navigator.userAgent.toLowerCase().includes(' electron/');
+        // Capacitor経由のネイティブアプリ（Android/iOS）かどうかの判定
+        const isNativeApp = window.Capacitor && window.Capacitor.isNativePlatform();
+
+        let exportSize, exportQuality;
+
+        if (isElectron) {
+            // ① PC版: 原寸維持・最高画質
+            // (PCのパワーとストレージなら余裕)
+            exportSize = 4096;
+            exportQuality = 1.0; 
+            console.log('Save Mode: PC (High Quality)');
+
+        } else if (isNativeApp) {
+            // ② Android/iOSアプリ版: "ちょっとリッチ"な画質
+            // (2K画質あればスマホ画面では十分綺麗。圧縮率0.9なら劣化も人の目には分かりません)
+            exportSize = 2048; 
+            exportQuality = 0.90;
+            console.log('Save Mode: Native App (Medium Quality)');
+
+        } else {
+            // ③ PWA/Web版: 軽量画質
+            // (ブラウザの容量制限を考慮して安全重視)
+            exportSize = 1024;
+            exportQuality = 0.85;
+            console.log('Save Mode: PWA/Web (Light Quality)');
+        }
+
+        // 設定したサイズでキャンバスを作成
+        const canvas = cropper.getCroppedCanvas({
+            maxWidth: exportSize,   
+            maxHeight: exportSize,
+            fillColor: '#fff', 
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: 'high',
+        });
+        
+        // 設定した画質で保存
+        const base64Image = canvas.toDataURL('image/jpeg', exportQuality); 
+        
+        if (onSave) onSave(base64Image);
+        document.body.removeChild(modal);
+    };
 }
