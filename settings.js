@@ -729,6 +729,10 @@ async function handleImportData(file) {
     }
 
     showLoadingMessage("データをインポート中...");
+    
+    // ★追加: PC版かどうかの判定
+    const isElectron = navigator.userAgent.toLowerCase().includes(' electron/');
+
     const reader = new FileReader();
     reader.onload = async (event) => {
         try {
@@ -744,6 +748,12 @@ async function handleImportData(file) {
                     preserveKeys.forEach(key => {
                         if (!importBird[key] && existingBird[key]) importBird[key] = existingBird[key];
                     });
+
+                    // ★追加: PC版限定の高画質保護ルール
+                    // PC版ですでに写真が登録されている場合は、インポートデータ（スマホの圧縮画像など）で上書きしない
+                    if (isElectron && existingBird.photo_url) {
+                        importBird.photo_url = existingBird.photo_url;
+                    }
                 }
                 await birdTx.store.put(importBird);
             }

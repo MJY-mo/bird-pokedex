@@ -1,4 +1,4 @@
-// app.js (背景画像の重なり順・最終修正版)
+// app.js (トリミング枠の移動修正版)
 
 // --- GitHub Pages URL設定 ---
 const GITHUB_CSV_URL = 'https://mjy-mo.github.io/bird-pokedex/bird-list.csv';
@@ -6,11 +6,10 @@ const GITHUB_VERSION_URL = 'https://mjy-mo.github.io/bird-pokedex/version.txt';
 
 // --- IndexedDB データベース設定 ---
 const DB_NAME = 'BirdPokedexDB';
-const DB_VERSION = 2;
+const DB_VERSION = 1;
 const STORE_BIRDS = 'birdDatabase';
 const STORE_EVENTS = 'events';
 const STORE_CARDS = 'receivedCards';
-const STORE_SETTINGS = 'settings';
 
 /**
  * IndexedDB データベースを開き、ストア（テーブル）を作成する
@@ -26,9 +25,6 @@ async function openBirdDB() {
             }
             if (!db.objectStoreNames.contains(STORE_CARDS)) {
                 db.createObjectStore(STORE_CARDS, { keyPath: 'id' });
-            }
-            if (!db.objectStoreNames.contains(STORE_SETTINGS)) {
-                db.createObjectStore(STORE_SETTINGS);
             }
         },
     });
@@ -791,72 +787,38 @@ function applyFontSize(size) {
     }
 }
 
-// --- 背景設定 (IndexedDB対応 & 強制スタイル適用) ---
-// ★ async関数
-async function applyBackgroundSettings() {
+// --- 背景設定 ---
+function applyBackgroundSettings() {
     const defaultSettings = {
         bgColor: '#f3f4f6', 
+        bgImage: '',
         bgOpacity: 0.1
     };
     
-    let settings = defaultSettings;
-    let bgImage = null;
-
+    let settings;
     try {
-        // 1. 基本設定（色・透明度）はLocalStorageから取得
         const storedSettings = localStorage.getItem('birdAppBackground');
-        if (storedSettings) {
-            settings = { ...defaultSettings, ...JSON.parse(storedSettings) };
-        }
-
-        // 2. 画像データはIndexedDBから取得
-        const db = await openBirdDB();
-        bgImage = await db.get(STORE_SETTINGS, 'bgImage');
-
+        settings = storedSettings ? { ...defaultSettings, ...JSON.parse(storedSettings) } : defaultSettings;
     } catch (e) {
-        console.error("Failed to load background settings:", e);
+        console.error("Failed to parse background settings:", e);
+        settings = defaultSettings;
     }
 
     const body = document.body;
-    let overlay = document.getElementById('background-overlay');
+    const overlay = document.getElementById('background-overlay');
 
-    if (!body) return;
-
-    // overlayが無ければ強制作成
-    if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.id = 'background-overlay';
-        overlay.className = 'fixed inset-0 w-full h-full bg-cover bg-center bg-no-repeat pointer-events-none';
-        body.prepend(overlay);
+    if (!body || !overlay) {
+        return;
     }
-
-    // ★ 修正: スタイルをJSで強制適用して表示を保証する
-    overlay.style.position = 'fixed';
-    overlay.style.top = '0';
-    overlay.style.left = '0';
-    overlay.style.width = '100vw'; // 画面幅いっぱい
-    overlay.style.height = '100vh'; // 画面高さいっぱい
-    overlay.style.backgroundSize = 'cover';
-    overlay.style.backgroundPosition = 'center';
-    overlay.style.backgroundRepeat = 'no-repeat';
-    overlay.style.pointerEvents = 'none';
-    // ★★★ 修正: 背景を 0 に
-    overlay.style.zIndex = '0'; 
 
     body.style.backgroundColor = settings.bgColor;
 
-    if (bgImage) {
-        overlay.style.backgroundImage = `url(${bgImage})`;
+    if (settings.bgImage && settings.bgImage.startsWith('data:image')) {
+        overlay.style.backgroundImage = `url(${settings.bgImage})`;
         overlay.style.opacity = settings.bgOpacity;
     } else {
         overlay.style.backgroundImage = 'none';
         overlay.style.opacity = 0;
-    }
-
-    // ★★★ 修正: コンテンツエリア(#app)の順位を 1 に (バーは50なのでOK)
-    if (app) {
-        app.style.position = 'relative';
-        app.style.zIndex = '1'; 
     }
 }
 
@@ -959,13 +921,13 @@ function showCropperModal(imageUrl, onSave, onDelete = null) {
             aspectRatio: NaN, 
             viewMode: 1,    
             dragMode: 'move',
-            autoCropArea: 0.9, 
+            autoCropArea: 0.9, // 修正：少し余裕を持たせる
             restore: false,
             guides: true,
             center: true,
             highlight: false,
-            cropBoxMovable: true, 
-            cropBoxResizable: true, 
+            cropBoxMovable: true, // 修正：true (移動可能)
+            cropBoxResizable: true, // 修正：true (リサイズ可能)
             toggleDragModeOnDblclick: false,
         });
     };
@@ -1097,13 +1059,17 @@ function setupTabs() {
     ];
     tabs.forEach(tab => {
         const button = document.getElementById(tab.id);
-        if (button) {
-            button.addEventListener('click', (e) => {
-                // window.scrollTo(0, 0) で標準スクロール位置をリセット
-                window.scrollTo(0, 0);
+            if (button) {
+                button.addEventListener('click', (e) => {
+                    // window.scrollTo(0, 0) で標準スクロール位置をリセット
+                    window.scrollTo(0, 0);
 
-                tabs.forEach(t => {
-                    const btn = document.getElementById(t.id);
+                    // ★追加: アプリ表示領域(app)のスクロールを一番上に戻す
+                    const appContainer = document.getElementById('app');
+                    if (appContainer) appContainer.scrollTop = 0;
+
+                    tabs.forEach(t => {
+                        const btn = document.getElementById(t.id);
                     if (btn) {
                         btn.classList.remove('tab-active');
                         btn.classList.add('tab-inactive');
@@ -1131,7 +1097,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await initializeDatabase();
         loadListControlsState();
         showListPage();
-        await applyBackgroundSettings(); // ★ async関数なので await を追加
+        applyBackgroundSettings();
         setupTabs(); 
         setupHeaderActions(); 
         if (appState.settings.fontSize) applyFontSize(appState.settings.fontSize);
