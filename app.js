@@ -6,7 +6,7 @@ const GITHUB_VERSION_URL = 'https://mjy-mo.github.io/bird-pokedex/version.txt';
 
 // --- IndexedDB データベース設定 ---
 const DB_NAME = 'BirdPokedexDB';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_BIRDS = 'birdDatabase';
 const STORE_EVENTS = 'events';
 const STORE_CARDS = 'receivedCards';
