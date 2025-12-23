@@ -1,38 +1,4 @@
-// settings.js (フォントサイズ高さ調整 & IndexedDB保存対応版)
-
-// --- 画像圧縮用ヘルパー関数 ---
-function compressImage(file, maxWidth, quality) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (event) => {
-            const img = new Image();
-            img.src = event.target.result;
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                let width = img.width;
-                let height = img.height;
-
-                // 指定サイズより大きければ縮小
-                if (width > maxWidth) {
-                    height *= maxWidth / width;
-                    width = maxWidth;
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-                
-                // JPEG形式で圧縮 (quality: 0.1〜1.0)
-                const dataUrl = canvas.toDataURL('image/jpeg', quality);
-                resolve(dataUrl);
-            };
-            img.onerror = (error) => reject(error);
-        };
-        reader.onerror = (error) => reject(error);
-    });
-}
+// settings.js (フォントサイズ変更時の高さ自動調整版)
 
 // --- 設定画面 ---
 function showSettingsPage() { 
@@ -193,7 +159,7 @@ function showSettingsPage() {
         </div>
     `;
 
-    // --- 5. 背景設定 (プレビュー付き) ---
+    // --- 5. 背景設定 ---
     const currentFontSize = appState.settings.fontSize || 16;
     const fontSizeHtml = `
         <div class="bg-white rounded-lg shadow p-4">
@@ -217,11 +183,6 @@ function showSettingsPage() {
     } catch (e) {
         currentBgSettings = defaultBgSettings;
     }
-    
-    // 現在の背景画像があるかチェック (LocalStorageにはもう入っていないかもしれないが、UI表示用に一旦確認)
-    const hasBgImage = !!currentBgSettings.bgImage; // ※IndexedDB移行後はこの判定は不十分になるが、ロード時に反映される
-    const bgPreviewHtml = ''; // ロード直後は空にして、あとでJSで埋める手もあるが、シンプルに空スタート
-
     const backgroundSettingsHtml = `
         <div class="bg-white rounded-lg shadow p-4">
             <h2 class="text-xl font-semibold mb-4">背景設定</h2>
@@ -233,10 +194,7 @@ function showSettingsPage() {
                 <div>
                     <label for="bg-image-input" class="block text-sm font-medium text-gray-700">背景画像 (5MBまで)</label>
                     <input type="file" id="bg-image-input" accept="image/*" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
-                    
-                    <div id="bg-image-preview-container"></div>
-
-                    <button type="button" id="bg-remove-image-btn" class="mt-2 text-sm font-medium text-red-600 hover:text-red-800 hidden">
+                    <button type="button" id="bg-remove-image-btn" class="mt-2 text-sm font-medium text-red-600 hover:text-red-800 ${!currentBgSettings.bgImage ? 'hidden' : ''}">
                         背景画像を削除
                     </button>
                 </div>
@@ -357,6 +315,7 @@ function showSettingsPage() {
 
         </div>`;
 
+    // 下部の余白確保
     app.style.paddingBottom = '10rem';
 
     updateHeader('settings', '設定');
@@ -364,21 +323,7 @@ function showSettingsPage() {
     // --- リスナー設定 ---
     setTimeout(() => {
         try {
-            // 初期状態で背景画像があるか確認してボタン表示を制御
-            (async () => {
-                const db = await openBirdDB();
-                const bgImage = await db.get(STORE_SETTINGS, 'bgImage');
-                const btn = document.getElementById('bg-remove-image-btn');
-                const preview = document.getElementById('bg-image-preview-container');
-                if (bgImage) {
-                    if (btn) btn.classList.remove('hidden');
-                    if (preview) {
-                        preview.innerHTML = `<div class="mt-3 relative w-32 h-20 rounded-md border border-gray-300 overflow-hidden shadow-sm"><img src="${bgImage}" class="w-full h-full object-cover"><div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-[10px] text-center py-0.5">設定中</div></div>`;
-                    }
-                }
-            })();
-
-            // アコーディオン開閉ロジック
+            // アコーディオン開閉ロジック (余白追加版)
             const toggleAccordion = (contentId, arrowId) => {
                 const content = document.getElementById(contentId);
                 const arrow = document.getElementById(arrowId);
@@ -565,7 +510,6 @@ function showSettingsPage() {
             const bgRemoveBtn = document.getElementById('bg-remove-image-btn');
             const bgOpacitySlider = document.getElementById('bg-opacity-slider');
             const bgOpacityValue = document.getElementById('bg-opacity-value');
-            const bgPreviewContainer = document.getElementById('bg-image-preview-container');
 
             if (bgColorPicker) bgColorPicker.onchange = (e) => saveBackgroundSettings({ bgColor: e.target.value });
             if (bgOpacitySlider && bgOpacityValue) {
@@ -577,39 +521,27 @@ function showSettingsPage() {
             if (bgRemoveBtn) {
                 bgRemoveBtn.onclick = async () => {
                     if (await showCustomConfirm('背景画像を削除しますか？', '削除')) {
-                        try {
-                            await saveBackgroundSettings({ bgImage: '' });
-                            bgRemoveBtn.classList.add('hidden');
-                            if (bgImageInput) bgImageInput.value = null; 
-                            if (bgPreviewContainer) bgPreviewContainer.innerHTML = '';
-                        } catch(err) {
-                            console.error(err);
-                        }
+                        saveBackgroundSettings({ bgImage: '' });
+                        bgRemoveBtn.classList.add('hidden');
+                        if (bgImageInput) bgImageInput.value = null; 
                     }
                 };
             }
             if (bgImageInput) {
-                bgImageInput.onchange = async (e) => {
+                bgImageInput.onchange = (e) => {
                     const file = e.target.files[0];
                     if (!file) return;
-
-                    try {
-                        const compressedImage = await compressImage(file, 1920, 0.7);
-                        await saveBackgroundSettings({ bgImage: compressedImage });
-                        
-                        if (bgRemoveBtn) bgRemoveBtn.classList.remove('hidden');
-                        if (bgPreviewContainer) {
-                            bgPreviewContainer.innerHTML = `<div class="mt-3 relative w-32 h-20 rounded-md border border-gray-300 overflow-hidden shadow-sm"><img src="${compressedImage}" class="w-full h-full object-cover"><div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-[10px] text-center py-0.5">設定完了</div></div>`;
-                        }
-                        
-                        showCustomConfirm("背景画像を設定しました。", "OK", true);
-
-                    } catch (error) {
-                        console.error("Image save failed:", error);
-                        showCustomConfirm("画像の保存に失敗しました。\n" + error.message, "OK", true);
-                    } finally {
+                    if (file.size > 30 * 1024 * 1024) { 
+                        showCustomConfirm("画像サイズが30MBを超えています。", "OK", true);
                         e.target.value = null;
+                        return;
                     }
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        saveBackgroundSettings({ bgImage: event.target.result }); 
+                        bgRemoveBtn.classList.remove('hidden');
+                    };
+                    reader.readAsDataURL(file);
                 };
             }
 
@@ -637,60 +569,122 @@ function showSettingsPage() {
     }, 0);
 }
 
-// --- 設定保存関数 (IndexedDB対応版) ---
-async function saveBackgroundSettings(newSettings) {
+function saveBackgroundSettings(newSettings) {
     try {
-        const defaultSettings = { bgColor: '#f3f4f6', bgOpacity: 0.1 };
+        const defaultSettings = { bgColor: '#f3f4f6', bgImage: '', bgOpacity: 0.1 };
         let settings;
-        
-        // 1. 既存のメタデータ（色・透明度）をLocalStorageから読み込み
         const storedSettings = localStorage.getItem('birdAppBackground');
         settings = storedSettings ? { ...defaultSettings, ...JSON.parse(storedSettings) } : defaultSettings;
-
-        // 画像データとそれ以外を分離
-        const { bgImage, ...otherSettings } = newSettings;
-
-        // 2. メタデータを LocalStorage に保存 (画像データは除外して軽くする)
-        const settingsToSave = { ...settings, ...otherSettings };
-        delete settingsToSave.bgImage; 
-        localStorage.setItem('birdAppBackground', JSON.stringify(settingsToSave));
-
-        // 3. 画像データがあれば IndexedDB に保存/削除
-        // newSettings に bgImage プロパティが含まれている場合のみ更新処理を行う
-        if (newSettings.hasOwnProperty('bgImage')) {
-            const db = await openBirdDB(); // app.jsの関数
-            if (bgImage) {
-                await db.put(STORE_SETTINGS, bgImage, 'bgImage');
-            } else {
-                await db.delete(STORE_SETTINGS, 'bgImage');
-            }
-        }
-        
-        // 4. 画面に反映 (app.jsの関数を呼ぶ)
-        await applyBackgroundSettings();
-
+        settings = { ...settings, ...newSettings };
+        localStorage.setItem('birdAppBackground', JSON.stringify(settings));
+        applyBackgroundSettings();
     } catch (e) {
         console.error("Failed to save background settings:", e);
-        throw e; // エラーを呼び出し元に伝えてアラートを出す
     }
 }
 
 // --- データのエクスポート (ダウンロードのみ) ---
+// --- ★追加: エクスポート用に画像を圧縮するヘルパー関数 ---
+function compressImageForExport(base64Str, maxWidth = 1024, quality = 0.85) {
+    return new Promise((resolve) => {
+        // 画像がない、またはBase64でない場合はそのまま返す
+        if (!base64Str || !base64Str.startsWith('data:image')) {
+            resolve(base64Str);
+            return;
+        }
+
+        const img = new Image();
+        img.onload = () => {
+            // サイズ調整（アスペクト比維持）
+            let width = img.width;
+            let height = img.height;
+            
+            if (width > maxWidth || height > maxWidth) {
+                if (width > height) {
+                    height *= maxWidth / width;
+                    width = maxWidth;
+                } else {
+                    width *= maxWidth / height;
+                    height = maxWidth;
+                }
+            } else {
+                // すでに小さい画像なら圧縮せずそのまま返す（画質劣化防止）
+                resolve(base64Str);
+                return;
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // スマホ用に圧縮 (JPEG 0.85)
+            const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+            resolve(compressedBase64);
+        };
+        img.onerror = () => {
+            // エラー時は元のデータを返す
+            resolve(base64Str);
+        };
+        img.src = base64Str;
+    });
+}
+
+// --- 修正版: データのエクスポート (圧縮処理付き) ---
 async function handleExportData() {
     console.log('データのエクスポートを開始します...');
+    
+    // PCかどうかでメッセージを分岐（PCの場合のみ圧縮の案内を出すなど）
+    const isElectron = navigator.userAgent.toLowerCase().includes(' electron/');
+    const confirmMsg = isElectron 
+        ? 'データをエクスポートしますか？\n（PC内の高画質データはそのまま残し、スマホ用に画像を自動圧縮して出力します）'
+        : 'データをエクスポートしますか？';
+
+    if (!(await showCustomConfirm(confirmMsg, 'エクスポート実行'))) return;
+
+    // ローディング表示（圧縮に時間がかかるため必須）
+    showLoadingMessage("エクスポート用データを生成中...\n(画像の圧縮を行っています)");
+
     try {
         const db = await openBirdDB();
-        const birds = await db.getAll(STORE_BIRDS);
+        const originalBirds = await db.getAll(STORE_BIRDS);
         const events = await db.getAll(STORE_EVENTS);
         const receivedCardsData = await db.getAll(STORE_CARDS);
         const settings = JSON.parse(localStorage.getItem('birdListControls') || '{}');
         const backgroundSettings = JSON.parse(localStorage.getItem('birdAppBackground') || '{}');
         
+        // --- ★ここが変更点: 鳥データをループして画像を圧縮 ---
+        const compressedBirds = [];
+        
+        // 全鳥データを処理（Promise.allだとメモリ食うのでforループで1つずつ処理）
+        for (let i = 0; i < originalBirds.length; i++) {
+            const bird = { ...originalBirds[i] }; // コピーを作成
+            
+            // 写真があれば圧縮
+            if (bird.photo_url) {
+                // スマホ用に1024px, 画質0.85に変換
+                bird.photo_url = await compressImageForExport(bird.photo_url, 1024, 0.85);
+            }
+            
+            compressedBirds.push(bird);
+            
+            // 進捗状況をログに出す（任意）
+            if (i % 10 === 0) console.log(`Processing images: ${i}/${originalBirds.length}`);
+        }
+        
+        // 自分自身のバーダーカードの写真も圧縮
+        const compressedSettings = { ...settings };
+        if (compressedSettings.birderPhoto) {
+            compressedSettings.birderPhoto = await compressImageForExport(compressedSettings.birderPhoto, 500, 0.8);
+        }
+
+        // 圧縮済みのデータでバックアップオブジェクトを作成
         const backupData = {
-            birds: birds,
+            birds: compressedBirds, // ここに圧縮版を入れる
             events: events,
             receivedCards: receivedCardsData, 
-            settings: settings, 
+            settings: compressedSettings, 
             backgroundSettings: backgroundSettings, 
             exportDate: new Date().toISOString()
         };
@@ -701,14 +695,24 @@ async function handleExportData() {
         const a = document.createElement('a');
         a.href = url;
         const dateStr = new Date().toISOString().split('T')[0];
-        a.download = `bird-pokedex-backup-${dateStr}.json`;
+        
+        // ファイル名を少し変えて区別しやすくする
+        a.download = `bird-pokedex-mobile-export-${dateStr}.json`;
+        
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
         console.log('エクスポートが完了しました。');
+        
+        // 画面を元に戻す
+        showSettingsPage();
+        await showCustomConfirm('エクスポートが完了しました。\nこのファイルはスマホでも安全に読み込めます。', 'OK', true);
+
     } catch (error) {
+        console.error(error);
+        showSettingsPage();
         await showCustomConfirm(`エクスポートに失敗しました。\nエラー: ${error.message}`, 'OK', true);
     }
 }
@@ -764,7 +768,7 @@ async function handleImportData(file) {
 
             await initializeDatabase(); 
             loadListControlsState();    
-            await applyBackgroundSettings(); 
+            applyBackgroundSettings(); 
             showListPage(); 
             await showCustomConfirm('インポート（統合）が完了しました。', 'OK', true);
         } catch (error) {
