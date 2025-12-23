@@ -228,6 +228,12 @@ async function initializeDatabase() {
         if (storedData && Array.isArray(storedData) && storedData.length > 0) {
             birdDatabase = storedData.map(migrateBirdData);
             console.log(`Loaded ${birdDatabase.length} birds from IndexedDB`);
+
+            if (localStorage.getItem('birdDatabaseLoadError')) {
+                console.log('Zombie error flag detected. Removing it because DB is valid.');
+                localStorage.removeItem('birdDatabaseLoadError');
+            }
+
             await checkAndUpdateData(); 
         } else {
             birdDatabase = [];
