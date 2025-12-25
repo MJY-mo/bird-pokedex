@@ -282,12 +282,46 @@ async function fetchCSVAndSave() {
     if (GITHUB_CSV_URL.includes('[YOUR_USERNAME]')) { showSettingsPage(); return; }
     
     try {
-        console.log("Fetching CSV from:", GITHUB_CSV_URL); 
-        const response = await fetch(`${GITHUB_CSV_URL}?cachebust=${new Date().getTime()}`);
-        console.log("Fetch response status:", response.status); 
-        if (!response.ok) throw new Error(`Network response was not ok (HTTP ${response.status})`);
+        let csvText = null;
+
+        // ① PCアプリ (Electron) の場合: preload.js経由でPC内のファイルを直接読み込む
+        // (index.js と preload.js の設定が必須)
+        if (window.birdApp && window.birdApp.loadLocalCsv) {
+            console.log("Mode: Electron App (Loading local file...)");
+            try {
+                csvText = await window.birdApp.loadLocalCsv();
+                if (csvText) console.log("Local CSV loaded successfully (PC).");
+            } catch (e) {
+                console.error("Local file load failed (PC):", e);
+            }
+        }
+
+        // ② Android/iOSアプリ (Capacitor) の場合: アプリ内ファイルを読み込む
+        // (ネットがなくても動くようにするため)
+        if (!csvText && window.Capacitor && window.Capacitor.isNativePlatform()) {
+            console.log("Mode: Native App (Loading bundled file...)");
+            try {
+                // アプリ内の www/data/birds.csv を取得
+                const response = await fetch('./data/birds.csv');
+                if (response.ok) {
+                    csvText = await response.text();
+                    console.log("Local CSV loaded successfully (Native).");
+                }
+            } catch (e) {
+                console.error("Bundled file load failed (Native):", e);
+            }
+        }
+
+        // ③ Web版、またはローカル読み込みに失敗した場合: ネット(GitHub)から取得
+        if (!csvText) {
+            console.log("Mode: Web/PWA (Fetching from URL: " + GITHUB_CSV_URL + ")"); 
+            const response = await fetch(`${GITHUB_CSV_URL}?cachebust=${new Date().getTime()}`);
+            console.log("Fetch response status:", response.status); 
+            if (!response.ok) throw new Error(`Network response was not ok (HTTP ${response.status})`);
+            csvText = await response.text();
+        }
         
-        const csvText = await response.text();
+        // --- データチェックと保存 (ここから下は変更なし) ---
         if (!csvText || csvText.length === 0) throw new Error("Downloaded CSV text is empty."); 
         console.log("CSV text fetched, length:", csvText.length); 
         
@@ -323,13 +357,12 @@ async function fetchCSVAndSave() {
         updateAllOrdersList(); 
         try {
             if (app) { 
-                app.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow" role="alert"><strong class="font-bold">データ取得エラー</strong><span class="block sm:inline">GitHubからのデータダウンロードに失敗しました。</span><p class="text-sm mt-2">詳細: ${escapeHTML(error.message)}</p><p class="mt-2 text-sm">「設定」タブから再試行してください。</p></div>`;
+                app.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow" role="alert"><strong class="font-bold">データ取得エラー</strong><span class="block sm:inline">データの読み込みに失敗しました。</span><p class="text-sm mt-2">詳細: ${escapeHTML(error.message)}</p><p class="mt-2 text-sm">「設定」タブから再試行してください。</p></div>`;
             }
             updateHeader('error', '同期エラー'); 
         } catch(e) { console.error("Error displaying fetch error:", e); }
     }
 }
-
 
 // --- データ更新 (マージ) ---
 async function checkAndUpdateData() {
@@ -1114,3 +1147,94 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (app) app.innerHTML = `<div class="p-4 text-red-600 font-bold">アプリの起動に失敗しました。<br>${e.message}</div>`;
     }
 });
+
+// ============================================================
+// ★追加機能: スマホ本体の「戻るボタン」対応 (Androidアプリ & PWA)
+// ============================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    setupBackButtonBehavior();
+});
+
+function setupBackButtonBehavior() {
+    // --- 1. Androidアプリ (Capacitor) の物理ボタン制御 ---
+    // (npm install @capacitor/app が必要)
+    if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+        const App = window.Capacitor.Plugins.App;
+        
+        if (App) {
+            App.addListener('backButton', ({ canGoBack }) => {
+                // ① 開いているモーダル/ポップアップがあれば閉じる
+                if (closeAnyOpenModalOrPopup()) return;
+
+                // ② アプリ画面上の「< 戻る」ボタンが見えていれば、それを押す
+                const backBtn = document.getElementById('backButton');
+                if (backBtn && !backBtn.classList.contains('hidden')) {
+                    backBtn.click(); 
+                } else {
+                    // ③ ルート画面(戻るボタンがない)ならアプリを終了
+                    App.exitApp();
+                }
+            });
+        }
+    }
+
+    // --- 2. PWA (ブラウザ) の戻るボタン制御 ---
+    // 詳細画面への移動関数を上書き(ラップ)して、履歴(History)を追加するようにする
+    
+    // (A) 図鑑詳細への移動をフック
+    if (typeof showDetailPage === 'function') {
+        const originalShowDetailPage = showDetailPage;
+        showDetailPage = function(id) {
+            originalShowDetailPage(id);
+            // URL末尾に #detail/ID をつけて履歴に追加
+            history.pushState({ page: 'detail', id: id }, '', `#detail/${id}`);
+        };
+    }
+
+    // (B) ブラウザの戻るボタンが押された時の検知
+    window.addEventListener('popstate', (event) => {
+        // モーダルが開いていたら閉じる
+        if (closeAnyOpenModalOrPopup()) {
+            // モーダルを閉じただけなので、ここで処理終了
+            return;
+        }
+
+        // 履歴Stateがない(=トップに戻った)場合、リスト画面を表示
+        if (!event.state) {
+            // 現在がリスト以外ならリストに戻す（簡易対応）
+            if (appState.currentPage === 'detail' || appState.currentPage === 'edit') {
+                showListPage();
+            }
+        }
+    });
+}
+
+// ヘルパー: 開いているモーダル等を閉じる (閉じた場合は true を返す)
+function closeAnyOpenModalOrPopup() {
+    // 1. クロップ(写真切り取り)モーダル
+    const cropperModal = document.getElementById('cropper-modal');
+    if (cropperModal) {
+        const cancel = document.getElementById('cropper-cancel-btn');
+        if (cancel) cancel.click();
+        else document.body.removeChild(cropperModal);
+        return true;
+    }
+    
+    // 2. 編集モーダル
+    const editModal = document.getElementById('edit-form-modal');
+    if (editModal && !editModal.classList.contains('hidden')) {
+        const cancel = document.getElementById('edit-form-cancel-btn');
+        if (cancel) cancel.click();
+        return true;
+    }
+
+    // 3. ヘッダーの検索/絞り込みポップアップ
+    if (appState.listControls && appState.listControls.activePopup) {
+        appState.listControls.activePopup = null;
+        updateHeader('list'); // 画面更新
+        return true;
+    }
+    
+    return false;
+}

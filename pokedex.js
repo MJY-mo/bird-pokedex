@@ -473,181 +473,89 @@ function renderPaginationControls(listContainer, totalItems, totalPages) {
 function showDetailPage(birdId) { 
     appState.currentPage = 'detail'; appState.currentBirdId = birdId; appState.isEditing = false;
     const bird = birdDatabase.find(b => b.id === birdId); if (!bird) { showListPage(); return; } currentBird = bird; 
+    
+    // (省略: タグ生成部分は変更なし)
     const seasonTag = getSeasonTag(bird.season);
     const rarity = parseInt(bird.rarity, 10);
     const rarityTag = !isNaN(rarity) && rarity > 0 ? `<span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700">${'★'.repeat(rarity)}${'☆'.repeat(5 - rarity)}</span>` : '';
     const specialTags = (bird.special_notes || '').split(';').filter(Boolean).map(note => `<span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-100 text-red-700">${escapeHTML(note)}</span>`).join(' ');
+    
+    // 画像設定
     const placeholderUrl = './favicon3.png';
     const imageUrl = bird.photo_url || placeholderUrl;
     const opacityClass = bird.photo_url ? '' : 'opacity-30';
-
     const isPlaceholder = !bird.photo_url;
     
     const buttonIcon = isPlaceholder 
-        ? `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>` 
-        : `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z"></path></svg>`; 
-    
+        ? `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>` 
+        : `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z"></path></svg>`; 
     const buttonTitle = isPlaceholder ? "写真を追加" : "写真を再編集";
+    const editPhotoBtnHtml = `<button id="edit-photo-overlay-btn" class="absolute top-2 right-2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-colors" title="${buttonTitle}">${buttonIcon}</button>`;
     
-    const editPhotoBtnHtml = `
-        <button id="edit-photo-overlay-btn" class="absolute top-2 right-2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-colors" title="${buttonTitle}">
-            ${buttonIcon}
-        </button>
-    `;
-    
+    // 生息地
     const habitatLabels = getHabitatLabels(bird);
     const habitatText = habitatLabels.length > 0 ? habitatLabels.join(', ') : '(情報なし)';
     
+    // 最新イベント
     let latestEventHtml = '';
     if (bird.lastObservedEventId) {
         const latestEvent = birdEvents.find(e => e.id === bird.lastObservedEventId);
         if (latestEvent) {
-            const eventDate = latestEvent.dateTime ? latestEvent.dateTime.replace('T', ' ') : '日付不明';
-            const eventLocation = latestEvent.location || '(場所未設定)';
-            
-            latestEventHtml = `
-            <div id="latest-event-link" class="bg-emerald-50 rounded-lg shadow overflow-hidden border border-emerald-200 cursor-pointer hover:bg-emerald-100 transition-colors">
-                <div class="p-4">
-                    <h3 class="font-semibold text-gray-800 mb-2">最新の観察イベント</h3>
-                    <div class="text-sm text-emerald-700 space-y-1">
-                        <p><strong>イベント:</strong> ${escapeHTML(latestEvent.name || '無題のイベント')}</p>
-                        <p><strong>日時:</strong> ${escapeHTML(eventDate)}</p>
-                        <p><strong>場所:</strong> ${escapeHTML(eventLocation)}</p>
-                    </div>
-                    <p class="text-xs text-emerald-600 mt-2 text-right">タップしてイベント詳細へ &gt;</p>
-                </div>
-            </div>
-            `;
+            latestEventHtml = `<div id="latest-event-link" class="bg-emerald-50 rounded-lg shadow overflow-hidden border border-emerald-200 cursor-pointer hover:bg-emerald-100 transition-colors"><div class="p-4"><h3 class="font-semibold text-gray-800 mb-2">最新の観察イベント</h3><div class="text-sm text-emerald-700 space-y-1"><p><strong>イベント:</strong> ${escapeHTML(latestEvent.name)}</p><p><strong>日時:</strong> ${escapeHTML(latestEvent.dateTime.replace('T',' '))}</p></div><p class="text-xs text-emerald-600 mt-2 text-right">タップして詳細へ &gt;</p></div></div>`;
         }
     }
-    
     const descriptionHtml = bird.description ? `<p class="text-gray-700 leading-relaxed">${escapeHTML(bird.description).replace(/\n/g, '<br>')}</p>` : `<p class="text-gray-400 italic">(説明未記入)</p>`;
-
+    
+    // 音声ボタン
     let voiceButtonHtml = '';
     if (bird.voice_url) {
-        voiceButtonHtml = `
-            <button id="play-voice-btn" class="text-emerald-600 hover:text-emerald-800 p-2 rounded-full hover:bg-emerald-100">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z"></path>
-                </svg>
-            </button>
-        `;
+        voiceButtonHtml = `<button id="play-voice-btn" class="text-emerald-600 hover:text-emerald-800 p-2 rounded-full hover:bg-emerald-100"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z"></path></svg></button>`;
     }
 
-    const liferIcon = (checked, label) => {
-        const icon = checked 
-            ? `<svg class="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>`
-            : `<svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>`;
-        return `<span class="flex items-center space-x-2">${icon}<span>${label}</span></span>`;
-    };
-    const liferHtml = `
-        <div class="bg-white rounded-lg shadow overflow-hidden">
-            <div class="p-4">
-                <h3 class="font-semibold text-gray-800 mb-3">ライフリスト</h3>
-                <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-gray-700">
-                    ${liferIcon(bird.lifer_seen, '目視')}
-                    ${liferIcon(bird.lifer_heard, '声')}
-                    ${liferIcon(bird.lifer_photo, '写真')}
-                    ${liferIcon(bird.lifer_video, '動画')}
-                </div>
-            </div>
-        </div>
-    `;
-
+    const liferIcon = (c, l) => `<span class="flex items-center space-x-2">${c ? '<svg class="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"></path></svg>' : '<svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"></path></svg>'}<span>${l}</span></span>`;
+    const liferHtml = `<div class="bg-white rounded-lg shadow overflow-hidden"><div class="p-4"><h3 class="font-semibold text-gray-800 mb-3">ライフリスト</h3><div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-gray-700">${liferIcon(bird.lifer_seen,'目視')}${liferIcon(bird.lifer_heard,'声')}${liferIcon(bird.lifer_photo,'写真')}${liferIcon(bird.lifer_video,'動画')}</div></div></div>`;
 
     app.innerHTML = `
         <div class="space-y-4 p-2"> 
             <div class="bg-white rounded-lg shadow overflow-hidden relative border-b border-gray-200">
-                <img src="${imageUrl}" alt="${escapeHTML(bird.name)}" 
-                     onerror="this.onerror=null; this.src='${placeholderUrl}';" 
-                     class="w-full h-64 object-contain bg-white ${opacityClass}">
+                <img src="${imageUrl}" alt="${escapeHTML(bird.name)}" onerror="this.onerror=null; this.src='${placeholderUrl}';" class="w-full h-64 object-contain bg-white ${opacityClass}">
                 ${editPhotoBtnHtml} 
             </div>
+            <div class="bg-white rounded-lg shadow overflow-hidden"><div class="p-4"><div class="flex flex-wrap gap-2 mb-3">${seasonTag}${rarityTag}${specialTags}</div><div class="flex justify-between items-start mb-2"><div><h2 class="text-2xl font-bold text-gray-900">${escapeHTML(bird.name)}</h2><p class="text-sm text-gray-600 mt-1"><strong>分類:</strong> ${escapeHTML(bird.classification) || 'N/A'}</p></div>${voiceButtonHtml}</div><div class="text-sm text-gray-600 space-y-1"><p><strong>サイズ:</strong> ${escapeHTML(bird.size) || 'N/A'}</p><p><strong>生息地:</strong> ${escapeHTML(habitatText)}</p></div></div></div>
+            ${liferHtml} ${latestEventHtml} 
+            <div class="bg-white rounded-lg shadow overflow-hidden"><div class="p-4"><h3 class="font-semibold text-gray-800 mb-2">説明文</h3>${descriptionHtml}</div></div>
+            <button id="edit-modal-open-btn" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-emerald-700 transition-colors">情報を編集する</button>
             
-            <div class="bg-white rounded-lg shadow overflow-hidden">
-                <div class="p-4">
-                    <div class="flex flex-wrap gap-2 mb-3">${seasonTag}${rarityTag}${specialTags}</div>
-                    
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <h2 class="text-2xl font-bold text-gray-900">${escapeHTML(bird.name)}</h2>
-                            <p class="text-sm text-gray-600 mt-1"><strong>分類:</strong> ${escapeHTML(bird.classification) || 'N/A'}</p>
-                        </div>
-                        ${voiceButtonHtml} 
-                    </div>
-
-                    <div class="text-sm text-gray-600 space-y-1">
-                        <p><strong>サイズ:</strong> ${escapeHTML(bird.size) || 'N/A'}</p>
-                        <p><strong>生息地:</strong> ${escapeHTML(habitatText)}</p>
-                    </div>
-                </div>
-            </div>
-            
-            ${liferHtml} 
-            ${latestEventHtml} 
-
-            <div class="bg-white rounded-lg shadow overflow-hidden">
-                <div class="p-4">
-                    <h3 class="font-semibold text-gray-800 mb-2">説明文</h3>
-                    ${descriptionHtml}
-                </div>
-            </div>
-            <button id="edit-modal-open-btn" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-emerald-700 transition-colors">
-                情報を編集する
-            </button>
-            <audio id="bird-voice-player" class="hidden" src="${bird.voice_url || ''}"></audio>
-        </div>
-    `;
+            <audio id="bird-voice-player" class="hidden"></audio>
+        </div>`;
     updateHeader('detail', bird.name);
 
     setTimeout(() => {
         const editModalOpenBtn = document.getElementById('edit-modal-open-btn');
-        if (editModalOpenBtn) {
-            editModalOpenBtn.onclick = () => renderDetailEditPageAsModal(birdId);
-        } else {
-            console.error("Edit modal open button not found on detail page.");
-        }
+        if (editModalOpenBtn) editModalOpenBtn.onclick = () => renderDetailEditPageAsModal(birdId);
 
         const editPhotoBtn = document.getElementById('edit-photo-overlay-btn');
         if (editPhotoBtn) {
             editPhotoBtn.onclick = () => {
-                
                 const saveCroppedImage = async (base64Image) => {
                     const idx = birdDatabase.findIndex(b => b.id === birdId);
-                    if (idx > -1) {
-                        birdDatabase[idx].photo_url = base64Image;
-                        await saveDatabase(); 
-                        showDetailPage(birdId); 
-                    }
+                    if (idx > -1) { birdDatabase[idx].photo_url = base64Image; await saveDatabase(); showDetailPage(birdId); }
                 };
-                
                 const deleteCroppedImage = async () => {
                     const idx = birdDatabase.findIndex(b => b.id === birdId);
-                    if (idx > -1) {
-                        birdDatabase[idx].photo_url = ''; 
-                        await saveDatabase(); 
-                        showDetailPage(birdId); 
-                    }
+                    if (idx > -1) { birdDatabase[idx].photo_url = ''; await saveDatabase(); showDetailPage(birdId); }
                 };
 
                 if (isPlaceholder) {
                     const fileInput = document.createElement('input');
-                    fileInput.type = 'file';
-                    fileInput.accept = 'image/*';
+                    fileInput.type = 'file'; fileInput.accept = 'image/*';
                     fileInput.onchange = (e) => {
-                        const file = e.target.files[0];
-                        if (!file) return;
-                        
-                        // ★修正: サイズ制限を30MBに緩和
+                        const file = e.target.files[0]; if (!file) return;
                         if (file.size > 30 * 1024 * 1024) { 
-                            showCustomConfirm("画像サイズが30MBを超えています。30MB以下のファイルを選択してください。", "OK", true);
-                            return;
+                            showCustomConfirm("画像サイズが30MBを超えています。", "OK", true); return;
                         }
-                        
                         const reader = new FileReader();
-                        reader.onload = (event) => {
-                            showCropperModal(event.target.result, saveCroppedImage, null);
-                        };
+                        reader.onload = (event) => { showCropperModal(event.target.result, saveCroppedImage, null); };
                         reader.readAsDataURL(file);
                     };
                     fileInput.click();
@@ -656,21 +564,32 @@ function showDetailPage(birdId) {
                 }
             };
         }
-      
         if (bird.lastObservedEventId) {
             const latestEventLink = document.getElementById('latest-event-link');
-            if (latestEventLink) {
-                latestEventLink.onclick = () => handleGoToEvent(bird.lastObservedEventId);
-            }
+            if (latestEventLink) latestEventLink.onclick = () => handleGoToEvent(bird.lastObservedEventId);
         }
         
+        // --- 音声再生処理の修正 ---
         if (bird.voice_url) {
             const playVoiceBtn = document.getElementById('play-voice-btn');
             const audioPlayer = document.getElementById('bird-voice-player');
+            
+            // ★修正点2: DOM生成後に、JSでsrcプロパティに直接データを代入する (HTMLパーサー制限の回避)
+            if (audioPlayer) {
+                audioPlayer.src = bird.voice_url;
+            }
+
             if (playVoiceBtn && audioPlayer) {
                 playVoiceBtn.onclick = () => {
                     if (audioPlayer.paused) {
-                        audioPlayer.play();
+                        // ★修正点3: エラーハンドリングを追加
+                        const playPromise = audioPlayer.play();
+                        if (playPromise !== undefined) {
+                            playPromise.catch(error => {
+                                console.error("Audio Playback Error:", error);
+                                showCustomConfirm("音声の再生に失敗しました。\n形式が対応していないか、データが壊れている可能性があります。", "OK", true);
+                            });
+                        }
                     } else {
                         audioPlayer.pause();
                         audioPlayer.currentTime = 0; 
